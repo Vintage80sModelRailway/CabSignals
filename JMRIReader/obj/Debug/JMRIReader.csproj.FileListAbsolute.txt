@@ -1,0 +1,9 @@
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\JMRIReader.dll
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\JMRIReader.pdb
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.csprojAssemblyReference.cache
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.csproj.CoreCompileInputs.cache
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.dll
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.pdb
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\Newtonsoft.Json.dll
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\Newtonsoft.Json.xml
+C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.csproj.CopyComplete
