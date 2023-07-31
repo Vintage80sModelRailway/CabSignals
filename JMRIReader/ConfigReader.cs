@@ -31,16 +31,31 @@ namespace JMRIReader
             var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
 
             var serializer = new XmlSerializer(typeof(transit));
-            tr = (transit)serializer.Deserialize(transit.CreateReader()); 
+            tr = (transit)serializer.Deserialize(transit.CreateReader());
+            int counter = 0;
 
             foreach (var transitsection in tr.transitsection)
             {
+                counter++;
+                var hasAlternate = false;
+                var nextSection = tr.transitsection.ElementAtOrDefault(counter);
+                if (nextSection != null && nextSection.alternate == "yes")
+                {
+                    hasAlternate = true;
+                }
                 section s = GetSectionBySystemName(transitsection.sectionname);
                 foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                 {
                     block b = GetBlockBySystemName(blockEntry.sName);
                     s.Blocks.Add(b);
-                    tr.BlocksInOrder.Add(b);
+                    var logEntry = new BlockJourneyLog();
+                    logEntry.BlockSystemname = b.systemName;
+                    logEntry.BlockUserName = b.userName;
+                    logEntry.Traversed = false;
+                    logEntry.Sequence = counter;
+                    logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                    logEntry.HasAlternate = hasAlternate;
+                    tr.BlocksInOrder.Add(logEntry);
                 }
                 tr.Sections.Add(s);
             }
@@ -71,29 +86,68 @@ namespace JMRIReader
             return s;
         }
 
-        public signalmast GetSignalMastForBlock(string BlockUserName, string NextBlockUserName, string direction)
+        public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction)
         {
-            if (direction == "North") direction = "West";
-            if (direction == "South") direction = "East";
+            try
+            {
+                if (direction == "North") direction = "West";
+                if (direction == "South") direction = "East";
 
-            if (direction.Contains("west")) direction = "West";
-            if (direction.Contains("east")) direction = "East";
+                if (direction.Contains("west")) direction = "West";
+                if (direction.Contains("east")) direction = "East";
 
-            string signalMastName = string.Empty;
-            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
-            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
-            LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+                string signalMastName = string.Empty;
+                var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+                var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+                LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            var segments = layout.tracksegment.Where(w => w.blockname == BlockUserName);
-            var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == NextBlockUserName).ToList();
-            var turnouts = layout.layoutturnout.Where(w => w.blockname == BlockUserName);
-            var anchors = layout.positionablepoint.Where(w => w.type == "ANCHOR");
 
-            var eastAnchorPoint = new LayoutBlockChainItem();
-            var westAnchorPoint = new LayoutBlockChainItem();
 
-            string eastboundSignalMast = string.Empty;
-            string westboundSignalMast = string.Empty;
+                var eastAnchorPoint = new LayoutBlockChainItem();
+                var westAnchorPoint = new LayoutBlockChainItem();
+
+                string eastboundSignalMast = string.Empty;
+                string westboundSignalMast = string.Empty;
+
+                signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex, direction);
+
+                //trying to get signal mast from a dividing anchor connected to a track segment from the current block
+                //get both then work out direction?
+                //get east signal mast
+                //get west signal mast
+                //know if it's a divider if next connected element in a different block
+
+                var sm = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(signalMastName));
+                if (sm != null)
+                {
+                    var smSerializer = new XmlSerializer(typeof(signalmast));
+                    signalmast mast = (signalmast)smSerializer.Deserialize(sm.CreateReader());
+                    return mast;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                var test = "ttop";
+                return null;
+            }
+
+        }
+
+        private string SearchTrackSegentsForSignalMast(LayoutEditor layout, List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction)
+        {
+            var currentBlock = journeyBlocksInOrder.ElementAt(currentBlockIndex);
+            var nextBlock = journeyBlocksInOrder.ElementAt(currentBlockIndex + 1);
+
+            var segments = layout.tracksegment.Where(w => w.blockname == currentBlock.BlockUserName).ToList();
+            var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == nextBlock.BlockUserName).ToList();
+            var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == currentBlock.BlockUserName || w.blockcname == currentBlock.BlockUserName || w.blockdname == currentBlock.BlockUserName).ToList();
+            var nextBlockTurnouts = layout.layoutturnout.Where(w => w.blockcname == nextBlock.BlockUserName).ToList();
+            var anchors = layout.positionablepoint.Where(w => w.type == "ANCHOR").ToList();
+
+            string signalMastName = "";
+            List<LayoutEditorPositionablepoint> anchorPointsWithNoSignalMasts = new List<LayoutEditorPositionablepoint>();
 
             foreach (var s in segments)
             {
@@ -106,6 +160,7 @@ namespace JMRIReader
                     if (ap != null)
                     {
                         isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                        if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                     }
                 }
                 if (!isBoundary)
@@ -117,6 +172,7 @@ namespace JMRIReader
                         if (ap != null)
                         {
                             isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                            if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                         }
                     }
                 }
@@ -131,24 +187,25 @@ namespace JMRIReader
                     {
                         signalMastName = ap.westboundsignalmast;
                     }
+                    break;
                 }
             }
 
-            //trying to get signal mast from a dividing anchor connected to a track segment from the current block
-            //get both then work out direction?
-            //get east signal mast
-            //get west signal mast
-            //know if it's a divider if next connected element in a different block
-
-            var sm = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(signalMastName));
-            if (sm != null)
+            if (signalMastName == null || signalMastName.Length < 1)
             {
-                var smSerializer = new XmlSerializer(typeof(signalmast));
-                signalmast mast = (signalmast)smSerializer.Deserialize(sm.CreateReader());
-                return mast;
+                //been through all track segments and APs with no luck - try turnouts
+                //it may be that a turnout is a block boundary
+                var turnoutsWithBoundaries = turnoutsInThisBlock.Where(w => w.blockname == nextBlock.BlockUserName || w.blockcname == nextBlock.BlockUserName || w.blockdname == nextBlock.BlockUserName);
+                if (turnoutsWithBoundaries != null)
+                {
+                    //the route takes the train out of the current block, into the next one, before the 'official' anchor poing signal mast
+                    //therefore the current block is governed by the signal mast at the end of the block that the train will turn into
+                    signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex + 1, direction);
+                }
+
             }
 
-            return null;
+            return signalMastName;
         }
 
         private bool CheckForBoundary(List<LayoutEditorTracksegment> NextBlockSegments, string AnchorPointID)

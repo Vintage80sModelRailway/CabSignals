@@ -64,6 +64,7 @@
             this.btnTestSM = new System.Windows.Forms.Button();
             this.pbSignal = new System.Windows.Forms.PictureBox();
             this.btnMore = new System.Windows.Forms.Button();
+            this.lbJourneyLog = new System.Windows.Forms.ListBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbSignal)).BeginInit();
             this.SuspendLayout();
             // 
@@ -362,11 +363,20 @@
             this.btnMore.UseVisualStyleBackColor = true;
             this.btnMore.Click += new System.EventHandler(this.btnMore_Click);
             // 
+            // lbJourneyLog
+            // 
+            this.lbJourneyLog.FormattingEnabled = true;
+            this.lbJourneyLog.Location = new System.Drawing.Point(937, 27);
+            this.lbJourneyLog.Name = "lbJourneyLog";
+            this.lbJourneyLog.Size = new System.Drawing.Size(263, 407);
+            this.lbJourneyLog.TabIndex = 34;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(923, 450);
+            this.ClientSize = new System.Drawing.Size(1255, 450);
+            this.Controls.Add(this.lbJourneyLog);
             this.Controls.Add(this.btnMore);
             this.Controls.Add(this.pbSignal);
             this.Controls.Add(this.btnTestSM);
@@ -447,6 +457,7 @@
         private System.Windows.Forms.Button btnTestSM;
         private System.Windows.Forms.PictureBox pbSignal;
         private System.Windows.Forms.Button btnMore;
+        private System.Windows.Forms.ListBox lbJourneyLog;
     }
 }
 

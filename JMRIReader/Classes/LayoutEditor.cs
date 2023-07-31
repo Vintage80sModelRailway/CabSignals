@@ -26,9 +26,9 @@ public partial class LayoutEditor
 
     private string nameField;
 
-    private sbyte xField;
+    private int xField;
 
-    private sbyte yField;
+    private int yField;
 
     private ushort windowheightField;
 
@@ -66,13 +66,13 @@ public partial class LayoutEditor
 
     private string tooltipsineditField;
 
-    private byte mainlinetrackwidthField;
+    private int mainlinetrackwidthField;
 
     private decimal xscaleField;
 
     private decimal yscaleField;
 
-    private byte sidetrackwidthField;
+    private int sidetrackwidthField;
 
     private string defaulttrackcolorField;
 
@@ -88,7 +88,7 @@ public partial class LayoutEditor
 
     private string turnoutfillcontrolcirclesField;
 
-    private byte turnoutcirclesizeField;
+    private int turnoutcirclesizeField;
 
     private string turnoutdrawunselectedlegField;
 
@@ -106,15 +106,15 @@ public partial class LayoutEditor
 
     private string autoblkgenerateField;
 
-    private byte redBackgroundField;
+    private int redBackgroundField;
 
-    private byte greenBackgroundField;
+    private int greenBackgroundField;
 
-    private byte blueBackgroundField;
+    private int blueBackgroundField;
 
-    private byte gridSizeField;
+    private int gridSizeField;
 
-    private byte gridSize2ndField;
+    private int gridSize2ndField;
 
     private string openDispatcherField;
 
@@ -247,7 +247,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public sbyte x
+    public int x
     {
         get
         {
@@ -261,7 +261,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public sbyte y
+    public int y
     {
         get
         {
@@ -527,7 +527,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte mainlinetrackwidth
+    public int mainlinetrackwidth
     {
         get
         {
@@ -569,7 +569,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte sidetrackwidth
+    public int sidetrackwidth
     {
         get
         {
@@ -681,7 +681,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte turnoutcirclesize
+    public int turnoutcirclesize
     {
         get
         {
@@ -807,7 +807,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte redBackground
+    public int redBackground
     {
         get
         {
@@ -821,7 +821,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte greenBackground
+    public int greenBackground
     {
         get
         {
@@ -835,7 +835,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte blueBackground
+    public int blueBackground
     {
         get
         {
@@ -849,7 +849,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte gridSize
+    public int gridSize
     {
         get
         {
@@ -863,7 +863,7 @@ public partial class LayoutEditor
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte gridSize2nd
+    public int gridSize2nd
     {
         get
         {
@@ -913,51 +913,51 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
 
     private string mainBallastColorField;
 
-    private byte mainBallastWidthField;
+    private int mainBallastWidthField;
 
-    private byte mainBlockLineDashPercentageX10Field;
+    private int mainBlockLineDashPercentageX10Field;
 
-    private byte mainBlockLineWidthField;
+    private int mainBlockLineWidthField;
 
     private string mainRailColorField;
 
-    private byte mainRailCountField;
+    private int mainRailCountField;
 
-    private byte mainRailGapField;
+    private int mainRailGapField;
 
-    private byte mainRailWidthField;
+    private int mainRailWidthField;
 
     private string mainTieColorField;
 
-    private byte mainTieGapField;
+    private int mainTieGapField;
 
-    private byte mainTieLengthField;
+    private int mainTieLengthField;
 
-    private byte mainTieWidthField;
+    private int mainTieWidthField;
 
     private string sideBallastColorField;
 
-    private byte sideBallastWidthField;
+    private int sideBallastWidthField;
 
-    private byte sideBlockLineDashPercentageX10Field;
+    private int sideBlockLineDashPercentageX10Field;
 
-    private byte sideBlockLineWidthField;
+    private int sideBlockLineWidthField;
 
     private string sideRailColorField;
 
-    private byte sideRailCountField;
+    private int sideRailCountField;
 
-    private byte sideRailGapField;
+    private int sideRailGapField;
 
-    private byte sideRailWidthField;
+    private int sideRailWidthField;
 
     private string sideTieColorField;
 
-    private byte sideTieGapField;
+    private int sideTieGapField;
 
-    private byte sideTieLengthField;
+    private int sideTieLengthField;
 
-    private byte sideTieWidthField;
+    private int sideTieWidthField;
 
     private string nameField;
 
@@ -977,7 +977,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainBallastWidth
+    public int mainBallastWidth
     {
         get
         {
@@ -990,7 +990,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainBlockLineDashPercentageX10
+    public int mainBlockLineDashPercentageX10
     {
         get
         {
@@ -1003,7 +1003,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainBlockLineWidth
+    public int mainBlockLineWidth
     {
         get
         {
@@ -1029,7 +1029,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainRailCount
+    public int mainRailCount
     {
         get
         {
@@ -1042,7 +1042,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainRailGap
+    public int mainRailGap
     {
         get
         {
@@ -1055,7 +1055,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainRailWidth
+    public int mainRailWidth
     {
         get
         {
@@ -1081,7 +1081,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainTieGap
+    public int mainTieGap
     {
         get
         {
@@ -1094,7 +1094,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainTieLength
+    public int mainTieLength
     {
         get
         {
@@ -1107,7 +1107,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte mainTieWidth
+    public int mainTieWidth
     {
         get
         {
@@ -1133,7 +1133,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideBallastWidth
+    public int sideBallastWidth
     {
         get
         {
@@ -1146,7 +1146,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideBlockLineDashPercentageX10
+    public int sideBlockLineDashPercentageX10
     {
         get
         {
@@ -1159,7 +1159,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideBlockLineWidth
+    public int sideBlockLineWidth
     {
         get
         {
@@ -1185,7 +1185,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideRailCount
+    public int sideRailCount
     {
         get
         {
@@ -1198,7 +1198,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideRailGap
+    public int sideRailGap
     {
         get
         {
@@ -1211,7 +1211,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideRailWidth
+    public int sideRailWidth
     {
         get
         {
@@ -1237,7 +1237,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideTieGap
+    public int sideTieGap
     {
         get
         {
@@ -1250,7 +1250,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideTieLength
+    public int sideTieLength
     {
         get
         {
@@ -1263,7 +1263,7 @@ public partial class LayoutEditorLayoutTrackDrawingOptions
     }
 
     /// <remarks/>
-    public byte sideTieWidth
+    public int sideTieWidth
     {
         get
         {
@@ -1317,7 +1317,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     private ushort yField;
 
-    private byte levelField;
+    private int levelField;
 
     private bool forcecontroloffField;
 
@@ -1331,15 +1331,15 @@ public partial class LayoutEditorBlockContentsIcon
 
     private string fontnameField;
 
-    private byte sizeField;
+    private int sizeField;
 
-    private byte styleField;
+    private int styleField;
 
-    private byte redField;
+    private int redField;
 
-    private byte greenField;
+    private int greenField;
 
-    private byte blueField;
+    private int blueField;
 
     private string hasBackgroundField;
 
@@ -1397,7 +1397,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte level
+    public int level
     {
         get
         {
@@ -1495,7 +1495,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte size
+    public int size
     {
         get
         {
@@ -1509,7 +1509,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte style
+    public int style
     {
         get
         {
@@ -1523,7 +1523,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte red
+    public int red
     {
         get
         {
@@ -1537,7 +1537,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte green
+    public int green
     {
         get
         {
@@ -1551,7 +1551,7 @@ public partial class LayoutEditorBlockContentsIcon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte blue
+    public int blue
     {
         get
         {
@@ -1661,7 +1661,7 @@ public partial class LayoutEditorSignalmasticon
 
     private ushort yField;
 
-    private byte levelField;
+    private int levelField;
 
     private bool forcecontroloffField;
 
@@ -1673,7 +1673,7 @@ public partial class LayoutEditorSignalmasticon
 
     private bool editableField;
 
-    private byte clickmodeField;
+    private int clickmodeField;
 
     private bool litmodeField;
 
@@ -1729,7 +1729,7 @@ public partial class LayoutEditorSignalmasticon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte level
+    public int level
     {
         get
         {
@@ -1813,7 +1813,7 @@ public partial class LayoutEditorSignalmasticon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte clickmode
+    public int clickmode
     {
         get
         {
@@ -1919,7 +1919,7 @@ public partial class LayoutEditorSensoricon
 
     private ushort yField;
 
-    private byte levelField;
+    private int levelField;
 
     private bool forcecontroloffField;
 
@@ -2046,7 +2046,7 @@ public partial class LayoutEditorSensoricon
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte level
+    public int level
     {
         get
         {
@@ -2178,16 +2178,16 @@ public partial class LayoutEditorSensoricon
 public partial class LayoutEditorSensoriconActive
 {
 
-    private byte rotationField;
+    private int rotationField;
 
     private string urlField;
 
-    private byte degreesField;
+    private int degreesField;
 
     private decimal scaleField;
 
     /// <remarks/>
-    public byte rotation
+    public int rotation
     {
         get
         {
@@ -2215,7 +2215,7 @@ public partial class LayoutEditorSensoriconActive
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte degrees
+    public int degrees
     {
         get
         {
@@ -2249,16 +2249,16 @@ public partial class LayoutEditorSensoriconActive
 public partial class LayoutEditorSensoriconInactive
 {
 
-    private byte rotationField;
+    private int rotationField;
 
     private string urlField;
 
-    private byte degreesField;
+    private int degreesField;
 
     private decimal scaleField;
 
     /// <remarks/>
-    public byte rotation
+    public int rotation
     {
         get
         {
@@ -2286,7 +2286,7 @@ public partial class LayoutEditorSensoriconInactive
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte degrees
+    public int degrees
     {
         get
         {
@@ -2320,16 +2320,16 @@ public partial class LayoutEditorSensoriconInactive
 public partial class LayoutEditorSensoriconUnknown
 {
 
-    private byte rotationField;
+    private int rotationField;
 
     private string urlField;
 
-    private byte degreesField;
+    private int degreesField;
 
     private decimal scaleField;
 
     /// <remarks/>
-    public byte rotation
+    public int rotation
     {
         get
         {
@@ -2357,7 +2357,7 @@ public partial class LayoutEditorSensoriconUnknown
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte degrees
+    public int degrees
     {
         get
         {
@@ -2391,16 +2391,16 @@ public partial class LayoutEditorSensoriconUnknown
 public partial class LayoutEditorSensoriconInconsistent
 {
 
-    private byte rotationField;
+    private int rotationField;
 
     private string urlField;
 
-    private byte degreesField;
+    private int degreesField;
 
     private decimal scaleField;
 
     /// <remarks/>
-    public byte rotation
+    public int rotation
     {
         get
         {
@@ -2428,7 +2428,7 @@ public partial class LayoutEditorSensoriconInconsistent
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte degrees
+    public int degrees
     {
         get
         {
@@ -2472,7 +2472,7 @@ public partial class LayoutEditorLayoutturnout
 
     private string disableWhenOccupiedField;
 
-    private byte continuingField;
+    private int continuingField;
 
     private decimal xcenField;
 
@@ -2494,7 +2494,7 @@ public partial class LayoutEditorLayoutturnout
 
     private decimal ydField;
 
-    private byte verField;
+    private int verField;
 
     private string classField;
 
@@ -2588,7 +2588,7 @@ public partial class LayoutEditorLayoutturnout
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte continuing
+    public int continuing
     {
         get
         {
@@ -2742,7 +2742,7 @@ public partial class LayoutEditorLayoutturnout
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
-    public byte ver
+    public int ver
     {
         get
         {

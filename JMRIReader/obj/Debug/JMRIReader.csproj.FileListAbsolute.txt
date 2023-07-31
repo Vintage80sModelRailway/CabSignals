@@ -7,3 +7,12 @@ C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.pdb
 C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\Newtonsoft.Json.dll
 C:\Users\chris\source\repos\JMRIReader\JMRIReader\bin\Debug\Newtonsoft.Json.xml
 C:\Users\chris\source\repos\JMRIReader\JMRIReader\obj\Debug\JMRIReader.csproj.CopyComplete
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Debug\JMRIReader.dll
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Debug\JMRIReader.pdb
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Debug\Newtonsoft.Json.dll
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Debug\Newtonsoft.Json.xml
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Debug\JMRIReader.csprojAssemblyReference.cache
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Debug\JMRIReader.csproj.CoreCompileInputs.cache
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Debug\JMRIReader.csproj.CopyComplete
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Debug\JMRIReader.dll
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Debug\JMRIReader.pdb

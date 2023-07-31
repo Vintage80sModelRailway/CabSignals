@@ -20,7 +20,9 @@ public partial class transit
 
     private string userName1Field;
     public List<section> Sections { get; set; }
-    public List<block> BlocksInOrder { get; set; }
+    public List<BlockJourneyLog> BlocksInOrder { get; set; }
+    public List<block> ActualPath { get; set; }
+    public List<APIBlock> LiveBlockPathTracking { get; set; }
 
     /// <remarks/>
     public string systemName
