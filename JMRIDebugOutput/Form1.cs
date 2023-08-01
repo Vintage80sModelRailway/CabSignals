@@ -229,7 +229,7 @@ namespace JMRIDebugOutput
                         bool handlingAlternate = false;
                         var checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
                         lbOutput.Items.Add("Alternate checking searchindexlimit "+searchIndexLimit.ToString());
-                        while (checkForAlternate.PossibleAlternate)
+                        while (checkForAlternate != null && checkForAlternate.PossibleAlternate)
                         {
                             handlingAlternate = true;
                             searchIndexLimit++;
@@ -237,7 +237,7 @@ namespace JMRIDebugOutput
                             lbOutput.Items.Add("Possible alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
                             journeyAlternateOffset++;
                         }
-                        while (checkForAlternate.HasAlternate)
+                        while (checkForAlternate != null && checkForAlternate.HasAlternate)
                         {
                             handlingAlternate = true;
                             searchIndexLimit++;
