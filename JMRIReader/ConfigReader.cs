@@ -36,6 +36,7 @@ namespace JMRIReader
 
             foreach (var transitsection in tr.transitsection)
             {
+                var newSection = new SectionJourneyLog();
                 counter++;
                 var hasAlternate = false;
                 var nextSection = tr.transitsection.ElementAtOrDefault(counter);
@@ -44,10 +45,14 @@ namespace JMRIReader
                     hasAlternate = true;
                 }
                 section s = GetSectionBySystemName(transitsection.sectionname);
+                newSection.Section = s;
+                newSection.TransitSection = transitsection;
+                newSection.Blocks = new List<block>();
+
                 foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                 {
                     block b = GetBlockBySystemName(blockEntry.sName);
-                    s.Blocks.Add(b);
+                    newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockSystemname = b.systemName;
                     logEntry.BlockUserName = b.userName;
@@ -55,9 +60,17 @@ namespace JMRIReader
                     logEntry.Sequence = counter;
                     logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
                     logEntry.HasAlternate = hasAlternate;
+                    logEntry.SectionSequenceId = counter;
                     tr.BlocksInOrder.Add(logEntry);
                 }
-                tr.Sections.Add(s);
+
+                newSection.SectionkUserName = s.userName;
+                newSection.SectionSystemname = s.systemName;
+                newSection.HasAlternate = hasAlternate;
+                newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                newSection.Sequence = counter;
+                newSection.Traversed = false;
+                tr.Sections.Add(newSection);
             }
             return tr;
         }
@@ -86,22 +99,27 @@ namespace JMRIReader
             return s;
         }
 
-        public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction)
+        public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction, List<string> ChainedSignalMasts)
         {
             try
             {
-                if (direction == "North") direction = "West";
-                if (direction == "South") direction = "East";
+                string derivedDirection = direction;
+                //southwest - Station 1 to Incline top - needs to be west
+                //southeast - incline pi end to station 1 - needs to be east
 
-                if (direction.Contains("west")) direction = "West";
-                if (direction.Contains("east")) direction = "East";
+                if (direction == "North") derivedDirection = "West";
+                if (direction == "South") derivedDirection = "East";
+
+                if (direction.Contains("west")) derivedDirection = "West";
+                if (direction.Contains("east")) derivedDirection = "East";
+
+                //if (direction.ToLower().Contains("north")) derivedDirection = "West";
+                //if (direction.ToLower().Contains("south")) derivedDirection = "East";
 
                 string signalMastName = string.Empty;
                 var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
                 var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
                 LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
-
-
 
                 var eastAnchorPoint = new LayoutBlockChainItem();
                 var westAnchorPoint = new LayoutBlockChainItem();
@@ -109,19 +127,20 @@ namespace JMRIReader
                 string eastboundSignalMast = string.Empty;
                 string westboundSignalMast = string.Empty;
 
-                signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex, direction);
+                int blockJumpCount = 0;
 
-                //trying to get signal mast from a dividing anchor connected to a track segment from the current block
-                //get both then work out direction?
-                //get east signal mast
-                //get west signal mast
-                //know if it's a divider if next connected element in a different block
+                signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex, derivedDirection, ChainedSignalMasts, ref blockJumpCount);
 
                 var sm = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(signalMastName));
                 if (sm != null)
                 {
                     var smSerializer = new XmlSerializer(typeof(signalmast));
                     signalmast mast = (signalmast)smSerializer.Deserialize(sm.CreateReader());
+                    if (blockJumpCount > 0)
+                    {
+                        //handle block jump
+                        mast.BlockJumped = true;
+                }
                     return mast;
                 }
 
@@ -135,10 +154,34 @@ namespace JMRIReader
 
         }
 
-        private string SearchTrackSegentsForSignalMast(LayoutEditor layout, List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction)
+        public signalmastlogic GetLogicForSignalMast(string SignalMastName)
         {
-            var currentBlock = journeyBlocksInOrder.ElementAt(currentBlockIndex);
-            var nextBlock = journeyBlocksInOrder.ElementAt(currentBlockIndex + 1);
+            var sml = config.Elements("layout-config").Elements("signalmastlogics").Elements("signalmastlogic").FirstOrDefault(f => f.Element("sourceSignalMast").Value.Equals(SignalMastName));
+            var smlSerializer = new XmlSerializer(typeof(signalmastlogic));
+            signalmastlogic signalMastLogic = (signalmastlogic)smlSerializer.Deserialize(sml.CreateReader());
+            return signalMastLogic;
+        }
+
+        public List<string> GetSignalDestinationMasts(string SignalMastName)
+        {
+            List<string> returnList = new List<string>();
+            var sml = GetLogicForSignalMast(SignalMastName);
+            if (sml != null && sml.destinationMast != null)
+            {
+                returnList = sml.destinationMast.Select(s => s.destinationSignalMast).ToList();
+            }
+            return returnList;
+        }
+
+        private string SearchTrackSegentsForSignalMast(LayoutEditor layout, List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction, List<string> DestinationMastNames, ref int blockJumpCount)
+        {
+            var currentBlock = journeyBlocksInOrder.ElementAtOrDefault(currentBlockIndex);
+            var nextBlock = journeyBlocksInOrder.ElementAtOrDefault(currentBlockIndex + 1);
+
+            if (currentBlock == null || nextBlock == null)
+            {
+                return "";
+            }
 
             var segments = layout.tracksegment.Where(w => w.blockname == currentBlock.BlockUserName).ToList();
             var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == nextBlock.BlockUserName).ToList();
@@ -179,14 +222,44 @@ namespace JMRIReader
 
                 if (isBoundary)
                 {
-                    if (direction == "East")
+                    if (DestinationMastNames != null && DestinationMastNames.Count > 0)
                     {
-                        signalMastName = ap.eastboundsignalmast;
+                        var eastMatches = DestinationMastNames.Where(w => w == ap.eastboundsignalmast);
+                        var westMatches = DestinationMastNames.Where(w => w == ap.westboundsignalmast);
+
+
+                        if (eastMatches != null &&  eastMatches.Count() == 1)
+                        {
+                            signalMastName = ap.eastboundsignalmast;
+                        }
+                        else if (westMatches != null && westMatches.Count() == 1)
+                        {
+                            signalMastName = ap.westboundsignalmast;
+                        }
+                        else
+                        {
+                            if (direction == "East")
+                            {
+                                signalMastName = ap.eastboundsignalmast;
+                            }
+                            else
+                            {
+                                signalMastName = ap.westboundsignalmast;
+                            }
+                        }
                     }
                     else
                     {
-                        signalMastName = ap.westboundsignalmast;
+                        if (direction == "East")
+                        {
+                            signalMastName = ap.eastboundsignalmast;
+                        }
+                        else
+                        {
+                            signalMastName = ap.westboundsignalmast;
+                        }
                     }
+
                     break;
                 }
             }
@@ -200,7 +273,8 @@ namespace JMRIReader
                 {
                     //the route takes the train out of the current block, into the next one, before the 'official' anchor poing signal mast
                     //therefore the current block is governed by the signal mast at the end of the block that the train will turn into
-                    signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex + 1, direction);
+                    blockJumpCount++;
+                    signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex + 1, direction, DestinationMastNames, ref blockJumpCount);
                 }
 
             }
@@ -227,14 +301,6 @@ namespace JMRIReader
             return false;
         }
 
-        public string GetSignalMastByCurrentAndNextBlock(string currentBlock, string nextBlock)
-        {
-            var signalMasts = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast");
-            var smSerializer = new XmlSerializer(typeof(signalmast));
-            //signalmast sm = (signalmast)smSerializer.Deserialize(signalMasts.CreateReader());
-
-            return "";
-        }
 
         public signalhead GetSignalHeadForMastName(string signalMastName)
         {
@@ -269,9 +335,5 @@ namespace JMRIReader
             return state;
         }
 
-        private XmlReader GetReader(XDocument doc)
-        {
-            return doc.Root.CreateReader();
-        }
     }
 }

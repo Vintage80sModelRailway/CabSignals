@@ -9,7 +9,6 @@ using System.Collections.Generic;
 [System.Xml.Serialization.XmlRootAttribute(Namespace = "", IsNullable = false)]
 public partial class transit
 {
-
     private string systemNameField;
 
     private string userNameField;
@@ -19,10 +18,8 @@ public partial class transit
     private string systemName1Field;
 
     private string userName1Field;
-    public List<section> Sections { get; set; }
+    public List<SectionJourneyLog> Sections { get; set; }
     public List<BlockJourneyLog> BlocksInOrder { get; set; }
-    public List<block> ActualPath { get; set; }
-    public List<APIBlock> LiveBlockPathTracking { get; set; }
 
     /// <remarks/>
     public string systemName

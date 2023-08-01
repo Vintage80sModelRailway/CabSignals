@@ -6,15 +6,16 @@ using System.Threading.Tasks;
 
 namespace JMRIReader.Classes
 {
-    public class BlockJourneyLog
+    public class SectionJourneyLog
     {
-        public string BlockSystemname { get; set; }
-        public string BlockUserName { get; set; }
+        public string SectionSystemname { get; set; }
+        public string SectionkUserName { get; set; }
         public bool Traversed { get; set; }
         public int Sequence { get; set; }
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }
-        public int SectionSequenceId { get; set; }
-
+        public List<block> Blocks { get; set; }
+        public section Section { get; set; }
+        public transitTransitsection TransitSection { get; set; }
     }
 }

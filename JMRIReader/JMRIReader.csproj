@@ -48,7 +48,9 @@
     <Compile Include="Classes\APIBlock.cs" />
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
+    <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
+    <Compile Include="Classes\SectionJourneyLog.cs" />
     <Compile Include="Classes\TurnoutRootObject.cs" />
     <Compile Include="Classes\Block.cs" />
     <Compile Include="Classes\BlockRootObject.cs" />
