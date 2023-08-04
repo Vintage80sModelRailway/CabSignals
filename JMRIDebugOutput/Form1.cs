@@ -29,7 +29,6 @@ namespace JMRIDebugOutput
 
             this.Size = new Size(142, 489);
 
-
             var cfgFilePath = ConfigurationManager.AppSettings["ConfigFilePath"];
             if (cfgFilePath != null)
             {
@@ -52,14 +51,10 @@ namespace JMRIDebugOutput
             if (cfgWebServerPort != null)
             {
                 tbWebServerPort.Text = cfgWebServerPort.ToString();
-            }           
-
+            }
 
             journeyRunning = false;
-
             pbSignal.Load("./Assets/off.png");
-
-
         }
 
         private void btnConfigLocationBrowse_Click(object sender, EventArgs e)
@@ -92,6 +87,7 @@ namespace JMRIDebugOutput
 
             config = new ConfigReader(tbConfigLocation.Text);
             webClient = new JSONReader("http://"+tbJMRIWebServerIP.Text+":"+tbWebServerPort.Text);
+            btnDispatchPath.Enabled = true;
         }
 
         private void btnOpenDispatch_Click(object sender, EventArgs e)
@@ -101,7 +97,6 @@ namespace JMRIDebugOutput
             {
                 XmlDocument dispatch = new XmlDocument();
                 dispatch.Load(filename);
-                var stop = "";
                 XmlNode dispatchData = dispatch.DocumentElement.SelectSingleNode("/traininfofile/traininfo");
                 if (dispatchData == null)
                 {
@@ -114,22 +109,24 @@ namespace JMRIDebugOutput
                 tbTransit.Text = transit.Value;
                 tbStartBlock.Text = startBlock.Value;
                 tbTrainName.Text = trainName.Value;
+                btnStartJourney.Enabled = true;
             }
         }
 
         private async void btnStartJourney_Click(object sender, EventArgs e)
         {
+            btnStopJourney.Enabled = true;
+            btnStartJourney.Enabled = false;
             try
             {
-                
+                await TrackJourney();
             }
             catch (Exception ex)
             {
                 lbOutput.Items.Add("Exception - " + ex.Message);
+                btnStopJourney.Enabled = false;
+                btnStartJourney.Enabled = true;
             }
-
-            await TrackJourney();
-
         }
 
         private async Task TrackJourney()
@@ -140,17 +137,16 @@ namespace JMRIDebugOutput
 
             string direction = "";
             string signalMastName = "";
+            string previousSignalMastName = "";
             List<BlockJourneyLog> log = new List<BlockJourneyLog>();
             List<SectionJourneyLog> sectionLog = new List<SectionJourneyLog>();
 
             journeyRunning = true;
 
-            BlockRootObject block = await webClient.GetBlock(tbStartBlock.Text);
-            
+            BlockRootObject block = await webClient.GetBlock(tbStartBlock.Text);            
 
             var journey = new Journey(tbConfigLocation.Text, tbTransit.Text, tbTrainName.Text, tbStartBlock.Text, "ed");
             var transit = journey.GetTransit();
-
 
             lbOutput.Items.Add("Journey started - number of blocks: " + transit.BlocksInOrder.Count.ToString() + "; number of sections: " + transit.Sections.Count.ToString());
             lbOutput.Items.Add("Current block " + block.data.userName + " - waiting for train progress");
@@ -168,6 +164,9 @@ namespace JMRIDebugOutput
             if (sm.BlockJumped) lbOutput.Items.Add("Block jumped");
 
             signalMastName = sm.userName;
+            previousSignalMastName = sm.userName;
+
+            tbCurrentBlockSignalMast.Text = signalMastName;
 
             var assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
             var assignedBlocksLastTime = new List<BlockRootObject>();
@@ -179,83 +178,101 @@ namespace JMRIDebugOutput
             }
 
             while (journeyRunning)
-            {
-                
+            {                
                 //2 == occupied, 4 == unoccupied
                 var blockJustGoneLive = new BlockRootObject();
 
-                assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
-
-                List<BlockRootObject> newBlocksThisTime = new List<BlockRootObject>();
-
-                foreach (var ab in assignedAPIBlocks)
+                try
                 {
-                    var alreadyExists = assignedBlocksLastTime.Any(a => a.data.name == ab.data.name);
-                    if (!alreadyExists) newBlocksThisTime.Add(ab);
-                }
 
-                foreach (var nb in newBlocksThisTime)
-                {
-                    int searchIndexLimit = -1;
+                    assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
 
-                    //lbOutput.Items.Add(newBlocksThisTime.Count.ToString() + " new assigned blocks found");
-                    bool foundMatch = false;
+                    List<BlockRootObject> newBlocksThisTime = new List<BlockRootObject>();
 
-                    //for (int i = currentBlockIndex;i <= currentBlockIndex+assignedAPIBlocks.Count;i++)
-                    for (int i = log.Count-1; i <= log.Count-1 + newBlocksThisTime.Count+journeyAlternateOffset; i++)
+                    foreach (var ab in assignedAPIBlocks)
                     {
-                        var possibleMatch = transit.BlocksInOrder.ElementAtOrDefault(i);
-                        if (possibleMatch != null && possibleMatch.BlockSystemname == nb.data.name)
-                        {
-                            possibleMatch.Sequence = i;
-                            log.Add(possibleMatch);
-                            var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == possibleMatch.SectionSequenceId);
-                            sectionLog.Add(sectionToAdd);
-
-                            lbOutput.Items.Add("Added to log: " + possibleMatch.BlockUserName+" at "+i.ToString()+" section sequence ID "+possibleMatch.SectionSequenceId.ToString());
-                            foundMatch = true;
-                            break;
-                        }
-                        searchIndexLimit = i;
+                        var alreadyExists = assignedBlocksLastTime.Any(a => a.data.name == ab.data.name);
+                        if (!alreadyExists) newBlocksThisTime.Add(ab);
                     }
 
-
-                    if (!foundMatch)
+                    int previousSectionSequence = -1;
+                    foreach (var nb in newBlocksThisTime)
                     {
-                        if (nb.data.userName.Contains("Station 1"))
+                        int searchIndexLimit = -1;
+
+                        bool foundMatch = false;
+
+                        for (int i = log.Count - 1; i <= log.Count - 1 + newBlocksThisTime.Count + journeyAlternateOffset; i++)
                         {
-                            var stop = "test";
-                        }
-                        bool handlingAlternate = false;
-                        var checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                        lbOutput.Items.Add("Alternate checking searchindexlimit "+searchIndexLimit.ToString());
-                        while (checkForAlternate != null && checkForAlternate.PossibleAlternate)
-                        {
-                            handlingAlternate = true;
-                            searchIndexLimit++;
-                            checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                            lbOutput.Items.Add("Possible alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
-                            journeyAlternateOffset++;
-                        }
-                        while (checkForAlternate != null && checkForAlternate.HasAlternate)
-                        {
-                            handlingAlternate = true;
-                            searchIndexLimit++;
-                            checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                            lbOutput.Items.Add("Has alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
-                            journeyAlternateOffset++;
+                            var possibleMatch = transit.BlocksInOrder.ElementAtOrDefault(i);
+                            if (possibleMatch != null && possibleMatch.BlockSystemname == nb.data.name)
+                            {
+                                possibleMatch.Sequence = i;
+                                log.Add(possibleMatch);
+                                var sectionSequence = possibleMatch.SectionSequenceId;
+                                if (sectionSequence > previousSectionSequence)
+                                {
+                                    var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == possibleMatch.SectionSequenceId);
+                                    sectionLog.Add(sectionToAdd);
+                                    tbExceptionTrace.Text = tbExceptionTrace.Text + sectionToAdd.SectionkUserName + "; ";
+                                }
+                                previousSectionSequence = sectionSequence;
+
+                                lbOutput.Items.Add("Added to log: " + possibleMatch.BlockUserName + " at " + i.ToString() + " section sequence ID " + possibleMatch.SectionSequenceId.ToString());
+                                foundMatch = true;
+                                break;
+                            }
+                            searchIndexLimit = i;
                         }
 
-                        if (handlingAlternate)
+                        if (!foundMatch)
                         {
-                            checkForAlternate.Sequence = searchIndexLimit;
-                            log.Add(checkForAlternate);
-                            var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == checkForAlternate.SectionSequenceId);
-                            sectionToAdd.Sequence = searchIndexLimit;
-                            sectionLog.Add(sectionToAdd);
+                            if (nb.data.userName.Contains("Station 1"))
+                            {
+                                var stop = "test";
+                            }
+                            bool handlingAlternate = false;
+                            var checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
+                            lbOutput.Items.Add("Alternate checking searchindexlimit " + searchIndexLimit.ToString());
+                            while (checkForAlternate != null && checkForAlternate.PossibleAlternate)
+                            {
+                                handlingAlternate = true;
+                                searchIndexLimit++;
+                                checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
+                                lbOutput.Items.Add("Possible alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
+                                journeyAlternateOffset++;
+                            }
+                            while (checkForAlternate != null && checkForAlternate.HasAlternate)
+                            {
+                                handlingAlternate = true;
+                                searchIndexLimit++;
+                                checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
+                                lbOutput.Items.Add("Has alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
+                                journeyAlternateOffset++;
+                            }
 
-                            lbOutput.Items.Add("Added to log through alternate route handling: " + checkForAlternate.BlockUserName + " at " + searchIndexLimit.ToString() + " section sequence ID " + checkForAlternate.SectionSequenceId.ToString());
+                            if (handlingAlternate)
+                            {
+                                checkForAlternate.Sequence = searchIndexLimit;
+                                log.Add(checkForAlternate);
+                                var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == checkForAlternate.SectionSequenceId);
+                                sectionToAdd.Sequence = searchIndexLimit;
+                                sectionLog.Add(sectionToAdd);
 
+                                lbOutput.Items.Add("Added to log through alternate route handling: " + checkForAlternate.BlockUserName + " at " + searchIndexLimit.ToString() + " section sequence ID " + checkForAlternate.SectionSequenceId.ToString());
+
+                                log = log.OrderBy(o => o.Sequence).ToList();
+                                sectionLog = sectionLog.OrderBy(o => o.Sequence).ToList();
+                                lbJourneyLog.Items.Clear();
+                                foreach (var l in log)
+                                {
+                                    var tr = l.Traversed == true ? ", traversed" : "";
+                                    lbJourneyLog.Items.Add(l.BlockUserName + tr);
+                                }
+                            }
+                        }
+                        else
+                        {
                             log = log.OrderBy(o => o.Sequence).ToList();
                             sectionLog = sectionLog.OrderBy(o => o.Sequence).ToList();
                             lbJourneyLog.Items.Clear();
@@ -265,79 +282,72 @@ namespace JMRIDebugOutput
                                 lbJourneyLog.Items.Add(l.BlockUserName + tr);
                             }
                         }
-
                     }
-                    else
+
+                    foreach (var assignedBlock in assignedAPIBlocks.Where(w => w.data.state == 2))
                     {
+                        var unassignedBlock = assignedBlocksLastTime.FirstOrDefault(f => f.data.name == assignedBlock.data.name && f.data.state == 4);
+                        if (unassignedBlock != null)
+                        {
+                            blockJustGoneLive = unassignedBlock;
+                            break;
+                        }
+                        else
+                        {
+                            blockJustGoneLive = null;
+                        }
+                    }
+
+                    assignedBlocksLastTime = assignedAPIBlocks;
+
+                    if (blockJustGoneLive != null && blockJustGoneLive.data != null)
+                    {
+                        lbOutput.Items.Add("New live block - " + blockJustGoneLive.data.userName);
+                    }
+
+                    //sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
+                    await UpdateSignalStatus(sm, false);
+                }               
+
+                catch (Exception ex)
+                {
+                    tbExceptionTrace.Text = ex.StackTrace;
+                    lbOutput.Items.Add("Exception during new allocated block detection phase - " + ex.Message);
+                }
+
+                var currentIndex = currentBlockIndex;
+                if (currentIndex > log.Count-1) currentIndex = transit.BlocksInOrder.Count - 1;
+                var scheduledBlockAtCurrentIndex = log.ElementAtOrDefault(currentBlockIndex+1);
+
+                try
+                {
+                    if (blockJustGoneLive != null && blockJustGoneLive.data != null && scheduledBlockAtCurrentIndex != null && scheduledBlockAtCurrentIndex.BlockSystemname == blockJustGoneLive.data.name)
+                    {
+                        if (currentBlockIndex >= transit.BlocksInOrder.Count - 1)
+                        {
+                            journeyRunning = false;
+                            break;
+                        }
+
+                        if (currentSectionIndex >= transit.Sections.Count - 1)
+                        {
+                            journeyRunning = false;
+                            break;
+                        }
+
+                        currentBlockIndex++;
+                        lbOutput.Items.Add("Current block index now " + currentBlockIndex.ToString());
+
+                        log.ElementAtOrDefault(currentBlockIndex).Traversed = true;
+
                         log = log.OrderBy(o => o.Sequence).ToList();
                         sectionLog = sectionLog.OrderBy(o => o.Sequence).ToList();
                         lbJourneyLog.Items.Clear();
                         foreach (var l in log)
                         {
                             var tr = l.Traversed == true ? ", traversed" : "";
-                            lbJourneyLog.Items.Add(l.BlockUserName+tr);
+                            lbJourneyLog.Items.Add(l.BlockUserName + tr);
                         }
-                    }
-                }
-
-
-
-                foreach (var assignedBlock in assignedAPIBlocks.Where(w => w.data.state == 2))
-                {                    
-                    var unassignedBlock = assignedBlocksLastTime.FirstOrDefault(f => f.data.name == assignedBlock.data.name && f.data.state == 4);
-                    if (unassignedBlock != null)
-                    {
-                        blockJustGoneLive = unassignedBlock;
-                        break;
-                    }
-                    else
-                    {
-                        blockJustGoneLive = null;
-                    }
-                }                
-
-                assignedBlocksLastTime = assignedAPIBlocks;
-
-                if (blockJustGoneLive != null && blockJustGoneLive.data != null)
-                {
-                    lbOutput.Items.Add("New live block - " + blockJustGoneLive.data.userName);
-                }
-                else
-                {
-                    await UpdateSignalStatus(sm, false);
-                }                
-
-                if (currentBlockIndex >= transit.BlocksInOrder.Count - 1)
-                {
-                    journeyRunning = false;
-                    break;
-                }
-
-                if (currentSectionIndex >= transit.Sections.Count -1)
-                {
-                    journeyRunning = false;
-                    break;
-                }
-
-                var currentIndex = currentBlockIndex;
-                if (currentIndex > log.Count-1) currentIndex = transit.BlocksInOrder.Count - 1;
-                //var scheduledBlockAtCurrentIndex = transit.BlocksInOrder.ElementAtOrDefault(currentIndex);
-                var scheduledBlockAtCurrentIndex = log.ElementAtOrDefault(currentBlockIndex+1);
-
-                try
-                {
-                    //if (newCurrentBlock.data.state == 4 || newNextBlock.data.state == 1)
-                    if (blockJustGoneLive != null && blockJustGoneLive.data != null && scheduledBlockAtCurrentIndex != null && scheduledBlockAtCurrentIndex.BlockSystemname == blockJustGoneLive.data.name)
-                    {
-                        currentBlockIndex++;
-                        lbOutput.Items.Add("Current block index now " + currentBlockIndex.ToString());
-
-                        if (blockJustGoneLive.data.userName == "Incline Pi end")
-                        {
-                            var debug = "stop";
-                        }
-
-                        log.ElementAtOrDefault(currentBlockIndex).Traversed = true;
 
                         var nextdbBlock = log.ElementAtOrDefault(currentBlockIndex + 1);
                         if (nextdbBlock == null)
@@ -345,53 +355,58 @@ namespace JMRIDebugOutput
                             journeyRunning = false;
                             break;
                         }
-                        var nextLiveBlock = await webClient.GetBlock(nextdbBlock.BlockUserName);
-                        
+                        var nextLiveBlock = await webClient.GetBlock(nextdbBlock.BlockUserName);                        
 
-                        var currentBlockInCurrentSection = sectionLog.ElementAtOrDefault(currentSectionIndex).Blocks.FirstOrDefault(f => f.userName == blockJustGoneLive.data.userName);
-                        string altDirection = "";
-                        if (currentBlockInCurrentSection == null)
-                        {
-                            currentSectionIndex++;
-                            direction = UpdateSectionStatusInfoAndGetDirection(sectionLog, currentSectionIndex, previousBlock.data.name, blockJustGoneLive.data.name, nextLiveBlock.data.name);
-                            altDirection = GetDirectionFromSectionAndTransit(sectionLog, currentSectionIndex);
-                        }
+                        //var currentBlockInCurrentSection = sectionLog.ElementAtOrDefault(currentSectionIndex).Blocks.FirstOrDefault(f => f.userName == blockJustGoneLive.data.userName);
+                        var currentSection = sectionLog.FirstOrDefault(f => f.Sequence == scheduledBlockAtCurrentIndex.SectionSequenceId);
+                        currentSectionIndex = sectionLog.IndexOf(currentSection);
+
+                        //currentSectionIndex = log.ElementAt(currentBlockIndex).SectionSequenceId-1;
+
+                        direction = UpdateSectionStatusInfoAndGetDirection(sectionLog, currentSectionIndex, previousBlock.data.name, blockJustGoneLive.data.name, nextLiveBlock.data.name);
                         
                         tbCurrentBlock.Text = blockJustGoneLive.data.userName;
                         tbNextBlock.Text = nextLiveBlock.data.userName;
                         sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
 
-                        if (!sm.BlockJumped)
+                        if (sm != null && sm.systemName != "")
                         {
-                            signalMastName = sm.userName;
-                            lbOutput.Items.Add("Block change - " + blockJustGoneLive.data.userName + "mast "+signalMastName+ " next block " + nextLiveBlock.data.userName + " block index " + currentBlockIndex.ToString());
-                            tbCurrentBlockSignalMast.Text = signalMastName;
+
+                            bool smHasChanged = sm.userName != tbCurrentBlockSignalMast.Text;
+
+                            if (!sm.BlockJumped)
+                            {
+                                signalMastName = sm.userName;
+                                lbOutput.Items.Add("Block change - " + blockJustGoneLive.data.userName + " mast " + signalMastName + " next block " + nextLiveBlock.data.userName + " block index " + currentBlockIndex.ToString());
+                                tbCurrentBlockSignalMast.Text = signalMastName;
+                                
+                            }
+                            else
+                            {
+                                tbCurrentBlockSignalMast.Text = sm.userName;
+                                lbOutput.Items.Add("Block change - " + blockJustGoneLive.data.userName + " mast stayed at " + signalMastName + " next block " + nextLiveBlock.data.userName + " block index " + currentBlockIndex.ToString());
+                            }
+
+                            if (smHasChanged)
+                            {
+                                await UpdateSignalStatus(sm, true);
+                            }
                         }
                         else
                         {
-                            tbCurrentBlockSignalMast.Text = sm.userName;
-                            lbOutput.Items.Add("Block change - " + blockJustGoneLive.data.userName + "mast stayed at " + signalMastName + " next block " + nextLiveBlock.data.userName + " block index " + currentBlockIndex.ToString());
+                            lbOutput.Items.Add("No signal mast found for block " + blockJustGoneLive.data.userName);
                         }
-
-                        
-
-                        await UpdateSignalStatus(sm, true);                        
 
                         lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-
-                        {
-                            var scheduledBlock = "stop";
-                        }
 
                         previousBlock = blockJustGoneLive;
                     }
                 }
                 catch (Exception ex)
                 {
-                    var scheduledBlock = "stop";
+                    lbOutput.Items.Add("Exception during block change handling - " + ex.Message);
+                    tbExceptionTrace.Text = ex.StackTrace;
                 }
-
-
             }
             CompleteJourney();
         }
@@ -413,10 +428,9 @@ namespace JMRIDebugOutput
             return sm;
         }
 
-
-
         protected async Task UpdateSignalStatus(signalmast sm, bool blockHasChanged)
         {
+            if (sm == null) return;
             //always check signal state regardless of whether block state has changed
             var sh = config.GetSignalHeadForMastName(sm.userName);
             var colour = "";
@@ -451,10 +465,15 @@ namespace JMRIDebugOutput
             try
             {
                 string direction = "";
-                var dir = sectionLog.ElementAt(currentSectionIndex).TransitSection.direction;
-                lbOutput.Items.Add("Section change detected - new section " + sectionLog.ElementAt(currentSectionIndex).SectionkUserName + " direction " + dir.ToString());
+                var nextSection = sectionLog.ElementAtOrDefault(currentSectionIndex + 1);
+                
+                if (nextSection == null)
+                {
+                    nextSection = sectionLog.ElementAtOrDefault(currentSectionIndex);                    
+                }
 
-                var entryBlock = sectionLog.ElementAt(currentSectionIndex + 1).Section.entrypoint.Where(w => w.toblock == nextLiveBlockName && w.fromblock == currentLiveBlockName).ToList();
+                var entryBlock = nextSection.Section.entrypoint.Where(w => w.toblock == currentLiveBlockName).ToList();
+
                 lbOutput.Items.Add("Found " + entryBlock.Count.ToString() + " matching entry point blocks");
                 var eb = entryBlock.FirstOrDefault();
                 if (eb != null)
@@ -466,6 +485,7 @@ namespace JMRIDebugOutput
             }
             catch (Exception ex)
             {
+                tbExceptionTrace.Text = ex.StackTrace;
                 var test = "stop";
                 return "";
             }
@@ -474,7 +494,6 @@ namespace JMRIDebugOutput
         private string GetDirectionFromSectionAndTransit(List<SectionJourneyLog> sectionLog, int sectionIndex)
         {
             var transitSec = sectionLog.OrderBy(o => o.Sequence).ElementAtOrDefault(sectionIndex+1);
-            //var transitSec = sectionLog.OrderBy(o => o.Sequence).ElementAtOrDefault(sectionIndex);
             if (transitSec == null) return string.Empty;
 
             var dir = transitSec.TransitSection.direction;
@@ -501,30 +520,13 @@ namespace JMRIDebugOutput
             tbCurrentBlockSignalMastState.Text = "";
             SoundPlayer signalBeep = new SoundPlayer("./Assets/red.wav");
             signalBeep.Play();
+            btnStopJourney.Enabled = false;
+            btnStartJourney.Enabled = true;
         }
 
         private async void btnTestSM_Click(object sender, EventArgs e)
         {
-            //var config = new ConfigReader(tbConfigLocation.Text);
 
-
-            //var journey = new Journey(tbConfigLocation.Text, tbTransit.Text, tbTrainName.Text, tbStartBlock.Text, "ed");
-            //var transit = journey.GetTransit();
-            ////var sm = config.GetSignalMastForBlock("CW Lower Junction PC End", "Incline Bottom", "East");
-            //var sm = config.GetSignalMastForBlock(transit.BlocksInOrder, 27, "East");
-            //if (sm == null) return;
-            //var sh = config.GetSignalHeadForMastName(sm.userName);
-            //var colour = "";
-            //foreach (var sigPointer in sh.turnoutname)
-            //{
-            //    colour = sigPointer.defines;
-            //    var sig = await webClient.GetTurnout(sigPointer.Value);
-            //    if (sig.data.state == 4) //closed = 2, thrown = 4
-            //    {
-            //        break;
-            //    }
-            //}
-            //string stop = "";
         }
 
         private void btnMore_Click(object sender, EventArgs e)

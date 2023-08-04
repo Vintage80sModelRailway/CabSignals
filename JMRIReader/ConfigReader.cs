@@ -25,11 +25,8 @@ namespace JMRIReader
         public transit GetTransit(string name)
         {
             transit tr = new transit();
-
-            XmlSerializer serial = new XmlSerializer(typeof(transit));
-            
+            XmlSerializer serial = new XmlSerializer(typeof(transit));            
             var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
-
             var serializer = new XmlSerializer(typeof(transit));
             tr = (transit)serializer.Deserialize(transit.CreateReader());
             int counter = 0;
@@ -148,10 +145,8 @@ namespace JMRIReader
             }
             catch (Exception ex)
             {
-                var test = "ttop";
                 return null;
             }
-
         }
 
         public signalmastlogic GetLogicForSignalMast(string SignalMastName)
@@ -259,7 +254,6 @@ namespace JMRIReader
                             signalMastName = ap.westboundsignalmast;
                         }
                     }
-
                     break;
                 }
             }
@@ -276,9 +270,7 @@ namespace JMRIReader
                     blockJumpCount++;
                     signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex + 1, direction, DestinationMastNames, ref blockJumpCount);
                 }
-
             }
-
             return signalMastName;
         }
 
@@ -291,13 +283,10 @@ namespace JMRIReader
             }
 
             nbSegment = NextBlockSegments.FirstOrDefault(f => f.connect2name == AnchorPointID);
-
             if (nbSegment != null)
             {
                 return true;
             }
-
-
             return false;
         }
 
@@ -311,10 +300,10 @@ namespace JMRIReader
 
             var firstBIndex = sm.systemName.LastIndexOf("(");
             var lastBIndex = sm.systemName.LastIndexOf(")");
-
             var signalHeadName = sm.systemName.Substring(firstBIndex + 1, lastBIndex - firstBIndex - 1);
-
             var shead = config.Elements("layout-config").Elements("signalheads").Elements("signalhead").FirstOrDefault(f => f.Element("userName").Value.Equals(signalHeadName));
+
+            if (shead == null) return null;
 
             var shSerializer = new XmlSerializer(typeof(signalhead));
             signalhead sh = (signalhead)shSerializer.Deserialize(shead.CreateReader());
@@ -322,18 +311,5 @@ namespace JMRIReader
             return sh;
 
         }
-
-        public async Task<string> GetStateForSignalHead(signalhead SignalHead)
-        {
-            var state = string.Empty;
-            List<turnout> turnouts = new List<turnout>();
-            foreach (var sig in SignalHead.turnoutname)
-            {
-                var to = config.Elements("layout-config").Elements("turnouts").Elements("turnout").FirstOrDefault(f => f.Element("userName").Value.Equals(SignalHead.userName));
-                var colur = sig.defines;
-            }
-            return state;
-        }
-
     }
 }

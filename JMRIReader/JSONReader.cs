@@ -34,9 +34,8 @@ namespace JMRIReader
             }
             catch (Exception ex)
             {
-                var stop = "";
+                var test = ex.Message;
             }
-
             return blocks;
         }
 
@@ -44,19 +43,15 @@ namespace JMRIReader
         {
             BlockRootObject block = new BlockRootObject();
             var response = await client.GetAsync("/json/block/"+UserName);
-            var success = response.EnsureSuccessStatusCode();
-
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
                 block = Newtonsoft.Json.JsonConvert.DeserializeObject<BlockRootObject>(jsonResponse);
-
             }
             catch (Exception ex)
             {
-                var stop = "";
+                var test = ex.Message;
             }
-
             return block;
         }
 
@@ -74,9 +69,8 @@ namespace JMRIReader
             }
             catch (Exception ex)
             {
-                var stop = "";
+                var test = ex.Message;
             }
-
             return blocks;
         }
 
@@ -94,7 +88,7 @@ namespace JMRIReader
             }
             catch (Exception ex)
             {
-                var stop = "";
+                var test = ex.Message;
             }
 
             return turnout;

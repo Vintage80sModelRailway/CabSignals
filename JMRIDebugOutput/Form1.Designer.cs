@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.tbConfigLocation = new System.Windows.Forms.TextBox();
             this.btnConfigLocationBrowse = new System.Windows.Forms.Button();
             this.ofConfigFile = new System.Windows.Forms.OpenFileDialog();
@@ -61,10 +62,10 @@
             this.tbCurrentBlockSignalMastState = new System.Windows.Forms.TextBox();
             this.label9 = new System.Windows.Forms.Label();
             this.btnStopJourney = new System.Windows.Forms.Button();
-            this.btnTestSM = new System.Windows.Forms.Button();
             this.pbSignal = new System.Windows.Forms.PictureBox();
             this.btnMore = new System.Windows.Forms.Button();
             this.lbJourneyLog = new System.Windows.Forms.ListBox();
+            this.tbExceptionTrace = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbSignal)).BeginInit();
             this.SuspendLayout();
             // 
@@ -91,7 +92,7 @@
             // 
             // btnOpenFiles
             // 
-            this.btnOpenFiles.Location = new System.Drawing.Point(802, 22);
+            this.btnOpenFiles.Location = new System.Drawing.Point(802, 15);
             this.btnOpenFiles.Name = "btnOpenFiles";
             this.btnOpenFiles.Size = new System.Drawing.Size(99, 23);
             this.btnOpenFiles.TabIndex = 2;
@@ -135,6 +136,7 @@
             // 
             // btnOpenDispatch
             // 
+            this.btnOpenDispatch.Enabled = false;
             this.btnOpenDispatch.Location = new System.Drawing.Point(549, 107);
             this.btnOpenDispatch.Name = "btnOpenDispatch";
             this.btnOpenDispatch.Size = new System.Drawing.Size(75, 23);
@@ -179,7 +181,7 @@
             // 
             this.tbJMRIWebServerIP.Location = new System.Drawing.Point(221, 12);
             this.tbJMRIWebServerIP.Name = "tbJMRIWebServerIP";
-            this.tbJMRIWebServerIP.Size = new System.Drawing.Size(279, 20);
+            this.tbJMRIWebServerIP.Size = new System.Drawing.Size(298, 20);
             this.tbJMRIWebServerIP.TabIndex = 12;
             // 
             // tbTrainName
@@ -236,6 +238,7 @@
             // 
             // btnStartJourney
             // 
+            this.btnStartJourney.Enabled = false;
             this.btnStartJourney.Location = new System.Drawing.Point(733, 135);
             this.btnStartJourney.Name = "btnStartJourney";
             this.btnStartJourney.Size = new System.Drawing.Size(168, 23);
@@ -326,6 +329,7 @@
             // 
             // btnStopJourney
             // 
+            this.btnStopJourney.Enabled = false;
             this.btnStopJourney.Location = new System.Drawing.Point(767, 225);
             this.btnStopJourney.Name = "btnStopJourney";
             this.btnStopJourney.Size = new System.Drawing.Size(135, 23);
@@ -333,16 +337,6 @@
             this.btnStopJourney.Text = "Stop Journey";
             this.btnStopJourney.UseVisualStyleBackColor = true;
             this.btnStopJourney.Click += new System.EventHandler(this.btnStopJourney_Click);
-            // 
-            // btnTestSM
-            // 
-            this.btnTestSM.Location = new System.Drawing.Point(635, 135);
-            this.btnTestSM.Name = "btnTestSM";
-            this.btnTestSM.Size = new System.Drawing.Size(75, 23);
-            this.btnTestSM.TabIndex = 31;
-            this.btnTestSM.Text = "Test SM";
-            this.btnTestSM.UseVisualStyleBackColor = true;
-            this.btnTestSM.Click += new System.EventHandler(this.btnTestSM_Click);
             // 
             // pbSignal
             // 
@@ -371,15 +365,23 @@
             this.lbJourneyLog.Size = new System.Drawing.Size(263, 407);
             this.lbJourneyLog.TabIndex = 34;
             // 
+            // tbExceptionTrace
+            // 
+            this.tbExceptionTrace.Location = new System.Drawing.Point(1241, 27);
+            this.tbExceptionTrace.Multiline = true;
+            this.tbExceptionTrace.Name = "tbExceptionTrace";
+            this.tbExceptionTrace.Size = new System.Drawing.Size(344, 407);
+            this.tbExceptionTrace.TabIndex = 35;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1255, 450);
+            this.ClientSize = new System.Drawing.Size(1597, 450);
+            this.Controls.Add(this.tbExceptionTrace);
             this.Controls.Add(this.lbJourneyLog);
             this.Controls.Add(this.btnMore);
             this.Controls.Add(this.pbSignal);
-            this.Controls.Add(this.btnTestSM);
             this.Controls.Add(this.btnStopJourney);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.tbCurrentBlockSignalMastState);
@@ -411,8 +413,9 @@
             this.Controls.Add(this.btnOpenFiles);
             this.Controls.Add(this.btnConfigLocationBrowse);
             this.Controls.Add(this.tbConfigLocation);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "Cab Signals";
             ((System.ComponentModel.ISupportInitialize)(this.pbSignal)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -454,10 +457,10 @@
         private System.Windows.Forms.TextBox tbCurrentBlockSignalMastState;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.Button btnStopJourney;
-        private System.Windows.Forms.Button btnTestSM;
         private System.Windows.Forms.PictureBox pbSignal;
         private System.Windows.Forms.Button btnMore;
         private System.Windows.Forms.ListBox lbJourneyLog;
+        private System.Windows.Forms.TextBox tbExceptionTrace;
     }
 }
 
