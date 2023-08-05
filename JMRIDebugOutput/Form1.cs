@@ -138,6 +138,8 @@ namespace JMRIDebugOutput
             string direction = "";
             string signalMastName = "";
             string previousSignalMastName = "";
+
+            
             List<BlockJourneyLog> log = new List<BlockJourneyLog>();
             List<SectionJourneyLog> sectionLog = new List<SectionJourneyLog>();
 
@@ -160,7 +162,7 @@ namespace JMRIDebugOutput
             tbCurrentBlock.Text = startLveBlock.data.userName;
 
             direction = GetDirectionFromSectionAndTransit(transit.Sections, currentSectionIndex);
-            var sm = GetSignalMastForBlock(transit.BlocksInOrder, tbCurrentBlockSignalMast.Text, currentBlockIndex, direction);
+            var sm = GetSignalMastForBlock(transit.BlocksInOrder, transit.BlocksInOrder, tbCurrentBlockSignalMast.Text, currentBlockIndex, direction);
             if (sm.BlockJumped) lbOutput.Items.Add("Block jumped");
 
             signalMastName = sm.userName;
@@ -188,12 +190,37 @@ namespace JMRIDebugOutput
                     assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
 
                     List<BlockRootObject> newBlocksThisTime = new List<BlockRootObject>();
+                    List<BlockJourneyLog> orderedNewBlocks = new List<BlockJourneyLog>();
 
+                    if (cbUpdateAssignedBlocks.Checked)
+                    {
+                        //lbAssignedBlocks.Items.Clear();
+                    }
                     foreach (var ab in assignedAPIBlocks)
                     {
+                        if (ab.data.userName == "CW PC End" && currentBlockIndex >= 30)
+                        {
+                            var s = "sto";
+                        }
                         var alreadyExists = assignedBlocksLastTime.Any(a => a.data.name == ab.data.name);
-                        if (!alreadyExists) newBlocksThisTime.Add(ab);
+                        if (!alreadyExists)
+                        {
+                            var possibleSequence = transit.BlocksInOrder.FirstOrDefault(w => w.Sequence >= currentBlockIndex && w.BlockUserName == ab.data.userName);
+                            orderedNewBlocks.Add(possibleSequence);
+
+                            //totally lazy, just need an int to order by
+                            ab.data.curvature = possibleSequence.Sequence;
+                            newBlocksThisTime.Add(ab);
+                            if (cbUpdateAssignedBlocks.Checked)
+                            {
+                                //lbAssignedBlocks.Items.Add(ab.data.userName + " " + ab.data.state.ToString() + " " + currentBlockIndex.ToString());
+                            }
+                        }
+
                     }
+
+                    orderedNewBlocks = orderedNewBlocks.OrderBy(o => o.Sequence).ToList();
+                    newBlocksThisTime = newBlocksThisTime.OrderBy(o => o.data.curvature).ToList();
 
                     int previousSectionSequence = -1;
                     foreach (var nb in newBlocksThisTime)
@@ -210,15 +237,18 @@ namespace JMRIDebugOutput
                                 possibleMatch.Sequence = i;
                                 log.Add(possibleMatch);
                                 var sectionSequence = possibleMatch.SectionSequenceId;
-                                if (sectionSequence > previousSectionSequence)
+
+                                var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == possibleMatch.SectionSequenceId);
+                                var existingIndex = sectionLog.FirstOrDefault(f => f.Sequence == sectionToAdd.Sequence);
+                                if (existingIndex == null)
                                 {
-                                    var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == possibleMatch.SectionSequenceId);
                                     sectionLog.Add(sectionToAdd);
-                                    tbExceptionTrace.Text = tbExceptionTrace.Text + sectionToAdd.SectionkUserName + "; ";
                                 }
+                                tbExceptionTrace.Text = tbExceptionTrace.Text + sectionToAdd.SectionkUserName + "; ";
+
                                 previousSectionSequence = sectionSequence;
 
-                                lbOutput.Items.Add("Added to log: " + possibleMatch.BlockUserName + " at " + i.ToString() + " section sequence ID " + possibleMatch.SectionSequenceId.ToString());
+                                //lbOutput.Items.Add("Added to log: " + possibleMatch.BlockUserName + " at " + i.ToString() + " section sequence ID " + possibleMatch.SectionSequenceId.ToString());
                                 foundMatch = true;
                                 break;
                             }
@@ -233,13 +263,13 @@ namespace JMRIDebugOutput
                             }
                             bool handlingAlternate = false;
                             var checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                            lbOutput.Items.Add("Alternate checking searchindexlimit " + searchIndexLimit.ToString());
+                            //lbOutput.Items.Add("Alternate checking searchindexlimit " + searchIndexLimit.ToString());
                             while (checkForAlternate != null && checkForAlternate.PossibleAlternate)
                             {
                                 handlingAlternate = true;
                                 searchIndexLimit++;
                                 checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                                lbOutput.Items.Add("Possible alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
+                                //lbOutput.Items.Add("Possible alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
                                 journeyAlternateOffset++;
                             }
                             while (checkForAlternate != null && checkForAlternate.HasAlternate)
@@ -247,7 +277,7 @@ namespace JMRIDebugOutput
                                 handlingAlternate = true;
                                 searchIndexLimit++;
                                 checkForAlternate = transit.BlocksInOrder.ElementAtOrDefault(searchIndexLimit);
-                                lbOutput.Items.Add("Has alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
+                                //lbOutput.Items.Add("Has alt " + checkForAlternate.BlockUserName + " indexlimit " + searchIndexLimit.ToString());
                                 journeyAlternateOffset++;
                             }
 
@@ -259,7 +289,7 @@ namespace JMRIDebugOutput
                                 sectionToAdd.Sequence = searchIndexLimit;
                                 sectionLog.Add(sectionToAdd);
 
-                                lbOutput.Items.Add("Added to log through alternate route handling: " + checkForAlternate.BlockUserName + " at " + searchIndexLimit.ToString() + " section sequence ID " + checkForAlternate.SectionSequenceId.ToString());
+                                //lbOutput.Items.Add("Added to log through alternate route handling: " + checkForAlternate.BlockUserName + " at " + searchIndexLimit.ToString() + " section sequence ID " + checkForAlternate.SectionSequenceId.ToString());
 
                                 log = log.OrderBy(o => o.Sequence).ToList();
                                 sectionLog = sectionLog.OrderBy(o => o.Sequence).ToList();
@@ -290,6 +320,7 @@ namespace JMRIDebugOutput
                         if (unassignedBlock != null)
                         {
                             blockJustGoneLive = unassignedBlock;
+                            lbAssignedBlocks.Items.Add(blockJustGoneLive.data.userName + " " + blockJustGoneLive.data.state.ToString() + " " + currentBlockIndex.ToString());
                             break;
                         }
                         else
@@ -303,6 +334,10 @@ namespace JMRIDebugOutput
                     if (blockJustGoneLive != null && blockJustGoneLive.data != null)
                     {
                         lbOutput.Items.Add("New live block - " + blockJustGoneLive.data.userName);
+                        if (blockJustGoneLive.data.userName == "CW Lower Junction Pi End" && currentBlockIndex > 20)
+                        {
+                            var forTomorrow = "stop";
+                        }
                     }
 
                     //sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
@@ -315,13 +350,18 @@ namespace JMRIDebugOutput
                     lbOutput.Items.Add("Exception during new allocated block detection phase - " + ex.Message);
                 }
 
-                var currentIndex = currentBlockIndex;
-                if (currentIndex > log.Count-1) currentIndex = transit.BlocksInOrder.Count - 1;
                 var scheduledBlockAtCurrentIndex = log.ElementAtOrDefault(currentBlockIndex+1);
+
+                if (scheduledBlockAtCurrentIndex != null && scheduledBlockAtCurrentIndex.Sequence > 20 && scheduledBlockAtCurrentIndex.BlockUserName == "CW Lower Junction PC End" && blockJustGoneLive != null)
+                {
+                    var stop = "!";
+                }
 
                 try
                 {
-                    if (blockJustGoneLive != null && blockJustGoneLive.data != null && scheduledBlockAtCurrentIndex != null && scheduledBlockAtCurrentIndex.BlockSystemname == blockJustGoneLive.data.name)
+
+                    if (blockJustGoneLive != null && blockJustGoneLive.data != null && scheduledBlockAtCurrentIndex != null 
+                        && scheduledBlockAtCurrentIndex.BlockSystemname == blockJustGoneLive.data.name && scheduledBlockAtCurrentIndex.Traversed == false)
                     {
                         if (currentBlockIndex >= transit.BlocksInOrder.Count - 1)
                         {
@@ -352,22 +392,32 @@ namespace JMRIDebugOutput
                         var nextdbBlock = log.ElementAtOrDefault(currentBlockIndex + 1);
                         if (nextdbBlock == null)
                         {
+                            //Might be waiting for another train with no future allocations
+                            nextdbBlock = transit.BlocksInOrder.ElementAtOrDefault(currentBlockIndex + 1 + journeyAlternateOffset);
+                        }
+
+                        if (nextdbBlock == null)
+                        {
+                            var debug = "styop";
                             journeyRunning = false;
                             break;
                         }
                         var nextLiveBlock = await webClient.GetBlock(nextdbBlock.BlockUserName);                        
 
                         //var currentBlockInCurrentSection = sectionLog.ElementAtOrDefault(currentSectionIndex).Blocks.FirstOrDefault(f => f.userName == blockJustGoneLive.data.userName);
-                        var currentSection = sectionLog.FirstOrDefault(f => f.Sequence == scheduledBlockAtCurrentIndex.SectionSequenceId);
+                        var currentSection = transit.Sections.FirstOrDefault(f => f.Sequence == scheduledBlockAtCurrentIndex.SectionSequenceId);
                         currentSectionIndex = sectionLog.IndexOf(currentSection);
+                        lbOutput.Items.Add("Section now " + currentSection.SectionkUserName);
+                        tbCurrentSection.Text = currentSection.SectionkUserName;
+                        tbSectionIndex.Text = currentSectionIndex.ToString();
 
                         //currentSectionIndex = log.ElementAt(currentBlockIndex).SectionSequenceId-1;
 
-                        direction = UpdateSectionStatusInfoAndGetDirection(sectionLog, currentSectionIndex, previousBlock.data.name, blockJustGoneLive.data.name, nextLiveBlock.data.name);
+                        direction = UpdateSectionStatusInfoAndGetDirection(sectionLog, nextdbBlock.SectionSequenceId, blockJustGoneLive.data.name, transit);
                         
                         tbCurrentBlock.Text = blockJustGoneLive.data.userName;
                         tbNextBlock.Text = nextLiveBlock.data.userName;
-                        sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
+                        sm = GetSignalMastForBlock(log, transit.BlocksInOrder, signalMastName, currentBlockIndex, direction);
 
                         if (sm != null && sm.systemName != "")
                         {
@@ -394,12 +444,16 @@ namespace JMRIDebugOutput
                         }
                         else
                         {
-                            lbOutput.Items.Add("No signal mast found for block " + blockJustGoneLive.data.userName);
+                            //lbOutput.Items.Add("No signal mast found for block " + blockJustGoneLive.data.userName);
                         }
 
                         lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
 
                         previousBlock = blockJustGoneLive;
+                    }
+                    else
+                    {
+                        blockJustGoneLive = null;
                     }
                 }
                 catch (Exception ex)
@@ -411,19 +465,19 @@ namespace JMRIDebugOutput
             CompleteJourney();
         }
 
-        private signalmast GetSignalMastForBlock(List<BlockJourneyLog> journeyBlocksInOrder, string currentSignalMastName, int blockIndex, string direction)
+        private signalmast GetSignalMastForBlock(List<BlockJourneyLog> journeyBlocksInOrder, List<BlockJourneyLog> configBlocksInOrder, string currentSignalMastName, int blockIndex, string direction)
         {
             signalmast sm = new signalmast();
             sm.userName = "NULL";
 
             if (currentSignalMastName == "")
             {
-                sm = config.GetSignalMastForBlock(journeyBlocksInOrder, blockIndex, direction, null);
+                sm = config.GetSignalMastForBlock(journeyBlocksInOrder, configBlocksInOrder, blockIndex, direction, null);
             }
             else
             {
                 var nextSignals = config.GetSignalDestinationMasts(currentSignalMastName);
-                sm = config.GetSignalMastForBlock(journeyBlocksInOrder, blockIndex, direction, nextSignals);
+                sm = config.GetSignalMastForBlock(journeyBlocksInOrder, configBlocksInOrder,  blockIndex, direction, nextSignals);
             }
             return sm;
         }
@@ -460,21 +514,22 @@ namespace JMRIDebugOutput
             }
         }
 
-        protected string UpdateSectionStatusInfoAndGetDirection(List<SectionJourneyLog> sectionLog, int currentSectionIndex, string previousLiveBlockName, string currentLiveBlockName, string nextLiveBlockName)
+        protected string UpdateSectionStatusInfoAndGetDirection(List<SectionJourneyLog> sectionLog, int nextDectionSequenceId, string currentLiveBlockName, transit tr)
         {
             try
             {
                 string direction = "";
-                var nextSection = sectionLog.ElementAtOrDefault(currentSectionIndex + 1);
+                var nextSection = sectionLog.FirstOrDefault(f => f.Sequence == nextDectionSequenceId);
                 
                 if (nextSection == null)
                 {
-                    nextSection = sectionLog.ElementAtOrDefault(currentSectionIndex);                    
+                    //if train is queuing there will be no more sections
+                    nextSection = tr.Sections.FirstOrDefault(f => f.Sequence == nextDectionSequenceId);                    
                 }
 
-                var entryBlock = nextSection.Section.entrypoint.Where(w => w.toblock == currentLiveBlockName).ToList();
+                var entryBlock = nextSection.Section.entrypoint.Where(w => w.fromblock == currentLiveBlockName).ToList();
 
-                lbOutput.Items.Add("Found " + entryBlock.Count.ToString() + " matching entry point blocks");
+                lbOutput.Items.Add("Found " + entryBlock.Count.ToString() + " matching entry point blocks for section "+nextSection.SectionkUserName);
                 var eb = entryBlock.FirstOrDefault();
                 if (eb != null)
                 {

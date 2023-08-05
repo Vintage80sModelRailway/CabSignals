@@ -96,7 +96,7 @@ namespace JMRIReader
             return s;
         }
 
-        public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction, List<string> ChainedSignalMasts)
+        public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, List<BlockJourneyLog> configBlocksInOrder, int currentBlockIndex, string direction, List<string> ChainedSignalMasts)
         {
             try
             {
@@ -126,7 +126,7 @@ namespace JMRIReader
 
                 int blockJumpCount = 0;
 
-                signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex, derivedDirection, ChainedSignalMasts, ref blockJumpCount);
+                signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, configBlocksInOrder,  currentBlockIndex, derivedDirection, ChainedSignalMasts, ref blockJumpCount);
 
                 var sm = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(signalMastName));
                 if (sm != null)
@@ -168,10 +168,15 @@ namespace JMRIReader
             return returnList;
         }
 
-        private string SearchTrackSegentsForSignalMast(LayoutEditor layout, List<BlockJourneyLog> journeyBlocksInOrder, int currentBlockIndex, string direction, List<string> DestinationMastNames, ref int blockJumpCount)
+        private string SearchTrackSegentsForSignalMast(LayoutEditor layout, List<BlockJourneyLog> journeyBlocksInOrder, List<BlockJourneyLog> configBlocksInOrder, int currentBlockIndex, string direction, List<string> DestinationMastNames, ref int blockJumpCount)
         {
             var currentBlock = journeyBlocksInOrder.ElementAtOrDefault(currentBlockIndex);
             var nextBlock = journeyBlocksInOrder.ElementAtOrDefault(currentBlockIndex + 1);
+
+            if (nextBlock == null)
+            {
+                nextBlock = configBlocksInOrder.ElementAtOrDefault(currentBlockIndex + 1);
+            }
 
             if (currentBlock == null || nextBlock == null)
             {
@@ -268,7 +273,7 @@ namespace JMRIReader
                     //the route takes the train out of the current block, into the next one, before the 'official' anchor poing signal mast
                     //therefore the current block is governed by the signal mast at the end of the block that the train will turn into
                     blockJumpCount++;
-                    signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, currentBlockIndex + 1, direction, DestinationMastNames, ref blockJumpCount);
+                    signalMastName = SearchTrackSegentsForSignalMast(layout, journeyBlocksInOrder, configBlocksInOrder, currentBlockIndex + 1, direction, DestinationMastNames, ref blockJumpCount);
                 }
             }
             return signalMastName;

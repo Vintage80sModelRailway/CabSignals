@@ -66,6 +66,12 @@
             this.btnMore = new System.Windows.Forms.Button();
             this.lbJourneyLog = new System.Windows.Forms.ListBox();
             this.tbExceptionTrace = new System.Windows.Forms.TextBox();
+            this.tbCurrentSection = new System.Windows.Forms.TextBox();
+            this.label10 = new System.Windows.Forms.Label();
+            this.tbSectionIndex = new System.Windows.Forms.TextBox();
+            this.label11 = new System.Windows.Forms.Label();
+            this.lbAssignedBlocks = new System.Windows.Forms.ListBox();
+            this.cbUpdateAssignedBlocks = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbSignal)).BeginInit();
             this.SuspendLayout();
             // 
@@ -373,11 +379,71 @@
             this.tbExceptionTrace.Size = new System.Drawing.Size(344, 407);
             this.tbExceptionTrace.TabIndex = 35;
             // 
+            // tbCurrentSection
+            // 
+            this.tbCurrentSection.Location = new System.Drawing.Point(549, 220);
+            this.tbCurrentSection.Name = "tbCurrentSection";
+            this.tbCurrentSection.Size = new System.Drawing.Size(100, 20);
+            this.tbCurrentSection.TabIndex = 36;
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(465, 223);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(78, 13);
+            this.label10.TabIndex = 37;
+            this.label10.Text = "Current section";
+            // 
+            // tbSectionIndex
+            // 
+            this.tbSectionIndex.Location = new System.Drawing.Point(719, 220);
+            this.tbSectionIndex.Name = "tbSectionIndex";
+            this.tbSectionIndex.Size = new System.Drawing.Size(39, 20);
+            this.tbSectionIndex.TabIndex = 38;
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(672, 225);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(33, 13);
+            this.label11.TabIndex = 39;
+            this.label11.Text = "Index";
+            // 
+            // lbAssignedBlocks
+            // 
+            this.lbAssignedBlocks.FormattingEnabled = true;
+            this.lbAssignedBlocks.Location = new System.Drawing.Point(1607, 27);
+            this.lbAssignedBlocks.Name = "lbAssignedBlocks";
+            this.lbAssignedBlocks.Size = new System.Drawing.Size(229, 407);
+            this.lbAssignedBlocks.TabIndex = 40;
+            // 
+            // cbUpdateAssignedBlocks
+            // 
+            this.cbUpdateAssignedBlocks.AutoSize = true;
+            this.cbUpdateAssignedBlocks.BackColor = System.Drawing.Color.GhostWhite;
+            this.cbUpdateAssignedBlocks.Checked = true;
+            this.cbUpdateAssignedBlocks.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.cbUpdateAssignedBlocks.Location = new System.Drawing.Point(1843, 27);
+            this.cbUpdateAssignedBlocks.Name = "cbUpdateAssignedBlocks";
+            this.cbUpdateAssignedBlocks.Size = new System.Drawing.Size(61, 17);
+            this.cbUpdateAssignedBlocks.TabIndex = 41;
+            this.cbUpdateAssignedBlocks.Text = "Update";
+            this.cbUpdateAssignedBlocks.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
+            this.cbUpdateAssignedBlocks.UseVisualStyleBackColor = false;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1597, 450);
+            this.ClientSize = new System.Drawing.Size(1926, 450);
+            this.Controls.Add(this.cbUpdateAssignedBlocks);
+            this.Controls.Add(this.lbAssignedBlocks);
+            this.Controls.Add(this.label11);
+            this.Controls.Add(this.tbSectionIndex);
+            this.Controls.Add(this.label10);
+            this.Controls.Add(this.tbCurrentSection);
             this.Controls.Add(this.tbExceptionTrace);
             this.Controls.Add(this.lbJourneyLog);
             this.Controls.Add(this.btnMore);
@@ -461,6 +527,12 @@
         private System.Windows.Forms.Button btnMore;
         private System.Windows.Forms.ListBox lbJourneyLog;
         private System.Windows.Forms.TextBox tbExceptionTrace;
+        private System.Windows.Forms.TextBox tbCurrentSection;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.TextBox tbSectionIndex;
+        private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.ListBox lbAssignedBlocks;
+        protected System.Windows.Forms.CheckBox cbUpdateAssignedBlocks;
     }
 }
 
