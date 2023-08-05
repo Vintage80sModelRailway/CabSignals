@@ -139,16 +139,23 @@ namespace JMRIDebugOutput
             string signalMastName = "";
             string previousSignalMastName = "";
 
+            var ActiveBlocks = await webClient.GetOccupiedBlocks();
             
             List<BlockJourneyLog> log = new List<BlockJourneyLog>();
             List<SectionJourneyLog> sectionLog = new List<SectionJourneyLog>();
 
             journeyRunning = true;
 
-            BlockRootObject block = await webClient.GetBlock(tbStartBlock.Text);            
+            BlockRootObject block = await webClient.GetBlock(tbStartBlock.Text);     
+
 
             var journey = new Journey(tbConfigLocation.Text, tbTransit.Text, tbTrainName.Text, tbStartBlock.Text, "ed");
             var transit = journey.GetTransit();
+            var nextBlock = transit.BlocksInOrder.ElementAtOrDefault(1);
+            if (nextBlock != null)
+            {
+                tbNextBlock.Text = nextBlock.BlockUserName;
+            }
 
             lbOutput.Items.Add("Journey started - number of blocks: " + transit.BlocksInOrder.Count.ToString() + "; number of sections: " + transit.Sections.Count.ToString());
             lbOutput.Items.Add("Current block " + block.data.userName + " - waiting for train progress");
@@ -186,8 +193,8 @@ namespace JMRIDebugOutput
 
                 try
                 {
-
                     assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
+                    var newActiveBlocks = await webClient.GetOccupiedBlocks();
 
                     List<BlockRootObject> newBlocksThisTime = new List<BlockRootObject>();
                     List<BlockJourneyLog> orderedNewBlocks = new List<BlockJourneyLog>();
@@ -235,6 +242,7 @@ namespace JMRIDebugOutput
                             if (possibleMatch != null && possibleMatch.BlockSystemname == nb.data.name)
                             {
                                 possibleMatch.Sequence = i;
+                                possibleMatch.Assigned = true;
                                 log.Add(possibleMatch);
                                 var sectionSequence = possibleMatch.SectionSequenceId;
 
@@ -314,20 +322,43 @@ namespace JMRIDebugOutput
                         }
                     }
 
-                    foreach (var assignedBlock in assignedAPIBlocks.Where(w => w.data.state == 2))
+                    //foreach (var assignedBlock in assignedAPIBlocks.Where(w => w.data.state == 2))
+                    //{
+                    //    var unassignedBlock = assignedBlocksLastTime.FirstOrDefault(f => f.data.name == assignedBlock.data.name && f.data.state == 4);
+                    //    if (unassignedBlock != null)
+                    //    {
+                    //        blockJustGoneLive = unassignedBlock;
+                    //        lbAssignedBlocks.Items.Add(blockJustGoneLive.data.userName + " " + blockJustGoneLive.data.state.ToString() + " " + currentBlockIndex.ToString());
+                    //        break;
+                    //    }
+                    //    else
+                    //    {
+                    //        blockJustGoneLive = null;
+                    //    }
+                    //}
+
+                    //if one of this train's allocated blocks has just gone active
+                    //compare last allocated blocks to this assigned blocks
+                    newActiveBlocks = await webClient.GetOccupiedBlocks();
+                    if (currentBlockIndex > -1)
                     {
-                        var unassignedBlock = assignedBlocksLastTime.FirstOrDefault(f => f.data.name == assignedBlock.data.name && f.data.state == 4);
-                        if (unassignedBlock != null)
+                        foreach (var nab in newActiveBlocks.Where(w => w.data.value != null && w.data.value.Length > 0))
                         {
-                            blockJustGoneLive = unassignedBlock;
-                            lbAssignedBlocks.Items.Add(blockJustGoneLive.data.userName + " " + blockJustGoneLive.data.state.ToString() + " " + currentBlockIndex.ToString());
-                            break;
-                        }
-                        else
-                        {
-                            blockJustGoneLive = null;
+                            var wasAlreadyOccupied = ActiveBlocks.Any(a => a.data.userName == nab.data.userName);
+                            if (!wasAlreadyOccupied && blockJustGoneLive.data == null)
+                            {
+                                var wasAssignedToThisTrain = log.FirstOrDefault(f => f.BlockUserName == nab.data.userName && f.Assigned == true && f.Traversed == false);
+                                if (wasAssignedToThisTrain != null && tbNextBlock.Text == wasAssignedToThisTrain.BlockUserName)
+                                {
+                                    //likely block was allocated to the wrong train
+                                    blockJustGoneLive = nab;
+                                }
+                            }
                         }
                     }
+
+                    ActiveBlocks = newActiveBlocks;
+                    
 
                     assignedBlocksLastTime = assignedAPIBlocks;
 
@@ -339,6 +370,9 @@ namespace JMRIDebugOutput
                             var forTomorrow = "stop";
                         }
                     }
+
+
+
 
                     //sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
                     await UpdateSignalStatus(sm, false);

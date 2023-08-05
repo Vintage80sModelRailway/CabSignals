@@ -135,7 +135,7 @@
             // 
             this.cbDispatches.Enabled = false;
             this.cbDispatches.FormattingEnabled = true;
-            this.cbDispatches.Location = new System.Drawing.Point(221, 107);
+            this.cbDispatches.Location = new System.Drawing.Point(221, 137);
             this.cbDispatches.Name = "cbDispatches";
             this.cbDispatches.Size = new System.Drawing.Size(308, 21);
             this.cbDispatches.TabIndex = 6;
@@ -143,7 +143,7 @@
             // btnOpenDispatch
             // 
             this.btnOpenDispatch.Enabled = false;
-            this.btnOpenDispatch.Location = new System.Drawing.Point(549, 107);
+            this.btnOpenDispatch.Location = new System.Drawing.Point(549, 137);
             this.btnOpenDispatch.Name = "btnOpenDispatch";
             this.btnOpenDispatch.Size = new System.Drawing.Size(75, 23);
             this.btnOpenDispatch.TabIndex = 7;
@@ -236,7 +236,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(166, 110);
+            this.label4.Location = new System.Drawing.Point(166, 140);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(49, 13);
             this.label4.TabIndex = 18;
@@ -366,17 +366,17 @@
             // lbJourneyLog
             // 
             this.lbJourneyLog.FormattingEnabled = true;
-            this.lbJourneyLog.Location = new System.Drawing.Point(937, 27);
+            this.lbJourneyLog.Location = new System.Drawing.Point(908, 15);
             this.lbJourneyLog.Name = "lbJourneyLog";
-            this.lbJourneyLog.Size = new System.Drawing.Size(263, 407);
+            this.lbJourneyLog.Size = new System.Drawing.Size(197, 420);
             this.lbJourneyLog.TabIndex = 34;
             // 
             // tbExceptionTrace
             // 
-            this.tbExceptionTrace.Location = new System.Drawing.Point(1241, 27);
+            this.tbExceptionTrace.Location = new System.Drawing.Point(1298, 40);
             this.tbExceptionTrace.Multiline = true;
             this.tbExceptionTrace.Name = "tbExceptionTrace";
-            this.tbExceptionTrace.Size = new System.Drawing.Size(344, 407);
+            this.tbExceptionTrace.Size = new System.Drawing.Size(149, 395);
             this.tbExceptionTrace.TabIndex = 35;
             // 
             // tbCurrentSection
@@ -414,9 +414,9 @@
             // lbAssignedBlocks
             // 
             this.lbAssignedBlocks.FormattingEnabled = true;
-            this.lbAssignedBlocks.Location = new System.Drawing.Point(1607, 27);
+            this.lbAssignedBlocks.Location = new System.Drawing.Point(1111, 15);
             this.lbAssignedBlocks.Name = "lbAssignedBlocks";
-            this.lbAssignedBlocks.Size = new System.Drawing.Size(229, 407);
+            this.lbAssignedBlocks.Size = new System.Drawing.Size(181, 420);
             this.lbAssignedBlocks.TabIndex = 40;
             // 
             // cbUpdateAssignedBlocks
@@ -425,7 +425,7 @@
             this.cbUpdateAssignedBlocks.BackColor = System.Drawing.Color.GhostWhite;
             this.cbUpdateAssignedBlocks.Checked = true;
             this.cbUpdateAssignedBlocks.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.cbUpdateAssignedBlocks.Location = new System.Drawing.Point(1843, 27);
+            this.cbUpdateAssignedBlocks.Location = new System.Drawing.Point(1386, 17);
             this.cbUpdateAssignedBlocks.Name = "cbUpdateAssignedBlocks";
             this.cbUpdateAssignedBlocks.Size = new System.Drawing.Size(61, 17);
             this.cbUpdateAssignedBlocks.TabIndex = 41;
@@ -437,7 +437,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1926, 450);
+            this.ClientSize = new System.Drawing.Size(1461, 450);
             this.Controls.Add(this.cbUpdateAssignedBlocks);
             this.Controls.Add(this.lbAssignedBlocks);
             this.Controls.Add(this.label11);

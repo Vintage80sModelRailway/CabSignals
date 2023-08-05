@@ -11,6 +11,7 @@ namespace JMRIReader.Classes
         public string BlockSystemname { get; set; }
         public string BlockUserName { get; set; }
         public bool Traversed { get; set; }
+        public bool Assigned { get; set; }
         public int Sequence { get; set; }
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }

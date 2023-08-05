@@ -50,6 +50,7 @@
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
+    <Compile Include="Classes\OtherTransit.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />
     <Compile Include="Classes\TurnoutRootObject.cs" />
     <Compile Include="Classes\Block.cs" />

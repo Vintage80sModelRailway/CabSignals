@@ -74,6 +74,25 @@ namespace JMRIReader
             return blocks;
         }
 
+        public async Task<List<BlockRootObject>> GetOccupiedBlocks()
+        {
+            List<BlockRootObject> blocks = new List<BlockRootObject>();
+            var response = await client.GetAsync("/json/block");
+            var success = response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            try
+            {
+                ICollection<BlockRootObject> blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
+                blocks = blockRoot.Where(w => w.data.state == 2).ToList();
+            }
+            catch (Exception ex)
+            {
+                var test = ex.Message;
+            }
+            return blocks;
+        }
+
         public async Task<TurnoutRootobject> GetTurnout(string SystemName)
         {
             TurnoutRootobject turnout = new TurnoutRootobject();
