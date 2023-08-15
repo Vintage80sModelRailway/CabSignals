@@ -179,13 +179,13 @@ namespace JMRIDebugOutput
 
             tbCurrentBlockSignalMast.Text = signalMastName;
 
-            var assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
+            var assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text,true);
             var assignedBlocksLastTime = new List<BlockRootObject>();
 
             while (assignedAPIBlocks == null || assignedAPIBlocks.Count < 1)
             {
                 await Task.Delay(1000);
-                assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
+                assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text,true);
             }
 
             while (journeyRunning)
@@ -195,7 +195,7 @@ namespace JMRIDebugOutput
 
                 try
                 {
-                    assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
+                    
                     var newActiveBlocks = await webClient.GetOccupiedBlocks();
 
                     List<BlockRootObject> newBlocksThisTime = new List<BlockRootObject>();
@@ -207,7 +207,7 @@ namespace JMRIDebugOutput
                     }
                     foreach (var ab in assignedAPIBlocks)
                     {
-                        if (ab.data.userName == "CW PC End" && currentBlockIndex >= 30)
+                        if (ab.data.userName == "Yard AC Line 1 Block 3")
                         {
                             var s = "sto";
                         }
@@ -217,8 +217,11 @@ namespace JMRIDebugOutput
                             var possibleSequence = transit.BlocksInOrder.FirstOrDefault(w => w.Sequence >= currentBlockIndex && w.BlockUserName == ab.data.userName);
 
                             //totally lazy, just need an int to order by
-                            ab.data.curvature = possibleSequence.Sequence;
-                            newBlocksThisTime.Add(ab);
+                            if (possibleSequence != null)
+                            {
+                                ab.data.curvature = possibleSequence.Sequence;
+                                newBlocksThisTime.Add(ab);
+                            }
                         }
                     }                   
 
@@ -247,7 +250,7 @@ namespace JMRIDebugOutput
                                     {
                                         sectionLog.Add(sectionToAdd);
                                     }
-                                    tbExceptionTrace.Text = tbExceptionTrace.Text + sectionToAdd.SectionkUserName + "; ";
+                                    tbExceptionTrace.Text = tbExceptionTrace.Text + sectionToAdd.SectionkUserName + "("+possibleMatch.SectionSequenceId.ToString()+")"+ "; ";
 
                                     previousSectionSequence = sectionSequence;
 
@@ -283,9 +286,10 @@ namespace JMRIDebugOutput
                                 if (handlingAlternate)
                                 {
                                     checkForAlternate.Sequence = searchIndexLimit;
+                                    checkForAlternate.Assigned = true;
                                     log.Add(checkForAlternate);
                                     var sectionToAdd = transit.Sections.FirstOrDefault(f => f.Sequence == checkForAlternate.SectionSequenceId);
-                                    sectionToAdd.Sequence = searchIndexLimit;
+                                    //sectionToAdd.Sequence = searchIndexLimit;
                                     sectionLog.Add(sectionToAdd);
 
                                     //lbOutput.Items.Add("Added to log through alternate route handling: " + checkForAlternate.BlockUserName + " at " + searchIndexLimit.ToString() + " section sequence ID " + checkForAlternate.SectionSequenceId.ToString());
@@ -320,9 +324,14 @@ namespace JMRIDebugOutput
 
                     foreach (var nab in newActiveBlocks.Where(w => w.data.value != null && w.data.value.Length > 0))
                     {
+
                         var wasAlreadyOccupied = ActiveBlocks.Any(a => a.data.userName == nab.data.userName);
                         if (!wasAlreadyOccupied && blockJustGoneLive != null && blockJustGoneLive.data == null)
                         {
+                            if (nab.data.userName == "Yard AC Line 1 Block 3")
+                            {
+                                var stopp = "";
+                            }
                             var wasAssignedToThisTrain = log.FirstOrDefault(f => f.BlockUserName == nab.data.userName && f.Assigned == true && f.Traversed == false);
                             if (wasAssignedToThisTrain != null && tbNextBlock.Text == wasAssignedToThisTrain.BlockUserName)
                             {
@@ -336,6 +345,7 @@ namespace JMRIDebugOutput
                     ActiveBlocks = newActiveBlocks;                    
 
                     assignedBlocksLastTime = assignedAPIBlocks;
+                    assignedAPIBlocks = await webClient.GetAssignedBlocks(tbTrainName.Text);
 
                     if (blockJustGoneLive != null && blockJustGoneLive.data != null)
                     {
@@ -517,14 +527,25 @@ namespace JMRIDebugOutput
             {
                 string direction = "";
                 var nextSection = sectionLog.FirstOrDefault(f => f.Sequence == nextDectionSequenceId);
-                
                 if (nextSection == null)
                 {
                     //if train is queuing there will be no more sections
-                    nextSection = tr.Sections.FirstOrDefault(f => f.Sequence == nextDectionSequenceId);                    
+                    nextSection = tr.Sections.FirstOrDefault(f => f.Sequence == nextDectionSequenceId);
                 }
 
                 var entryBlock = nextSection.Section.entrypoint.Where(w => w.fromblock == currentLiveBlockName).ToList();
+
+                if (entryBlock == null && nextSection.PossibleAlternate == true)
+                {
+                    //may well be null if the next section is an alternate section, therefore doesn't have a matching entry block
+                    nextSection = sectionLog.FirstOrDefault(f => f.Sequence == nextDectionSequenceId+1);
+                    if (nextSection == null)
+                    {
+                        //if train is queuing there will be no more sections
+                        nextSection = tr.Sections.FirstOrDefault(f => f.Sequence == nextDectionSequenceId+1);
+                    }
+                    entryBlock = nextSection.Section.entrypoint.Where(w => w.fromblock == currentLiveBlockName).ToList();
+                }
 
                 lbOutput.Items.Add("Found " + entryBlock.Count.ToString() + " matching entry point blocks for section "+nextSection.SectionkUserName);
                 var eb = entryBlock.FirstOrDefault();
@@ -537,6 +558,7 @@ namespace JMRIDebugOutput
             }
             catch (Exception ex)
             {
+                lbOutput.Items.Add("Exception in getdir - " + ex.Message+" currentliveblockname "+currentLiveBlockName+" seq "+nextDectionSequenceId.ToString());
                 tbExceptionTrace.Text = ex.StackTrace;
                 var test = "stop";
                 return "";

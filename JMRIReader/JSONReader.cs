@@ -55,7 +55,7 @@ namespace JMRIReader
             return block;
         }
 
-        public async Task<List<BlockRootObject>> GetAssignedBlocks(string TrainName)
+        public async Task<List<BlockRootObject>> GetAssignedBlocks(string TrainName, bool includeOccupied = false)
         {
             List<BlockRootObject> blocks = new List<BlockRootObject>();
             var response = await client.GetAsync("/json/block");
@@ -65,7 +65,14 @@ namespace JMRIReader
             try
             {
                 ICollection<BlockRootObject> blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
-                blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName).ToList();
+                if (includeOccupied)
+                {
+                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName).ToList();
+                }
+                else
+                {
+                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName && w.data.state == 4).ToList();
+                }
             }
             catch (Exception ex)
             {

@@ -366,14 +366,14 @@
             // lbJourneyLog
             // 
             this.lbJourneyLog.FormattingEnabled = true;
-            this.lbJourneyLog.Location = new System.Drawing.Point(908, 15);
+            this.lbJourneyLog.Location = new System.Drawing.Point(926, 15);
             this.lbJourneyLog.Name = "lbJourneyLog";
-            this.lbJourneyLog.Size = new System.Drawing.Size(197, 420);
+            this.lbJourneyLog.Size = new System.Drawing.Size(190, 420);
             this.lbJourneyLog.TabIndex = 34;
             // 
             // tbExceptionTrace
             // 
-            this.tbExceptionTrace.Location = new System.Drawing.Point(1298, 40);
+            this.tbExceptionTrace.Location = new System.Drawing.Point(1309, 40);
             this.tbExceptionTrace.Multiline = true;
             this.tbExceptionTrace.Name = "tbExceptionTrace";
             this.tbExceptionTrace.Size = new System.Drawing.Size(149, 395);
@@ -414,7 +414,7 @@
             // lbAssignedBlocks
             // 
             this.lbAssignedBlocks.FormattingEnabled = true;
-            this.lbAssignedBlocks.Location = new System.Drawing.Point(1111, 15);
+            this.lbAssignedBlocks.Location = new System.Drawing.Point(1122, 15);
             this.lbAssignedBlocks.Name = "lbAssignedBlocks";
             this.lbAssignedBlocks.Size = new System.Drawing.Size(181, 420);
             this.lbAssignedBlocks.TabIndex = 40;

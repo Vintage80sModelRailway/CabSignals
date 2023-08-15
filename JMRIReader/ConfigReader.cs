@@ -29,14 +29,15 @@ namespace JMRIReader
             var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
             var serializer = new XmlSerializer(typeof(transit));
             tr = (transit)serializer.Deserialize(transit.CreateReader());
-            int counter = 0;
+            int sectionCounter = -1;
+            int blockCounter = -1;
 
             foreach (var transitsection in tr.transitsection)
             {
                 var newSection = new SectionJourneyLog();
-                counter++;
+                sectionCounter++;
                 var hasAlternate = false;
-                var nextSection = tr.transitsection.ElementAtOrDefault(counter);
+                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
                 if (nextSection != null && nextSection.alternate == "yes")
                 {
                     hasAlternate = true;
@@ -48,16 +49,17 @@ namespace JMRIReader
 
                 foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                 {
+                    blockCounter++;
                     block b = GetBlockBySystemName(blockEntry.sName);
                     newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockSystemname = b.systemName;
                     logEntry.BlockUserName = b.userName;
                     logEntry.Traversed = false;
-                    logEntry.Sequence = counter;
+                    logEntry.Sequence = blockCounter;
                     logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
                     logEntry.HasAlternate = hasAlternate;
-                    logEntry.SectionSequenceId = counter;
+                    logEntry.SectionSequenceId = sectionCounter;
                     tr.BlocksInOrder.Add(logEntry);
                 }
 
@@ -65,7 +67,7 @@ namespace JMRIReader
                 newSection.SectionSystemname = s.systemName;
                 newSection.HasAlternate = hasAlternate;
                 newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                newSection.Sequence = counter;
+                newSection.Sequence = sectionCounter;
                 newSection.Traversed = false;
                 tr.Sections.Add(newSection);
             }
