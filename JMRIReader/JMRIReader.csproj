@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="Class1.cs" />
     <Compile Include="Classes\APIBlock.cs" />
+    <Compile Include="Classes\APISignalMast.cs" />
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />

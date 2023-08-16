@@ -20,3 +20,9 @@ D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\obj\Release\JMRI
 D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.CopyComplete
 D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.exe
 D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.pdb
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Caution.png
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Caution.wav
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Danger.png
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Danger.wav
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Proceed.png
+D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIDebugOutput\bin\Release\Assets\Proceed.wav

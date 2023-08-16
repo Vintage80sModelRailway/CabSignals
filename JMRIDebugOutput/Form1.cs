@@ -172,7 +172,8 @@ namespace JMRIDebugOutput
             var sm = GetSignalMastForBlock(transit.BlocksInOrder, transit.BlocksInOrder, tbCurrentBlockSignalMast.Text, currentBlockIndex, direction);
             if (sm.BlockJumped) lbOutput.Items.Add("Block jumped");
 
-            await UpdateSignalStatus(sm, false);
+            //await UpdateSignalStatus(sm, false);
+            await UpdateSignalMastStatus(sm.systemName, false);
 
             signalMastName = sm.userName;
             previousSignalMastName = sm.userName;
@@ -353,7 +354,8 @@ namespace JMRIDebugOutput
                     }
 
                     //sm = GetSignalMastForBlock(log, signalMastName, currentBlockIndex, direction);
-                    await UpdateSignalStatus(sm, false);
+                    //await UpdateSignalStatus(sm, false);
+                    await UpdateSignalMastStatus(sm.systemName, false);
                 }               
 
                 catch (Exception ex)
@@ -446,7 +448,8 @@ namespace JMRIDebugOutput
 
                             if (smHasChanged)
                             {
-                                await UpdateSignalStatus(sm, true);
+                                //await UpdateSignalStatus(sm, true);
+                                await UpdateSignalMastStatus(sm.systemName, true);
                             }
                         }
                         else
@@ -517,6 +520,41 @@ namespace JMRIDebugOutput
             else if (blockHasChanged)
             {
                 SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
+                signalBeep.Play();
+            }
+        }
+
+        protected async Task UpdateSignalMastStatus(string SignalMastName, bool blockHasChanged)
+        {
+            var sm = new SMRootobject();
+
+            try
+            {
+                 sm = await webClient.GetSignalMast(SignalMastName);
+            }
+            catch (Exception ex)
+            {
+                lbOutput.Items.Add("SM retrieval exception " + ex.Message);
+                tbExceptionTrace.Text = ex.StackTrace;
+                return;
+            }
+
+            if (sm == null || sm.data == null)
+            {
+                lbOutput.Items.Add("Signal mast query returned null");
+                return;
+            }
+
+            if (sm.data.state != tbCurrentBlockSignalMastState.Text)
+            {
+                pbSignal.Load("./Assets/" + sm.data.state + ".png");
+                tbCurrentBlockSignalMastState.Text = sm.data.state;
+                SoundPlayer signalBeep = new SoundPlayer("./Assets/" + sm.data.state + ".wav");
+                signalBeep.Play();
+            }
+            else if (blockHasChanged)
+            {
+                SoundPlayer signalBeep = new SoundPlayer("./Assets/" + sm.data.state + ".wav");
                 signalBeep.Play();
             }
         }

@@ -119,5 +119,25 @@ namespace JMRIReader
 
             return turnout;
         }
+
+        public async Task<SMRootobject> GetSignalMast(string SignalMastName)
+        {
+            SMRootobject sm = new SMRootobject();
+            var response = await client.GetAsync("/json/signalMast/" + SignalMastName);
+            var success = response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            try
+            {
+                sm = Newtonsoft.Json.JsonConvert.DeserializeObject<SMRootobject>(jsonResponse);
+
+            }
+            catch (Exception ex)
+            {
+                var test = ex.Message;
+            }
+
+            return sm;
+        }
     }
 }
