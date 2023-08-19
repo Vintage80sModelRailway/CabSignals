@@ -131,6 +131,7 @@ namespace JMRIDebugOutput
 
         private async Task TrackJourney()
         {
+            bool useSMLogic = cbUseSMLogic.Checked;
             int currentSectionIndex = 0;
             int currentBlockIndex = 0;
             int journeyAlternateOffset = 0;
@@ -143,6 +144,7 @@ namespace JMRIDebugOutput
             
             List<BlockJourneyLog> log = new List<BlockJourneyLog>();
             List<SectionJourneyLog> sectionLog = new List<SectionJourneyLog>();
+            signalmast sm = new signalmast();
 
             journeyRunning = true;
 
@@ -168,8 +170,17 @@ namespace JMRIDebugOutput
 
             tbCurrentBlock.Text = startLveBlock.data.userName;
 
-            direction = GetDirectionFromSectionAndTransit(transit.Sections, currentSectionIndex);
-            var sm = GetSignalMastForBlock(transit.BlocksInOrder, transit.BlocksInOrder, tbCurrentBlockSignalMast.Text, currentBlockIndex, direction);
+            if (useSMLogic)
+            {
+                direction = GetDirectionFromSectionAndTransit(transit.Sections, currentSectionIndex);
+                sm = GetSignalMastForBlock(transit.BlocksInOrder, transit.BlocksInOrder, tbCurrentBlockSignalMast.Text, currentBlockIndex, direction);
+            }
+            else
+            {
+                int blocksJumped = 0;
+                sm = config.GetSignalMastForBlock(transit.BlocksInOrder, 0, ref blocksJumped);
+            }
+
             if (sm.BlockJumped) lbOutput.Items.Add("Block jumped");
 
             //await UpdateSignalStatus(sm, false);
@@ -420,25 +431,30 @@ namespace JMRIDebugOutput
                         tbCurrentSection.Text = currentSection.SectionkUserName;
                         tbSectionIndex.Text = currentSectionIndex.ToString();
 
-                        //currentSectionIndex = log.ElementAt(currentBlockIndex).SectionSequenceId-1;
-
                         direction = UpdateSectionStatusInfoAndGetDirection(sectionLog, nextdbBlock.SectionSequenceId, blockJustGoneLive.data.name, transit);
                         
                         tbCurrentBlock.Text = blockJustGoneLive.data.userName;
                         tbNextBlock.Text = nextLiveBlock.data.userName;
-                        sm = GetSignalMastForBlock(log, transit.BlocksInOrder, signalMastName, currentBlockIndex, direction);
+
+                        int blocksJumped = 0;
+                        if (useSMLogic)
+                        {
+                            sm = GetSignalMastForBlock(log, transit.BlocksInOrder, signalMastName, currentBlockIndex, direction);
+                        }
+                        else
+                        {                            
+                            sm = config.GetSignalMastForBlock(log, currentBlockIndex, ref blocksJumped);
+                        }
 
                         if (sm != null && sm.systemName != "")
                         {
-
                             bool smHasChanged = sm.userName != tbCurrentBlockSignalMast.Text;
-
-                            if (!sm.BlockJumped)
+                            if (blocksJumped < 1 && !sm.BlockJumped)
                             {
                                 signalMastName = sm.userName;
                                 lbOutput.Items.Add("Block change - " + blockJustGoneLive.data.userName + " mast " + signalMastName + " next block " + nextLiveBlock.data.userName + " block index " + currentBlockIndex.ToString());
                                 tbCurrentBlockSignalMast.Text = signalMastName;
-                                
+
                             }
                             else
                             {
@@ -448,7 +464,6 @@ namespace JMRIDebugOutput
 
                             if (smHasChanged)
                             {
-                                //await UpdateSignalStatus(sm, true);
                                 await UpdateSignalMastStatus(sm.systemName, true);
                             }
                         }
@@ -625,20 +640,15 @@ namespace JMRIDebugOutput
         private void CompleteJourney()
         {
             journeyRunning = false;
-            pbSignal.Load("./Assets/red.png");
+            pbSignal.Load("./Assets/Danger.png");
             tbCurrentBlock.Text = "";
             tbNextBlock.Text = "";
             tbCurrentBlockSignalMast.Text = "";
             tbCurrentBlockSignalMastState.Text = "";
-            SoundPlayer signalBeep = new SoundPlayer("./Assets/red.wav");
+            SoundPlayer signalBeep = new SoundPlayer("./Assets/Danger.wav");
             signalBeep.Play();
             btnStopJourney.Enabled = false;
             btnStartJourney.Enabled = true;
-        }
-
-        private async void btnTestSM_Click(object sender, EventArgs e)
-        {
-
         }
 
         private void btnMore_Click(object sender, EventArgs e)
@@ -654,6 +664,16 @@ namespace JMRIDebugOutput
                 btnMore.Text = ">>";
             }
             
+        }
+
+        private void btnTest_Click(object sender, EventArgs e)
+        {
+            var journey = new Journey(tbConfigLocation.Text, tbTransit.Text, tbTrainName.Text, tbStartBlock.Text, "ed");
+            var transit = journey.GetTransit();
+            int blocksJumped = 0;
+            var sm = config.GetSignalMastForBlock(transit.BlocksInOrder, int.Parse(tbTestVal1.Text), ref blocksJumped);
+            var stop = "debug";
+
         }
     }
 }

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using static JMRIReader.Classes.Enums;
 
 namespace JMRIReader
 {
@@ -75,11 +76,23 @@ namespace JMRIReader
         }
 
         public block GetBlockBySystemName(string systemName)
-        {
-            var configBlock = config.Elements("layout-config").Elements("blocks").Elements("block").FirstOrDefault(f => f.Attribute("systemName").Value.Equals(systemName));
-            var blockSerializer = new XmlSerializer(typeof(block));
-            block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
-            return b;
+        {            
+            var configBlocks = config.Elements("layout-config").Elements("blocks").Elements("block").Where(f => f.Attribute("systemName").Value.Equals(systemName));
+            if (configBlocks.Count() ==1)
+            {
+                var configBlock = configBlocks.First();
+                var blockSerializer = new XmlSerializer(typeof(block));
+                block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
+                return b;
+            }
+            else if (configBlocks.Count() == 2)
+            {
+                var configBlock = configBlocks.Last();
+                var blockSerializer = new XmlSerializer(typeof(block));
+                block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
+                return b;
+            }
+            return null;
         }
 
         public block GetBlockByUserName(string userName)
@@ -96,6 +109,18 @@ namespace JMRIReader
             var sectionSerializer = new XmlSerializer(typeof(section));
             section s = (section)sectionSerializer.Deserialize(configSection.CreateReader());
             return s;
+        }
+
+        public signalmast GetSignalMastByUserName(string userName)
+        {
+            var smXML = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(userName));
+            var smSerializer = new XmlSerializer(typeof(signalmast));
+            if (smXML != null)
+            {
+                signalmast sm = (signalmast)smSerializer.Deserialize(smXML.CreateReader());
+                return sm;
+            }
+            else return null;
         }
 
         public signalmast GetSignalMastForBlock (List<BlockJourneyLog> journeyBlocksInOrder, List<BlockJourneyLog> configBlocksInOrder, int currentBlockIndex, string direction, List<string> ChainedSignalMasts)
@@ -317,6 +342,154 @@ namespace JMRIReader
 
             return sh;
 
+        }
+
+        public signalmast GetSignalMastForBlock(List<BlockJourneyLog> manifest, int currentBlockIndex, ref int blockJumpCount)
+        {
+            var returnSM = new signalmast();
+            returnSM.BlockJumped = false;
+
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+
+            var thisManifestBlock = manifest.ElementAtOrDefault(currentBlockIndex);
+            var nextManifestBlock = manifest.ElementAtOrDefault(currentBlockIndex + 1);
+
+            if (thisManifestBlock == null || nextManifestBlock == null) return null;
+
+            var dir = GetDirectionForNextBlock(thisManifestBlock.BlockSystemname, nextManifestBlock.BlockSystemname);
+
+            var thisBlock = GetBlockBySystemName(thisManifestBlock.BlockSystemname);
+            var nextBlock = GetBlockBySystemName(nextManifestBlock.BlockSystemname);
+
+            string signalMastNameFound = string.Empty;
+
+            foreach (var path in thisBlock.path)
+            {
+                if (path.block == nextBlock.systemName)
+                {
+                    dir = (direction)path.todir;                    
+
+                    //not determined by a turnout state
+                    foreach (var ap in layout.positionablepoint.Where(w => w.type == "ANCHOR"))
+                    {
+                        var block1 = GetConnectingBlockNameForAnchorPointConnection(ap.connect1name, layout);
+                        var block2 = GetConnectingBlockNameForAnchorPointConnection(ap.connect2name, layout);
+
+                        if ((block1 == thisBlock.userName && block2 == nextBlock.userName) || (block2 == thisBlock.userName && block1 == nextBlock.userName))
+                        {
+                            if (block2 == thisBlock.userName && block1 == nextBlock.userName)
+                            {
+                                var stop = "debug";
+                                //dir = (direction)path.fromdir;
+                            }
+                            string strDir = dir.ToString();
+                            // if (strDir == "East" || strDir.Contains("east") || strDir == "South")
+                            if (strDir == "East" || strDir.Contains("South") || strDir.Contains("east") || strDir == "South")
+                            {
+                                signalMastNameFound = ap.eastboundsignalmast;
+                                //break;
+                            }
+                            else if (strDir == "West" || strDir.Contains("North") || strDir.Contains("west") || strDir == "North")
+                            {
+                                signalMastNameFound = ap.westboundsignalmast;
+                                //break;
+                            }
+                            else
+                            {
+                                string shouldNeverComehere = "";
+                            }
+
+
+                        }
+                        //else if (block2 == thisBlock.userName && block1 == nextBlock.userName)
+                        //{
+                        //    var reverse = "things here?";
+                        //    string strDir = dir.ToString();
+                        //    if (strDir == "East" || strDir.Contains("east") || strDir == "South")
+                        //    //if (strDir == "East" || strDir.Contains("South") || strDir == "South")
+                        //    {
+                        //        signalMastNameFound = ap.eastboundsignalmast;
+                        //        //break;
+                        //    }
+                        //    else if (strDir == "West" || strDir.Contains("west") || strDir == "North")
+                        //    {
+                        //        signalMastNameFound = ap.westboundsignalmast;
+                        //        //break;
+                        //    }
+                        //}
+
+
+                    }
+
+                    if (signalMastNameFound == string.Empty && path.beansetting != null)
+                    {
+                        if (path.beansetting.turnout != null)
+                        {
+                            var turnout = path.beansetting.turnout;
+                            var state = path.beansetting.setting;
+                            var lTurnout = layout.layoutturnout.FirstOrDefault(f => f.turnoutname == turnout.systemName);
+                            var blockInManifest = manifest.FirstOrDefault(f => f.BlockUserName == lTurnout.blockname && f.Sequence >= currentBlockIndex);
+                            var manifestIndex = manifest.IndexOf(blockInManifest);
+
+                            blockJumpCount++;
+                            returnSM = GetSignalMastForBlock(manifest, manifestIndex, ref blockJumpCount);
+
+                            if (state == 4) //thrown so get from next block
+                            {
+                                
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (signalMastNameFound != string.Empty)
+            {
+                returnSM = GetSignalMastByUserName(signalMastNameFound);
+            }
+
+            if (blockJumpCount >0)
+            {
+                returnSM.BlockJumped = true;
+            }
+
+            return returnSM;
+        }
+
+
+        public string GetConnectingBlockNameForAnchorPointConnection (string connection, LayoutEditor layout)
+        {
+            string connectingBlock = "";
+
+            if (connection.Substring(0,2) == "TO")
+            {
+                //turnouts as connections not implemented yet
+            }
+            else if (connection.Substring(0,1) == "T")
+            {
+                //track segment
+                var ts = layout.tracksegment.FirstOrDefault(f => f.ident == connection);
+                if (ts != null)
+                {
+                    connectingBlock = ts.blockname;
+                }
+            }
+            return connectingBlock;
+        }
+
+        public direction GetDirectionForNextBlock(string thisBlockSystemName, string nextBlockSystemName)
+        {
+            var dir = direction.Notknown;
+            var thisBlock = GetBlockBySystemName(thisBlockSystemName);
+            var path = thisBlock.path.FirstOrDefault(w => w.block == nextBlockSystemName);
+            if (path != null)
+            {
+                dir = (direction)path.todir;
+            }
+            return dir;
         }
     }
 }

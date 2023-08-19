@@ -72,6 +72,10 @@
             this.label11 = new System.Windows.Forms.Label();
             this.lbAssignedBlocks = new System.Windows.Forms.ListBox();
             this.cbUpdateAssignedBlocks = new System.Windows.Forms.CheckBox();
+            this.tbTestVal2 = new System.Windows.Forms.TextBox();
+            this.tbTestVal1 = new System.Windows.Forms.TextBox();
+            this.btnTest = new System.Windows.Forms.Button();
+            this.cbUseSMLogic = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbSignal)).BeginInit();
             this.SuspendLayout();
             // 
@@ -373,10 +377,10 @@
             // 
             // tbExceptionTrace
             // 
-            this.tbExceptionTrace.Location = new System.Drawing.Point(1309, 40);
+            this.tbExceptionTrace.Location = new System.Drawing.Point(1309, 122);
             this.tbExceptionTrace.Multiline = true;
             this.tbExceptionTrace.Name = "tbExceptionTrace";
-            this.tbExceptionTrace.Size = new System.Drawing.Size(149, 395);
+            this.tbExceptionTrace.Size = new System.Drawing.Size(149, 313);
             this.tbExceptionTrace.TabIndex = 35;
             // 
             // tbCurrentSection
@@ -433,11 +437,49 @@
             this.cbUpdateAssignedBlocks.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
             this.cbUpdateAssignedBlocks.UseVisualStyleBackColor = false;
             // 
+            // tbTestVal2
+            // 
+            this.tbTestVal2.Location = new System.Drawing.Point(1347, 67);
+            this.tbTestVal2.Name = "tbTestVal2";
+            this.tbTestVal2.Size = new System.Drawing.Size(100, 20);
+            this.tbTestVal2.TabIndex = 42;
+            // 
+            // tbTestVal1
+            // 
+            this.tbTestVal1.Location = new System.Drawing.Point(1347, 40);
+            this.tbTestVal1.Name = "tbTestVal1";
+            this.tbTestVal1.Size = new System.Drawing.Size(100, 20);
+            this.tbTestVal1.TabIndex = 43;
+            // 
+            // btnTest
+            // 
+            this.btnTest.Location = new System.Drawing.Point(1372, 93);
+            this.btnTest.Name = "btnTest";
+            this.btnTest.Size = new System.Drawing.Size(75, 23);
+            this.btnTest.TabIndex = 44;
+            this.btnTest.Text = "Test";
+            this.btnTest.UseVisualStyleBackColor = true;
+            this.btnTest.Click += new System.EventHandler(this.btnTest_Click);
+            // 
+            // cbUseSMLogic
+            // 
+            this.cbUseSMLogic.AutoSize = true;
+            this.cbUseSMLogic.Location = new System.Drawing.Point(751, 164);
+            this.cbUseSMLogic.Name = "cbUseSMLogic";
+            this.cbUseSMLogic.Size = new System.Drawing.Size(150, 17);
+            this.cbUseSMLogic.TabIndex = 45;
+            this.cbUseSMLogic.Text = "Use SM Logic for next SM";
+            this.cbUseSMLogic.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1461, 450);
+            this.Controls.Add(this.cbUseSMLogic);
+            this.Controls.Add(this.btnTest);
+            this.Controls.Add(this.tbTestVal1);
+            this.Controls.Add(this.tbTestVal2);
             this.Controls.Add(this.cbUpdateAssignedBlocks);
             this.Controls.Add(this.lbAssignedBlocks);
             this.Controls.Add(this.label11);
@@ -533,6 +575,10 @@
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.ListBox lbAssignedBlocks;
         protected System.Windows.Forms.CheckBox cbUpdateAssignedBlocks;
+        private System.Windows.Forms.TextBox tbTestVal2;
+        private System.Windows.Forms.TextBox tbTestVal1;
+        private System.Windows.Forms.Button btnTest;
+        private System.Windows.Forms.CheckBox cbUseSMLogic;
     }
 }
 

@@ -50,6 +50,7 @@
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />
+    <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
     <Compile Include="Classes\OtherTransit.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />
