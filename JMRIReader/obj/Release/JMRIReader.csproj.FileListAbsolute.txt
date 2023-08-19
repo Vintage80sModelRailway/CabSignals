@@ -1,9 +1,0 @@
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Release\JMRIReader.dll
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Release\JMRIReader.pdb
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.dll
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.xml
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Release\JMRIReader.csprojAssemblyReference.cache
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CoreCompileInputs.cache
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
-D:\Docs\GitTrains\LayoutControlBoard\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb
