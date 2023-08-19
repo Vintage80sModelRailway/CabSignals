@@ -30,3 +30,14 @@ JMRIDebugOutput/obj/Debug/JMRIDebugOutput.exe
 JMRIDebugOutput/obj/Debug/JMRIDebugOutput.Form1.resources
 JMRIDebugOutput/obj/Debug/JMRIDebugOutput.pdb
 JMRIDebugOutput/obj/Debug/JMRIDebugOutput.Properties.Resources.resources
+JMRIReader/bin/Debug/JMRIReader.dll
+JMRIReader/bin/Debug/JMRIReader.pdb
+JMRIReader/bin/Debug/Newtonsoft.Json.dll
+JMRIReader/bin/Debug/Newtonsoft.Json.xml
+JMRIReader/obj/Debug/.NETFramework,Version=v4.6.2.AssemblyAttributes.cs
+JMRIReader/obj/Debug/JMRIReader.csproj.CopyComplete
+JMRIReader/obj/Debug/JMRIReader.csproj.CoreCompileInputs.cache
+JMRIReader/obj/Debug/JMRIReader.csproj.FileListAbsolute.txt
+JMRIReader/obj/Debug/JMRIReader.csprojAssemblyReference.cache
+JMRIReader/obj/Debug/JMRIReader.dll
+JMRIReader/obj/Debug/JMRIReader.pdb
