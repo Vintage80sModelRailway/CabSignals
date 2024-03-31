@@ -1,0 +1,9 @@
+C:\Users\chris\source\repos\CabSignals\JMRIReader\bin\Release\JMRIReader.dll
+C:\Users\chris\source\repos\CabSignals\JMRIReader\bin\Release\JMRIReader.pdb
+C:\Users\chris\source\repos\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.dll
+C:\Users\chris\source\repos\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.xml
+C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.AssemblyReference.cache
+C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CoreCompileInputs.cache
+C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
+C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
+C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb

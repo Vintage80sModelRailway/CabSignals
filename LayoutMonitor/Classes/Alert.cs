@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LayoutMonitor.Classes
+{
+    public class Alert
+    {
+        public string BlockSystemName { get; set; }
+        public string BlockUserName { get; set; }
+        public string SignalMastSystemName { get; set; }
+        public string SignalMastUserName { get; set; }
+        public DateTime AlertStart { get; set; }
+        public AlertSeverity Severity { get; set; }
+        public bool Visible { get; set; }
+    }
+}
