@@ -4,6 +4,7 @@ using LayoutMonitor.Classes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Data;
 using System.Drawing;
 using System.Linq;
@@ -18,10 +19,6 @@ namespace LayoutMonitor
 {
     public partial class LayoutMonitorForm : Form
     {
-        public LayoutMonitorForm()
-        {
-            InitializeComponent();
-        }
         private JSONReader webClient;
         private ConfigReader config;
         private List<BlockRootObject> activeBlocks;
@@ -29,6 +26,27 @@ namespace LayoutMonitor
         private List<KeyValuePair<string, string>> activeSignalMasts;
         private List<Alert> alerts;
 
+        public LayoutMonitorForm()
+        {
+            InitializeComponent();
+            var cfgFilePath = ConfigurationManager.AppSettings["ConfigFilePath"];
+            if (cfgFilePath != null)
+            {
+                tbConfigLocation.Text = cfgFilePath.ToString();
+            }
+
+            var cfgWebServerIP = ConfigurationManager.AppSettings["WebServerIP"];
+            if (cfgWebServerIP != null)
+            {
+                tbServerIP.Text = cfgWebServerIP.ToString();
+            }
+
+            var cfgWebServerPort = ConfigurationManager.AppSettings["WebServerPort"];
+            if (cfgWebServerPort != null)
+            {
+                tbServerPort.Text = cfgWebServerPort.ToString();
+            }
+        }
 
         private async void btnStartMonitoring_Click(object sender, EventArgs e)
         {
@@ -85,32 +103,34 @@ namespace LayoutMonitor
                         var configTurnout = config.GetTurnoutByUserName(to.turnoutname);
                         var liveTurnout = await webClient.GetTurnout(configTurnout.systemName);
                         var state = liveTurnout.data.state;
+                        string navigatedForwardPath = to.ident+";";
+                        string navigatedBackwardPath = to.ident + ";";
                         if (to.type.Contains("XOVER"))
                         {
                             if (to.blockname == nab.data.userName)
                             {
                                 if (state == 4)
                                 {
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident);
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedForwardPath);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
                                 }
                                 else
                                 {
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident);
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedBackwardPath);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedForwardPath);
                                 }
                             }
                             else if(to.blockcname == nab.data.userName || to.blockdname == nab.data.userName)
                             {
                                 if (state == 4)
                                 {
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident);
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident, ref navigatedBackwardPath);
                                 }
                                 else
                                 {
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident);
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedBackwardPath);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident, ref navigatedForwardPath);
                                 }
                                 
                             }
@@ -120,24 +140,24 @@ namespace LayoutMonitor
                             if (state == 4)
                             {
                                 var connection = to.connectcname;
-                                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, connection, to.ident);
-                                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident);
+                                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, connection, to.ident, ref navigatedForwardPath);
+                                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
                                 if (likelyNextBlock == likelyPreviousBlock)
                                 {
                                     //turnout facing train
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident);
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
                                 }
                             }
                             else
                             {
                                 //closed
-                                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident);
-                                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident);
+                                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedForwardPath);
+                                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedBackwardPath);
                                 if (likelyNextBlock == likelyPreviousBlock)
                                 {
-                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident);
-                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident);
+                                    likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
+                                    unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedBackwardPath);
                                 }
                             }
                         }

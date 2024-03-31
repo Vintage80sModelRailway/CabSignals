@@ -131,7 +131,7 @@ namespace JMRIReader
             return t;
         }
 
-        public string GetNextBlockForLayoutItem(string currentBlock, string LayoutItem, string previousLayoutItem, LayoutEditor layout = null)
+        public string GetNextBlockForLayoutItem(string currentBlock, string LayoutItem, string previousLayoutItem,  ref string navigatedPath, LayoutEditor layout = null)
         {
             if (layout ==  null)
             {
@@ -140,6 +140,7 @@ namespace JMRIReader
                 layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
             }
             string newBlockName = "";
+            navigatedPath += LayoutItem+":";
             if (LayoutItem.Substring(0,2) == "TO")
             {
                 //turnout
@@ -157,7 +158,7 @@ namespace JMRIReader
                 {
                     var nextItem = tr.connect2name;
                     if (tr.connect2name == previousLayoutItem) nextItem = tr.connect1name;
-                    newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, layout);
+                    newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, ref navigatedPath, layout);
                 }
             }
             else if (LayoutItem.Substring(0,1) == "A")
@@ -166,7 +167,7 @@ namespace JMRIReader
                 var a = layout.positionablepoint.Where(w => w.type == "ANCHOR").FirstOrDefault(f => f.ident == LayoutItem);
                 var nextItem = a.connect2name;
                 if (a.connect2name == previousLayoutItem) nextItem = a.connect1name;
-                newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, layout);
+                newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, ref navigatedPath, layout);
             }
             return newBlockName;
         }

@@ -55,7 +55,6 @@
             this.tbServerIP.Name = "tbServerIP";
             this.tbServerIP.Size = new System.Drawing.Size(125, 20);
             this.tbServerIP.TabIndex = 1;
-            this.tbServerIP.Text = "192.168.1.29";
             // 
             // tbServerPort
             // 
@@ -63,7 +62,6 @@
             this.tbServerPort.Name = "tbServerPort";
             this.tbServerPort.Size = new System.Drawing.Size(100, 20);
             this.tbServerPort.TabIndex = 2;
-            this.tbServerPort.Text = "8080";
             // 
             // label1
             // 
@@ -108,7 +106,6 @@
             this.tbConfigLocation.Name = "tbConfigLocation";
             this.tbConfigLocation.Size = new System.Drawing.Size(268, 20);
             this.tbConfigLocation.TabIndex = 7;
-            this.tbConfigLocation.Text = "D:\\Docs\\jmri\\My JMRI Railroad\\TheLoft.xml";
             // 
             // label3
             // 
