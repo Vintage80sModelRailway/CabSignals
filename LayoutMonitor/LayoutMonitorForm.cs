@@ -66,315 +66,258 @@ namespace LayoutMonitor
             var newActiveBlocks = await webClient.GetOccupiedBlocks();
 
             foreach (var nab in newActiveBlocks)
-            {                
-                var alreadyExists = activeBlocks.Any(a => a.data.name == nab.data.name);
-                if (!alreadyExists)
-                {
-                    if (nab.data == null) continue;
-                    //new block gone occupied
-                    var likelyNextBlock = "";
-                    var likelyPreviousBlock = "";
-                    lbOutput.Items.Add("New active block " + nab.data.userName);
-                    var thisBlock = config.GetBlockBySystemName(nab.data.name);
-                    int direction = -1;
-                    bool oneConnectedBlockUnoccipied = false;
-                    bool oneConnectedBlockOccupied = false;
-                    string connectingAnchorPoint = "";
-                    List<BlockRootObject> nextBlocks = new List<BlockRootObject>();
+            {
+                try {
 
-                    if (nab.data.name == "AC Yard Entry")
+                    var alreadyExists = activeBlocks.Any(a => a.data.name == nab.data.name);
+                    if (!alreadyExists)
                     {
-                        likelyPreviousBlock = "AC Yard bypass PC End";
-                        var configBlock = config.GetBlockBySystemName(likelyPreviousBlock);
-                        var liveBlock = await webClient.GetBlock(configBlock.userName);
-                        if (liveBlock.data.state == 2)
+                        if (nab.data == null) continue;
+                        //new block gone occupied
+                        var likelyNextBlock = "";
+                        var likelyPreviousBlock = "";
+                        lbOutput.Items.Add("New active block " + nab.data.userName);
+                        var thisBlock = config.GetBlockBySystemName(nab.data.name);
+                        int direction = -1;
+                        bool oneConnectedBlockUnoccipied = false;
+                        bool oneConnectedBlockOccupied = false;
+                        string connectingAnchorPoint = "";
+                        List<BlockRootObject> nextBlocks = new List<BlockRootObject>();
+                        List<string> BoundaryBlocks = new List<string>();
+
+                        var trackSegments = config.GetTrackSegmentsForBlock(nab.data.userName).OrderBy(o => o.ident).ToList();
+                        var ts = trackSegments.FirstOrDefault();
+                        if (ts == null) return false;
+                        var firstBoundaryFromMiddle = await NavigateThroughBlockItems(nab.data.userName, ts.connect1name, ts.ident);
+                        var secondBoundary = await NavigateThroughBlockItems(nab.data.userName, firstBoundaryFromMiddle.EdgeConnectorDirectionConnector, firstBoundaryFromMiddle.EdgeConnector);
+                        var firstBoundary = await NavigateThroughBlockItems(nab.data.userName, secondBoundary.EdgeConnectorDirectionConnector, secondBoundary.EdgeConnector);
+
+
+                        //if (nab.data.name == "AC Yard Entry")
+                        //{
+                        //    likelyPreviousBlock = "AC Yard bypass PC End";
+                        //    var configBlock = config.GetBlockBySystemName(likelyPreviousBlock);
+                        //    var liveBlock = await webClient.GetBlock(configBlock.userName);
+                        //    if (liveBlock.data.state == 2)
+                        //    {
+                        //        oneConnectedBlockOccupied = true;
+                        //    }
+                        //    else
+                        //    {
+                        //        oneConnectedBlockUnoccipied = true;
+                        //    }
+                        //}
+                        //else if (nab.data.name == "CW Yard Lower Entrance")
+                        //{
+                        //    likelyPreviousBlock = "CW Yard bypass Pi end";
+                        //    var configBlock = config.GetBlockBySystemName(likelyPreviousBlock);
+                        //    var liveBlock = await webClient.GetBlock(configBlock.userName);
+                        //    if (liveBlock.data.state == 2)
+                        //    {
+                        //        oneConnectedBlockOccupied = true;
+                        //    }
+                        //    else
+                        //    {
+                        //        oneConnectedBlockUnoccipied = true;
+                        //    }
+                        //}
+                        //else
+                        //{
+                        foreach (var connectedBlock in thisBlock.path)
+                            {
+                                var configBlock = config.GetBlockBySystemName(connectedBlock.block);
+                                var liveBlock = await webClient.GetBlock(configBlock.userName);
+                                if (liveBlock.data.state == 2 && (liveBlock.data.userName == firstBoundary.BlockFound || liveBlock.data.userName == secondBoundary.BlockFound)) //occupied
+                                {
+                                    likelyPreviousBlock = liveBlock.data.userName;
+                                    oneConnectedBlockOccupied = true;
+                                }
+                                else
+                                {
+                                    oneConnectedBlockUnoccipied = true;
+                                }
+                            }
+                        //}
+
+                        if (!oneConnectedBlockOccupied)
                         {
-                            oneConnectedBlockOccupied = true;
+                            lbOutput.Items.Add("No connected active blocks, done nothing for " + nab.data.userName);
+                            activeBlocks = newActiveBlocks;
+                            return false;
                         }
-                        else
+
+
+                        //if (nab.data.userName == "AC Yard Exit") likelyNextBlock = "AC Yard bypass Pi end";
+                        //if (nab.data.userName == "CW Yard Lower Exit") likelyNextBlock = "CW Yard bypass PC End";
+
+
+                        if (ts != null)
                         {
-                            oneConnectedBlockUnoccipied = true;
+                            //this track segment might be in the middle of a block, after a set turnout, so may miss some of the path through and come up with the wrong answer
+                            //so use it to get to an edge connector for the block
+                            var bnl = await NavigateThroughBlockItems(nab.data.userName, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector);
+                            if (bnl.BlockFound == likelyPreviousBlock)
+                            {
+                                //we went in the wrong direction but got to the start of the block we need and now know the direction to go in
+                                var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
+                                //A full navigation through the block should come up with the right answer
+                                likelyNextBlock = result.BlockFound;
+                                if (result.EdgeConnectorDirectionConnector.StartsWith("A"))
+                                {
+                                    connectingAnchorPoint = result.EdgeConnectorDirectionConnector;
+                                }
+
+                            }
+                            else
+                            {
+                                //we went in the right direction but not necessarily from the start of the block, so go back
+                                //var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
+                                //result gets us to the start of the block so now go back again through the whole block in the correct direction
+                                //var fullNav = await NavigateThroughBlockItems(nab.data.userName, result.EdgeConnectorDirectionConnector, result.EdgeConnector);
+                                likelyNextBlock = bnl.BlockFound;
+                                if (bnl.EdgeConnectorDirectionConnector.StartsWith("A"))
+                                {
+                                    connectingAnchorPoint = bnl.EdgeConnectorDirectionConnector;
+                                }
+                            }
                         }
-                    }
-                    else if (nab.data.name == "CW Yard Lower Entrance")
-                    {
-                        likelyPreviousBlock = "CW Yard bypass Pi end";
-                        var configBlock = config.GetBlockBySystemName(likelyPreviousBlock);
-                        var liveBlock = await webClient.GetBlock(configBlock.userName);
-                        if (liveBlock.data.state == 2)
-                        {
-                            oneConnectedBlockOccupied = true;
-                        }
-                        else
-                        {
-                            oneConnectedBlockUnoccipied = true;
-                        }
-                    }
-                    else
-                    {
+
                         foreach (var connectedBlock in thisBlock.path)
                         {
                             var configBlock = config.GetBlockBySystemName(connectedBlock.block);
                             var liveBlock = await webClient.GetBlock(configBlock.userName);
-                            if (liveBlock.data.state == 2) //occupied
+                            if (liveBlock.data.userName == likelyNextBlock)
                             {
-                                likelyPreviousBlock = liveBlock.data.userName;
+                                direction = connectedBlock.todir;
+                                oneConnectedBlockUnoccipied = true;
+                                nextBlocks.Add(liveBlock);
+                            }
+                            else if (liveBlock.data.state == 4 && likelyNextBlock == "") //unoccupied
+                            {
+                                direction = connectedBlock.todir;
+                                oneConnectedBlockUnoccipied = true;
+                                nextBlocks.Add(liveBlock);
+                            }
+                            else if (liveBlock.data.state == 2)
+                            {
                                 oneConnectedBlockOccupied = true;
+                                likelyPreviousBlock = liveBlock.data.userName;
+                            }
+                        }
+
+
+                        Enums.direction dir = (Enums.direction)direction;
+                        var smDirection = dir.ToString();
+
+
+                        if (!oneConnectedBlockUnoccipied)
+                        {
+                            //danger
+                            alerts.Add(new Alert()
+                            {
+                                BlockSystemName = nab.data.name,
+                                BlockUserName = nab.data.userName,
+                                SignalMastSystemName = "",
+                                SignalMastUserName = "",
+                                Severity = AlertSeverity.Danger
+                            });
+                        }
+                        else if (!oneConnectedBlockOccupied && likelyNextBlock == "")
+                        {
+                            //single isolated block occupied - do nothing
+                            activeBlocks = newActiveBlocks;
+                            return true;
+                        }
+                        bool smFound = false;
+                        foreach (var block in nextBlocks)
+                        {
+                            lbOutput.Items.Add("Next block " + block.data.userName);
+                            signalmast sm = new signalmast();
+                            var signalMastName = "";
+                            if (connectingAnchorPoint != "")
+                            {
+                                var ap = config.GetTrackLayoutAnchorPoint(connectingAnchorPoint);
+                                string derivedDirection = config.GetDerivedDirection(smDirection);
+                                if (derivedDirection == "East")
+                                {
+                                    signalMastName = ap.eastboundsignalmast;
+                                }
+                                else
+                                {
+                                    signalMastName = ap.westboundsignalmast;
+                                }
+                                sm = config.GetSignalMastByUserName(signalMastName);
                             }
                             else
                             {
-                                oneConnectedBlockUnoccipied = true;
+                                sm = config.GetSignalMastForBlock(nab.data.userName, block.data.userName, smDirection, null);
+                            }
+
+                            if (sm != null && !String.IsNullOrEmpty(sm.userName))
+                            {
+                                smFound = true;
+                                lbOutput.Items.Add("Signal mast " + signalMastName);
+                                var liveSM = await webClient.GetSignalMast(sm.systemName);
+                                if (liveSM != null)
+                                {
+                                    if (liveSM.data.state == "Danger")
+                                    {
+                                        var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Danger);
+                                        if (!alertExists)
+                                        {
+                                            alerts.Add(new Alert()
+                                            {
+                                                BlockSystemName = nab.data.name,
+                                                BlockUserName = nab.data.userName,
+                                                SignalMastSystemName = sm.systemName,
+                                                SignalMastUserName = sm.userName,
+                                                Severity = AlertSeverity.Danger
+                                            });
+                                        }
+                                    }
+                                    else if (liveSM.data.state == "Caution")
+                                    {
+                                        var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Caution);
+                                        if (!alertExists)
+                                        {
+                                            alerts.Add(new Alert()
+                                            {
+                                                BlockSystemName = nab.data.name,
+                                                BlockUserName = nab.data.userName,
+                                                SignalMastSystemName = sm.systemName,
+                                                SignalMastUserName = sm.userName,
+                                                Severity = AlertSeverity.Caution
+                                            });
+                                        }
+                                    }
+                                    else if (liveSM.data.state == "Proceed")
+                                    {
+                                        lbOutput.Items.Add(("Proceed " + nab.data.userName));
+                                        lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    if (!oneConnectedBlockOccupied)
-                    {
-                        lbOutput.Items.Add("No connected active blocks, done nothing for " + nab.data.userName);
-                        activeBlocks = newActiveBlocks;
-                        return false; 
                     }
                     
 
-                    if (nab.data.userName == "AC Yard Exit") likelyNextBlock = "AC Yard bypass Pi end";
-                    if (nab.data.userName == "CW Yard Lower Exit") likelyNextBlock = "CW Yard bypass PC End";
-
-                    var trackSegments = config.GetTrackSegmentsForBlock(nab.data.userName).OrderBy(o => o.ident).ToList();
-                    var ts = trackSegments.FirstOrDefault();
-                    if (ts != null)
+                    var goneInactive = activeBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
+                    foreach (var inactive in goneInactive)
                     {
-                        //this track segment might be in the middle of a block, after a set turnout, so may miss some of the path through and come up with the wrong answer
-                        //so use it to get to an edge connector for the block
-                        var bnl = await NavigateThroughBlockItems(nab.data.userName, ts.connect1name, ts.ident);
-                        if (bnl.BlockFound == likelyPreviousBlock)
+                        var relatedAlert = alerts.FirstOrDefault(f => f.BlockUserName == inactive.data.userName);
+                        if (relatedAlert != null)
                         {
-                            //we went in the wrong direction but got to the start of the block we need and now know the direction to go in
-                            var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
-                            //A full navigation through the block should come up with the right answer
-                            likelyNextBlock = result.BlockFound;
-                            if (result.EdgeConnectorDirectionConnector.StartsWith("A"))
-                            {
-                                connectingAnchorPoint = result.EdgeConnectorDirectionConnector;
-                            }
-
-                        }
-                        else
-                        {
-                            //we went in the right direction but not necessarily from the start of the block, so go back
-                            var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
-                            //result gets us to the start of the block so now go back again through the whole block in the correct direction
-                            var fullNav = await NavigateThroughBlockItems(nab.data.userName, result.EdgeConnectorDirectionConnector, result.EdgeConnector);
-                            likelyNextBlock = fullNav.BlockFound;
-                            if (fullNav.EdgeConnectorDirectionConnector.StartsWith("A"))
-                            {
-                                connectingAnchorPoint = fullNav.EdgeConnectorDirectionConnector;
-                            }
-                        }
-                    }
-
-                    //var turnouts = config.GetTurnoutsInBlock(nab.data.userName);
-                    //var to = turnouts.FirstOrDefault();
-                    //if (to != null)
-                    //{
-                    //    var configTurnout = config.GetTurnoutByUserName(to.turnoutname);
-                    //    var liveTurnout = await webClient.GetTurnout(configTurnout.systemName);
-                    //    var state = liveTurnout.data.state;
-                    //    string navigatedForwardPath = to.ident+";";
-                    //    string navigatedBackwardPath = to.ident + ";";
-                    //    if (to.type.Contains("XOVER"))
-                    //    {
-                    //        if (to.blockname == nab.data.userName)
-                    //        {
-                    //            if (state == 4)
-                    //            {
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedForwardPath);
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
-                    //            }
-                    //            else
-                    //            {
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedBackwardPath);
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedForwardPath);
-                    //            }
-                    //        }
-                    //        else if(to.blockcname == nab.data.userName || to.blockdname == nab.data.userName)
-                    //        {
-                    //            if (state == 4)
-                    //            {
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident, ref navigatedBackwardPath);
-                    //            }
-                    //            else
-                    //            {
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedBackwardPath);
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectdname, to.ident, ref navigatedForwardPath);
-                    //            }
-
-                    //        }
-                    //    }
-                    //    else
-                    //    {
-                    //        if (state == 4)
-                    //        {
-                    //            var connection = to.connectcname;
-                    //            likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, connection, to.ident, ref navigatedForwardPath);
-                    //            unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
-                    //            if (likelyNextBlock == likelyPreviousBlock)
-                    //            {
-                    //                //turnout facing train
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedBackwardPath);
-                    //            }
-                    //        }
-                    //        else
-                    //        {
-                    //            //closed
-                    //            likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectbname, to.ident, ref navigatedForwardPath);
-                    //            unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedBackwardPath);
-                    //            if (likelyNextBlock == likelyPreviousBlock)
-                    //            {
-                    //                likelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectaname, to.ident, ref navigatedForwardPath);
-                    //                unlikelyNextBlock = config.GetNextBlockForLayoutItem(nab.data.userName, to.connectcname, to.ident, ref navigatedBackwardPath);
-                    //            }
-                    //        }
-                    //    }
-
-
-                    //    //4 = thrown
-                    //}
-
-                    //turnout
-                    //connectbname = closed
-                    //connectcname = thrown
-
-                    foreach (var connectedBlock in thisBlock.path)
-                    {
-                        var configBlock = config.GetBlockBySystemName(connectedBlock.block);
-                        var liveBlock = await webClient.GetBlock(configBlock.userName);
-                        if (liveBlock.data.userName == likelyNextBlock)
-                        {
-                            direction = connectedBlock.todir;
-                            oneConnectedBlockUnoccipied = true;
-                            nextBlocks.Add(liveBlock);
-                        }
-                        else if (liveBlock.data.state == 4 && likelyNextBlock == "") //unoccupied
-                        {
-                            direction = connectedBlock.todir;
-                            oneConnectedBlockUnoccipied = true;
-                            nextBlocks.Add(liveBlock);
-                        }
-                        else if (liveBlock.data.state == 2)
-                        {
-                            oneConnectedBlockOccupied = true;
-                            likelyPreviousBlock = liveBlock.data.userName;
-                        }
-                    }
-
-
-                    Enums.direction dir = (Enums.direction)direction;
-                    var smDirection = dir.ToString();
-
-
-                    if (!oneConnectedBlockUnoccipied)
-                    {
-                        //danger
-                        alerts.Add(new Alert()
-                        {
-                            BlockSystemName = nab.data.name,
-                            BlockUserName = nab.data.userName,
-                            SignalMastSystemName = "",
-                            SignalMastUserName = "",
-                            Severity = AlertSeverity.Danger
-                        });
-                    }
-                    else if (!oneConnectedBlockOccupied && likelyNextBlock == "")
-                    {
-                        //single isolated block occupied - do nothing
-                        activeBlocks = newActiveBlocks;
-                        return true;
-                    }
-                    bool smFound = false;
-                    foreach(var block in nextBlocks)
-                    {
-                        lbOutput.Items.Add("Next block " + block.data.userName);
-                        signalmast sm = new signalmast();
-                        var signalMastName = "";
-                        if (connectingAnchorPoint != "")
-                        {
-                            var ap = config.GetTrackLayoutAnchorPoint(connectingAnchorPoint);
-                            string derivedDirection = config.GetDerivedDirection(smDirection);
-                            if (derivedDirection == "East")
-                            {
-                                signalMastName = ap.eastboundsignalmast;
-                            }
-                            else
-                            {
-                                signalMastName = ap.westboundsignalmast;
-                            }
-                            sm = config.GetSignalMastByUserName(signalMastName);
-                        }
-                        else
-                        {
-                            sm = config.GetSignalMastForBlock(nab.data.userName, block.data.userName, smDirection, null);
-                        }
-                        
-                        if (sm != null && !String.IsNullOrEmpty(sm.userName))
-                        {
-                            smFound = true;
-                            lbOutput.Items.Add("Signal mast " + signalMastName);                            
-                            var liveSM = await webClient.GetSignalMast(sm.systemName);
-                            if (liveSM != null)
-                            {
-                                if (liveSM.data.state == "Danger")
-                                {
-                                    var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Danger);
-                                    if (!alertExists)
-                                    {
-                                        alerts.Add(new Alert()
-                                        {
-                                            BlockSystemName = nab.data.name,
-                                            BlockUserName = nab.data.userName,
-                                            SignalMastSystemName = sm.systemName,
-                                            SignalMastUserName = sm.userName,
-                                            Severity = AlertSeverity.Danger
-                                        });
-                                    }
-                                }
-                                else if (liveSM.data.state == "Caution")
-                                {
-                                    var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Caution);
-                                    if (!alertExists)
-                                    {
-                                        alerts.Add(new Alert()
-                                        {
-                                            BlockSystemName = nab.data.name,
-                                            BlockUserName = nab.data.userName,
-                                            SignalMastSystemName = sm.systemName,
-                                            SignalMastUserName = sm.userName,
-                                            Severity = AlertSeverity.Caution
-                                        });
-                                    }
-                                }
-                                else if (liveSM.data.state == "Proceed")
-                                {
-                                    lbOutput.Items.Add(("Proceed " + nab.data.userName));
-                                    lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                                }                                    
-                            }
+                            alerts.Remove(relatedAlert);
                         }
                     }
                 }
-            }
-
-            var goneInactive = activeBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
-            foreach (var inactive in goneInactive)
-            {
-                var relatedAlert = alerts.FirstOrDefault(f => f.BlockUserName == inactive.data.userName);
-                if (relatedAlert != null)
+                catch (Exception ex)
                 {
-                    alerts.Remove(relatedAlert);
+                    lbOutput.Items.Add(ex.Message);
+                    activeBlocks = newActiveBlocks;
+                    return false;
                 }
             }
-
             activeBlocks = newActiveBlocks;
             return true;
         }
