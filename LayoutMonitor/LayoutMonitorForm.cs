@@ -70,6 +70,7 @@ namespace LayoutMonitor
                 var alreadyExists = activeBlocks.Any(a => a.data.name == nab.data.name);
                 if (!alreadyExists)
                 {
+                    if (nab.data == null) continue;
                     //new block gone occupied
                     var likelyNextBlock = "";
                     var likelyPreviousBlock = "";
@@ -126,6 +127,14 @@ namespace LayoutMonitor
                             }
                         }
                     }
+
+                    if (!oneConnectedBlockOccupied)
+                    {
+                        lbOutput.Items.Add("No connected active blocks, done nothing for " + nab.data.userName);
+                        activeBlocks = newActiveBlocks;
+                        return false; 
+                    }
+                    
 
                     if (nab.data.userName == "AC Yard Exit") likelyNextBlock = "AC Yard bypass Pi end";
                     if (nab.data.userName == "CW Yard Lower Exit") likelyNextBlock = "CW Yard bypass PC End";
