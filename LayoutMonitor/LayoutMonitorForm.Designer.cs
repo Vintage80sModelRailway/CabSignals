@@ -39,6 +39,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.btnStopMonitoring = new System.Windows.Forms.Button();
             this.btnAcknowledgeAlert = new System.Windows.Forms.Button();
+            this.btnTestNavigation = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -136,12 +137,23 @@
             this.btnAcknowledgeAlert.UseVisualStyleBackColor = true;
             this.btnAcknowledgeAlert.Click += new System.EventHandler(this.btnAcknowledgeAlert_Click);
             // 
+            // btnTestNavigation
+            // 
+            this.btnTestNavigation.Location = new System.Drawing.Point(43, 61);
+            this.btnTestNavigation.Name = "btnTestNavigation";
+            this.btnTestNavigation.Size = new System.Drawing.Size(75, 23);
+            this.btnTestNavigation.TabIndex = 11;
+            this.btnTestNavigation.Text = "Test nav";
+            this.btnTestNavigation.UseVisualStyleBackColor = true;
+            this.btnTestNavigation.Click += new System.EventHandler(this.btnTestNavigation_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1001, 450);
+            this.Controls.Add(this.btnTestNavigation);
             this.Controls.Add(this.btnAcknowledgeAlert);
             this.Controls.Add(this.btnStopMonitoring);
             this.Controls.Add(this.label3);
@@ -173,6 +185,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button btnStopMonitoring;
         private System.Windows.Forms.Button btnAcknowledgeAlert;
+        private System.Windows.Forms.Button btnTestNavigation;
     }
 }
 

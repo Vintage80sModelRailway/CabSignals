@@ -145,6 +145,7 @@ namespace JMRIReader
             {
                 //turnout
                 var to = layout.layoutturnout.FirstOrDefault(f => f.ident == LayoutItem);
+                if (to.blockcname != currentBlock) newBlockName = to.blockname;
             }
             else if (LayoutItem.Substring(0,1) == "T")
             {
@@ -170,6 +171,36 @@ namespace JMRIReader
                 newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, ref navigatedPath, layout);
             }
             return newBlockName;
+        }
+
+        public LayoutEditorLayoutturnout GetLayuoutTurnout(string ident)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+
+            var to = layout.layoutturnout.FirstOrDefault(f => f.ident == ident);
+            return to;
+        }
+
+        public LayoutEditorTracksegment GetLayoutTrackSegment(string ident)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+
+            var ts = layout.tracksegment.FirstOrDefault(f => f.ident == ident);
+            return ts;
+        }
+
+        public LayoutEditorPositionablepoint GetTrackLayoutAnchorPoint(string ident)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+
+            var ap = layout.positionablepoint.Where(w => w.type == "ANCHOR").FirstOrDefault(f => f.ident == ident);
+            return ap;
         }
 
         
@@ -233,11 +264,17 @@ namespace JMRIReader
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
             var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == blockName || w.blockcname == blockName || w.blockdname == blockName).ToList();
-            var thisTO = turnoutsInThisBlock.FirstOrDefault();
-      
-            
-
+            var thisTO = turnoutsInThisBlock.FirstOrDefault();    
             return turnoutsInThisBlock;
+        }
+
+        public List<LayoutEditorTracksegment> GetTrackSegmentsForBlock(string blockName)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+            var ts = layout.tracksegment.Where(w => w.blockname == blockName).ToList();
+            return ts;
         }
 
         public signalmast GetSignalMastForBlock(string thisBlock, string nextBlock, string direction, List<string> ChainedSignalMasts)
