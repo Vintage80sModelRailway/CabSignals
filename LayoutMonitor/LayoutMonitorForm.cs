@@ -317,25 +317,33 @@ namespace LayoutMonitor
                             {
                                 if (liveSM.data.state == "Danger")
                                 {
-                                    alerts.Add(new Alert()
+                                    var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Danger);
+                                    if (!alertExists)
                                     {
-                                        BlockSystemName = nab.data.name,
-                                        BlockUserName = nab.data.userName,
-                                        SignalMastSystemName = sm.systemName,
-                                        SignalMastUserName = sm.userName,
-                                        Severity = AlertSeverity.Danger
-                                    }) ;
+                                        alerts.Add(new Alert()
+                                        {
+                                            BlockSystemName = nab.data.name,
+                                            BlockUserName = nab.data.userName,
+                                            SignalMastSystemName = sm.systemName,
+                                            SignalMastUserName = sm.userName,
+                                            Severity = AlertSeverity.Danger
+                                        });
+                                    }
                                 }
                                 else if (liveSM.data.state == "Caution")
                                 {
-                                    alerts.Add(new Alert()
+                                    var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Caution);
+                                    if (!alertExists)
                                     {
-                                        BlockSystemName = nab.data.name,
-                                        BlockUserName = nab.data.userName,
-                                        SignalMastSystemName = sm.systemName,
-                                        SignalMastUserName = sm.userName,
-                                        Severity = AlertSeverity.Caution
-                                    });
+                                        alerts.Add(new Alert()
+                                        {
+                                            BlockSystemName = nab.data.name,
+                                            BlockUserName = nab.data.userName,
+                                            SignalMastSystemName = sm.systemName,
+                                            SignalMastUserName = sm.userName,
+                                            Severity = AlertSeverity.Caution
+                                        });
+                                    }
                                 }
                                 else if (liveSM.data.state == "Proceed")
                                 {
@@ -616,56 +624,62 @@ namespace LayoutMonitor
 
             try
             {
-                foreach (var alert in alerts)
+                foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
                     var liveBlock = await webClient.GetBlock(alert.BlockUserName);
-                    if (liveBlock != null && liveBlock.data != null && liveBlock.data.state == 2)
+                    if (liveBlock != null && liveBlock.data != null && liveBlock.data.state == 4)
                     {
                         //if block now unoccupied clear alert
                         alertsToRemove.Add(alert);
+                        continue;
                     }
                     var liveSM = await webClient.GetSignalMast(alert.SignalMastSystemName);
                     if (liveSM != null && liveSM.data != null && liveSM.data.state == "Proceed")
                     {
                         alertsToRemove.Add(alert);
+                        continue;
                     }
-                    if (currentVisibleAlert == null)
+                    if (alert.Severity == AlertSeverity.Danger)
                     {
-                        if (liveSM.data.state != "Proceed")
+                        var existingCuationAlert = alerts.FirstOrDefault(a => a.Severity == AlertSeverity.Caution && a.BlockSystemName == alert.BlockSystemName);
+                        if (existingCuationAlert != null)
                         {
-                            DisplayAlert(alert);
-                            alerts[i].Visible = true;
-                            alerts[i].AlertStart = DateTime.Now;
-                            var colour = alert.Severity.ToString();
-                            SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
-                            signalBeep.Play();
+                            alertsToRemove.Add(alert);
                         }
                     }
-                    else if (alert.Visible == true)
+
+                    TimeSpan timeDiff = DateTime.Now - alert.AlertStart;
+                    if (liveSM.data.state != "Proceed" && !alertsToRemove.Contains(alert) && timeDiff.TotalSeconds > 5)
                     {
-                        currentAlertIndex = i;
+                        DisplayAlert(alert);
+                        alert.Visible = true;
+                        alert.AlertStart = DateTime.Now;
+                        var colour = alert.Severity.ToString();
+                        SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
+                        signalBeep.Play();                        
                     }
-                    else
-                    {
-                        if (i > currentAlertIndex && liveSM.data.state != "Proceed")
-                        {
-                            var activeAlert = alerts.ElementAtOrDefault(currentAlertIndex);
-                            if (activeAlert != null)
-                            {
-                                TimeSpan timeDiff = DateTime.Now - activeAlert.AlertStart;
-                                if (timeDiff.TotalSeconds > 3)
-                                {
-                                    alerts[currentAlertIndex].Visible = false;
-                                    alerts[i].Visible = true;
-                                    alerts[i].AlertStart = DateTime.Now;
-                                    DisplayAlert(alert);
-                                    var colour = alert.Severity.ToString();
-                                    SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
-                                    signalBeep.Play();
-                                }
-                            }
-                        }
-                    }
+
+                    //else
+                    //{
+                    //    if (i > currentAlertIndex && liveSM.data.state != "Proceed")
+                    //    {
+                    //        var activeAlert = alerts.ElementAtOrDefault(currentAlertIndex);
+                    //        if (activeAlert != null)
+                    //        {
+                    //            TimeSpan timeDiff = DateTime.Now - activeAlert.AlertStart;
+                    //            if (timeDiff.TotalSeconds > 3)
+                    //            {
+                    //                alerts[currentAlertIndex].Visible = false;
+                    //                alerts[i].Visible = true;
+                    //                alerts[i].AlertStart = DateTime.Now;
+                    //                DisplayAlert(alert);
+                    //                var colour = alert.Severity.ToString();
+                    //                SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
+                    //                signalBeep.Play();
+                    //            }
+                    //        }
+                    //    }
+                    //}
                     i++;
                 }
             }
@@ -688,13 +702,13 @@ namespace LayoutMonitor
             if (alert.Severity == AlertSeverity.Danger)
             {
                 lblBlockWarning.BackColor = Color.Red;
-                lbOutput.Items.Add(alert.BlockUserName+" DANGER");
+                lbOutput.Items.Add(alert.BlockUserName+" DANGER "+ alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
             }
             else if (alert.Severity == AlertSeverity.Caution)
             {
                 lblBlockWarning.BackColor = Color.OrangeRed;
-                lbOutput.Items.Add(alert.BlockUserName + " CUATION");
+                lbOutput.Items.Add(alert.BlockUserName + " CAUTION " + alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
             }
         }
