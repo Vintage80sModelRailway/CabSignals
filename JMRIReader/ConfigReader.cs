@@ -281,19 +281,7 @@ namespace JMRIReader
         {
             try
             {
-                string derivedDirection = direction;
-                //southwest - Station 1 to Incline top - needs to be west
-                //southeast - incline pi end to station 1 - needs to be east
-
-                if (direction == "North") derivedDirection = "West";
-                if (direction == "South") derivedDirection = "East";
-
-                if (direction.Contains("west")) derivedDirection = "West";
-                if (direction.Contains("east")) derivedDirection = "East";
-
-                //if (direction.ToLower().Contains("north")) derivedDirection = "West";
-                //if (direction.ToLower().Contains("south")) derivedDirection = "East";
-
+                string derivedDirection = GetDerivedDirection(direction);
                 string signalMastName = string.Empty;
                 var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
                 var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
@@ -328,6 +316,24 @@ namespace JMRIReader
             {
                 return null;
             }
+        }
+
+        public string GetDerivedDirection(string direction)
+        {
+            string derivedDirection = direction;
+            //southwest - Station 1 to Incline top - needs to be west
+            //southeast - incline pi end to station 1 - needs to be east
+
+            if (direction == "North") derivedDirection = "West";
+            if (direction == "South") derivedDirection = "East";
+
+            if (direction.Contains("west")) derivedDirection = "West";
+            if (direction.Contains("east")) derivedDirection = "East";
+
+            //if (direction.ToLower().Contains("north")) derivedDirection = "West";
+            //if (direction.ToLower().Contains("south")) derivedDirection = "East";
+
+            return derivedDirection;
         }
 
         public signalmastlogic GetLogicForSignalMast(string SignalMastName)

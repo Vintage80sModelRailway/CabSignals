@@ -78,6 +78,7 @@ namespace LayoutMonitor
                     int direction = -1;
                     bool oneConnectedBlockUnoccipied = false;
                     bool oneConnectedBlockOccupied = false;
+                    string connectingAnchorPoint = "";
                     List<BlockRootObject> nextBlocks = new List<BlockRootObject>();
 
                     if (nab.data.name == "AC Yard Entry")
@@ -118,12 +119,10 @@ namespace LayoutMonitor
                             {
                                 likelyPreviousBlock = liveBlock.data.userName;
                                 oneConnectedBlockOccupied = true;
-                                break;
                             }
                             else
                             {
                                 oneConnectedBlockUnoccipied = true;
-                                likelyNextBlock = liveBlock.data.userName;
                             }
                         }
                     }
@@ -137,21 +136,30 @@ namespace LayoutMonitor
                     {
                         //this track segment might be in the middle of a block, after a set turnout, so may miss some of the path through and come up with the wrong answer
                         //so use it to get to an edge connector for the block
-                        var bnl = await NavigateThroughBlockItems(nab.data.userName, ts.connect1name, ts.connect2name);
-                        if (bnl.BlockFound == likelyNextBlock)
+                        var bnl = await NavigateThroughBlockItems(nab.data.userName, ts.connect1name, ts.ident);
+                        if (bnl.BlockFound == likelyPreviousBlock)
+                        {
+                            //we went in the wrong direction but got to the start of the block we need and now know the direction to go in
+                            var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
+                            //A full navigation through the block should come up with the right answer
+                            likelyNextBlock = result.BlockFound;
+                            if (result.EdgeConnectorDirectionConnector.StartsWith("A"))
+                            {
+                                connectingAnchorPoint = result.EdgeConnectorDirectionConnector;
+                            }
+
+                        }
+                        else
                         {
                             //we went in the right direction but not necessarily from the start of the block, so go back
                             var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
                             //result gets us to the start of the block so now go back again through the whole block in the correct direction
                             var fullNav = await NavigateThroughBlockItems(nab.data.userName, result.EdgeConnectorDirectionConnector, result.EdgeConnector);
                             likelyNextBlock = fullNav.BlockFound;
-                        }
-                        else
-                        {
-                            //we went in the wrong direction but got to the start of the block we need and now know the direction to go in
-                            var result = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector);
-                            //A full navigation through the block should come up with the right answer
-                            likelyNextBlock = result.BlockFound;
+                            if (fullNav.EdgeConnectorDirectionConnector.StartsWith("A"))
+                            {
+                                connectingAnchorPoint = fullNav.EdgeConnectorDirectionConnector;
+                            }
                         }
                     }
 
@@ -279,13 +287,31 @@ namespace LayoutMonitor
                     foreach(var block in nextBlocks)
                     {
                         lbOutput.Items.Add("Next block " + block.data.userName);
-                        List<string> nextSignals = new List<string>();
-                        var sm = config.GetSignalMastForBlock(nab.data.userName, block.data.userName, smDirection, null);
+                        signalmast sm = new signalmast();
+                        var signalMastName = "";
+                        if (connectingAnchorPoint != "")
+                        {
+                            var ap = config.GetTrackLayoutAnchorPoint(connectingAnchorPoint);
+                            string derivedDirection = config.GetDerivedDirection(smDirection);
+                            if (derivedDirection == "East")
+                            {
+                                signalMastName = ap.eastboundsignalmast;
+                            }
+                            else
+                            {
+                                signalMastName = ap.westboundsignalmast;
+                            }
+                            sm = config.GetSignalMastByUserName(signalMastName);
+                        }
+                        else
+                        {
+                            sm = config.GetSignalMastForBlock(nab.data.userName, block.data.userName, smDirection, null);
+                        }
                         
-                        if (sm != null)
+                        if (sm != null && !String.IsNullOrEmpty(sm.userName))
                         {
                             smFound = true;
-                            lbOutput.Items.Add("Signal mast " + sm.userName);                            
+                            lbOutput.Items.Add("Signal mast " + signalMastName);                            
                             var liveSM = await webClient.GetSignalMast(sm.systemName);
                             if (liveSM != null)
                             {
@@ -355,7 +381,32 @@ namespace LayoutMonitor
             {
                 //turnout
                 var to = config.GetLayuoutTurnout(LayoutItem);
-                if (to.blockname != currentBlock)
+                var configTurnout = config.GetTurnoutByUserName(to.turnoutname);
+                var liveTurnout = await webClient.GetTurnout(configTurnout.systemName);
+                var derivedXoverBlockName = "";
+                if (to.type.Contains("XOVER"))
+                {
+                    if (to.connectaname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.blockname;
+                    }
+                    else if (to.connectbname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.blockname;
+                    }
+                    else if (to.connectcname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.blockcname;
+                    }
+                    else if (to.connectdname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.blockdname;
+                    }
+
+                }
+                else derivedXoverBlockName = to.blockname;
+
+                if (derivedXoverBlockName != currentBlock)
                 {
                     bnl.EdgeConnector = to.ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
@@ -363,8 +414,7 @@ namespace LayoutMonitor
                 }
                 else
                 {
-                    var configTurnout = config.GetTurnoutByUserName(to.turnoutname);
-                    var liveTurnout = await webClient.GetTurnout(configTurnout.systemName);
+
                     if (liveTurnout.data.state == 4)
                     {
                         //thrown
@@ -400,22 +450,99 @@ namespace LayoutMonitor
                         //closed
                         string nextItemIdent = "";
                         //need to determine direction of travel. If one of the C or B connectors matches the previousLayout Item, we're traversing head on.
-                        if (to.connectbname == previousLayoutItem || to.connectcname == previousLayoutItem)
+                        if (to.type.Contains("XOVER"))
                         {
-                            nextItemIdent = to.connectaname;
+                            if (liveTurnout.data.state == 2)
+                            {
+                                //closed
+                                
+                            }
+                            if (to.connectaname == previousLayoutItem)
+                            {
+                                if (liveTurnout.data.state == 2)
+                                {
+                                    //closed
+                                    nextItemIdent = to.connectbname;
+                                }
+                                else
+                                {
+                                    if (to.type.StartsWith("LH"))
+                                    {
+                                        //approaching A on a thrown LH XOver - short imminent
+                                    }
+                                    nextItemIdent = to.connectcname;
+                                }
+
+                            }
+                            else if (to.connectbname == previousLayoutItem)
+                            {
+                                if (liveTurnout.data.state == 2)
+                                {
+                                    nextItemIdent = to.connectaname;
+                                }
+                                else
+                                {
+                                    if (to.type.StartsWith("RH"))
+                                    {
+                                        //approaching B on a RH Xover when it's open - short imminent - assign a SM that should be red
+
+                                    }
+                                    nextItemIdent = to.connectdname;
+                                }
+                            }
+                            else if (to.connectcname == previousLayoutItem)
+                            {
+                                if (liveTurnout.data.state == 2)
+                                {
+                                    //closed
+                                    nextItemIdent = to.connectdname;
+                                }
+                                else
+                                {
+                                    if (to.type.StartsWith("LH"))
+                                    {
+                                        //approaching C on a LH Xover when it's thrown - short imminent
+                                    }
+                                    nextItemIdent = to.connectaname;
+                                }
+                            }
+                            else if (to.connectdname == previousLayoutItem)
+                            {
+                                if (liveTurnout.data.state == 2)
+                                {
+                                    //closed
+                                    nextItemIdent = to.connectcname;
+                                }
+                                else
+                                {
+                                    if (to.type.StartsWith("RH"))
+                                    {
+                                        //approaching D on a RH Xover when it's thrown - short imminent
+                                    }
+                                    nextItemIdent = to.connectbname;
+                                }
+                            }
                         }
                         else
                         {
-                            var closedConnector = to.connectbname;
-                            if (closedConnector != previousLayoutItem)
-                            {
-                                nextItemIdent = closedConnector;
-                            }
-                            else
+                            if (to.connectbname == previousLayoutItem || to.connectcname == previousLayoutItem)
                             {
                                 nextItemIdent = to.connectaname;
                             }
+                            else
+                            {
+                                var closedConnector = to.connectbname;
+                                if (closedConnector != previousLayoutItem)
+                                {
+                                    nextItemIdent = closedConnector;
+                                }
+                                else
+                                {
+                                    nextItemIdent = to.connectaname;
+                                }
+                            }
                         }
+
 
                         bnl.Breadcrumb += nextItemIdent + ";";
                         var newbnl = await NavigateThroughBlockItems(currentBlock, nextItemIdent, to.ident);
