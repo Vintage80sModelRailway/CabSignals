@@ -340,6 +340,7 @@ namespace LayoutMonitor
                                 else if (liveSM.data.state == "Proceed")
                                 {
                                     lbOutput.Items.Add(("Proceed " + nab.data.userName));
+                                    lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                                 }                                    
                             }
                         }
@@ -617,6 +618,12 @@ namespace LayoutMonitor
             {
                 foreach (var alert in alerts)
                 {
+                    var liveBlock = await webClient.GetBlock(alert.BlockUserName);
+                    if (liveBlock != null && liveBlock.data != null && liveBlock.data.state == 2)
+                    {
+                        //if block now unoccupied clear alert
+                        alertsToRemove.Add(alert);
+                    }
                     var liveSM = await webClient.GetSignalMast(alert.SignalMastSystemName);
                     if (liveSM != null && liveSM.data != null && liveSM.data.state == "Proceed")
                     {
@@ -668,7 +675,8 @@ namespace LayoutMonitor
             }
             foreach (var alert in alertsToRemove)
             {
-                alerts.Remove(alert);
+                if (alerts.Contains(alert))
+                    alerts.Remove(alert);
             }
             return true;
         }
@@ -680,10 +688,14 @@ namespace LayoutMonitor
             if (alert.Severity == AlertSeverity.Danger)
             {
                 lblBlockWarning.BackColor = Color.Red;
+                lbOutput.Items.Add(alert.BlockUserName+" DANGER");
+                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
             }
             else if (alert.Severity == AlertSeverity.Caution)
             {
                 lblBlockWarning.BackColor = Color.OrangeRed;
+                lbOutput.Items.Add(alert.BlockUserName + " CUATION");
+                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
             }
         }
 

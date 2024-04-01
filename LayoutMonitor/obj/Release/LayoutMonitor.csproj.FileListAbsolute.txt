@@ -16,3 +16,21 @@ C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.c
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CopyComplete
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Assets\Caution.wav
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Assets\Danger.wav
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Assets\Proceed.wav
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\LayoutMonitor.exe.config
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\LayoutMonitor.exe
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\LayoutMonitor.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\JMRIReader.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Newtonsoft.Json.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\JMRIReader.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Newtonsoft.Json.xml
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.AssemblyReference.cache
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.LayoutMonitorForm.resources
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.Properties.Resources.resources
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.GenerateResource.cache
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CoreCompileInputs.cache
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CopyComplete
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.pdb

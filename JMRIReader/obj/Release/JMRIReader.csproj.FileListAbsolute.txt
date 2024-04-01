@@ -7,3 +7,12 @@ C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.
 C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
 C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
 C:\Users\chris\source\repos\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\JMRIReader.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\JMRIReader.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.xml
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.AssemblyReference.cache
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CoreCompileInputs.cache
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb
