@@ -47,9 +47,9 @@
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(12, 438);
+            this.lbOutput.Location = new System.Drawing.Point(12, 498);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1484, 30);
+            this.lbOutput.Size = new System.Drawing.Size(1484, 17);
             this.lbOutput.TabIndex = 0;
             this.lbOutput.Visible = false;
             // 
@@ -107,9 +107,8 @@
             this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblBlockWarning.Location = new System.Drawing.Point(23, 14);
             this.lblBlockWarning.Name = "lblBlockWarning";
-            this.lblBlockWarning.Size = new System.Drawing.Size(188, 63);
+            this.lblBlockWarning.Size = new System.Drawing.Size(0, 63);
             this.lblBlockWarning.TabIndex = 6;
-            this.lblBlockWarning.Text = "Ready";
             // 
             // tbConfigLocation
             // 
@@ -163,19 +162,18 @@
             this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
             this.lblLikelyIssue.Location = new System.Drawing.Point(23, 86);
             this.lblLikelyIssue.Name = "lblLikelyIssue";
-            this.lblLikelyIssue.Size = new System.Drawing.Size(188, 63);
+            this.lblLikelyIssue.Size = new System.Drawing.Size(0, 63);
             this.lblLikelyIssue.TabIndex = 11;
-            this.lblLikelyIssue.Text = "Ready";
             // 
             // lvUpdates
             // 
             this.lvUpdates.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lvUpdates.ForeColor = System.Drawing.Color.White;
             this.lvUpdates.HideSelection = false;
-            this.lvUpdates.Location = new System.Drawing.Point(12, 272);
+            this.lvUpdates.Location = new System.Drawing.Point(12, 240);
             this.lvUpdates.MultiSelect = false;
             this.lvUpdates.Name = "lvUpdates";
-            this.lvUpdates.Size = new System.Drawing.Size(1484, 160);
+            this.lvUpdates.Size = new System.Drawing.Size(1484, 252);
             this.lvUpdates.TabIndex = 12;
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
@@ -188,16 +186,15 @@
             this.lblBlockContainingDanger.ForeColor = System.Drawing.Color.Black;
             this.lblBlockContainingDanger.Location = new System.Drawing.Point(23, 158);
             this.lblBlockContainingDanger.Name = "lblBlockContainingDanger";
-            this.lblBlockContainingDanger.Size = new System.Drawing.Size(188, 63);
+            this.lblBlockContainingDanger.Size = new System.Drawing.Size(0, 63);
             this.lblBlockContainingDanger.TabIndex = 13;
-            this.lblBlockContainingDanger.Text = "Ready";
             // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1508, 473);
+            this.ClientSize = new System.Drawing.Size(1508, 527);
             this.Controls.Add(this.lblBlockContainingDanger);
             this.Controls.Add(this.lvUpdates);
             this.Controls.Add(this.lblLikelyIssue);

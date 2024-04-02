@@ -17,7 +17,8 @@ namespace JMRIReader.Classes
         public string EdgeConnectorDirectionConnector { get; set; }
         public string Breadcrumb { get; set; }
         public string LikelyIssue { get; set; }
-
         public string NextBlockEdgeConnector { get; set; }
+        public string OriginalAlertBlock { get; set; }
+
     }
 }

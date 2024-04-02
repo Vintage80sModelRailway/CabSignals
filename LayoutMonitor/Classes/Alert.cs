@@ -18,6 +18,7 @@ namespace LayoutMonitor.Classes
         public bool Visible { get; set; }
 
         public string PreviousBlockUserName { get; set; }
+        public string AffectedBlockUserName { get; set; }
         public string NextBlockUserName { get; set; }
         public string LikelyIssue { get; set; }
 
