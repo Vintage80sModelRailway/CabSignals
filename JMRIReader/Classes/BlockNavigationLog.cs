@@ -10,6 +10,7 @@ namespace JMRIReader.Classes
     {
         public string BlockFound { get; set; }
         public string BlockChecked { get; set; }
+        public string PreviousBlock { get; set; }
         public string StartItem { get; set; }
         public string StartPreviousItem { get; set; }
         public string EdgeConnector { get; set; }

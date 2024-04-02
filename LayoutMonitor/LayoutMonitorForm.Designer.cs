@@ -40,15 +40,17 @@
             this.btnStopMonitoring = new System.Windows.Forms.Button();
             this.btnAcknowledgeAlert = new System.Windows.Forms.Button();
             this.lblLikelyIssue = new System.Windows.Forms.Label();
+            this.lvUpdates = new System.Windows.Forms.ListView();
             this.SuspendLayout();
             // 
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(13, 272);
+            this.lbOutput.Location = new System.Drawing.Point(12, 438);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(976, 160);
+            this.lbOutput.Size = new System.Drawing.Size(1484, 30);
             this.lbOutput.TabIndex = 0;
+            this.lbOutput.Visible = false;
             // 
             // tbServerIP
             // 
@@ -84,9 +86,10 @@
             // 
             // btnStartMonitoring
             // 
-            this.btnStartMonitoring.Location = new System.Drawing.Point(713, 12);
+            this.btnStartMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnStartMonitoring.Location = new System.Drawing.Point(1170, 15);
             this.btnStartMonitoring.Name = "btnStartMonitoring";
-            this.btnStartMonitoring.Size = new System.Drawing.Size(75, 23);
+            this.btnStartMonitoring.Size = new System.Drawing.Size(89, 62);
             this.btnStartMonitoring.TabIndex = 5;
             this.btnStartMonitoring.Text = "Start";
             this.btnStartMonitoring.UseVisualStyleBackColor = true;
@@ -95,10 +98,10 @@
             // lblBlockWarning
             // 
             this.lblBlockWarning.AutoSize = true;
-            this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblBlockWarning.Location = new System.Drawing.Point(23, 159);
             this.lblBlockWarning.Name = "lblBlockWarning";
-            this.lblBlockWarning.Size = new System.Drawing.Size(230, 76);
+            this.lblBlockWarning.Size = new System.Drawing.Size(188, 63);
             this.lblBlockWarning.TabIndex = 6;
             this.lblBlockWarning.Text = "Ready";
             // 
@@ -120,43 +123,61 @@
             // 
             // btnStopMonitoring
             // 
-            this.btnStopMonitoring.Location = new System.Drawing.Point(794, 13);
+            this.btnStopMonitoring.BackColor = System.Drawing.Color.Red;
+            this.btnStopMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnStopMonitoring.ForeColor = System.Drawing.Color.White;
+            this.btnStopMonitoring.Location = new System.Drawing.Point(1265, 12);
             this.btnStopMonitoring.Name = "btnStopMonitoring";
-            this.btnStopMonitoring.Size = new System.Drawing.Size(75, 23);
+            this.btnStopMonitoring.Size = new System.Drawing.Size(104, 66);
             this.btnStopMonitoring.TabIndex = 9;
             this.btnStopMonitoring.Text = "Stop";
-            this.btnStopMonitoring.UseVisualStyleBackColor = true;
+            this.btnStopMonitoring.UseVisualStyleBackColor = false;
             this.btnStopMonitoring.Click += new System.EventHandler(this.btnStopMonitoring_Click);
             // 
             // btnAcknowledgeAlert
             // 
             this.btnAcknowledgeAlert.BackColor = System.Drawing.Color.LimeGreen;
-            this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1009, 272);
+            this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnAcknowledgeAlert.ForeColor = System.Drawing.Color.White;
+            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1375, 12);
             this.btnAcknowledgeAlert.Name = "btnAcknowledgeAlert";
-            this.btnAcknowledgeAlert.Size = new System.Drawing.Size(487, 160);
+            this.btnAcknowledgeAlert.Size = new System.Drawing.Size(121, 66);
             this.btnAcknowledgeAlert.TabIndex = 10;
-            this.btnAcknowledgeAlert.Text = "Acknowledge";
+            this.btnAcknowledgeAlert.Text = "Ack";
             this.btnAcknowledgeAlert.UseVisualStyleBackColor = false;
             this.btnAcknowledgeAlert.Click += new System.EventHandler(this.btnAcknowledgeAlert_Click);
             // 
             // lblLikelyIssue
             // 
             this.lblLikelyIssue.AutoSize = true;
-            this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
             this.lblLikelyIssue.Location = new System.Drawing.Point(23, 72);
             this.lblLikelyIssue.Name = "lblLikelyIssue";
-            this.lblLikelyIssue.Size = new System.Drawing.Size(230, 76);
+            this.lblLikelyIssue.Size = new System.Drawing.Size(188, 63);
             this.lblLikelyIssue.TabIndex = 11;
             this.lblLikelyIssue.Text = "Ready";
+            // 
+            // lvUpdates
+            // 
+            this.lvUpdates.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lvUpdates.ForeColor = System.Drawing.Color.White;
+            this.lvUpdates.HideSelection = false;
+            this.lvUpdates.Location = new System.Drawing.Point(12, 272);
+            this.lvUpdates.MultiSelect = false;
+            this.lvUpdates.Name = "lvUpdates";
+            this.lvUpdates.Size = new System.Drawing.Size(1484, 160);
+            this.lvUpdates.TabIndex = 12;
+            this.lvUpdates.UseCompatibleStateImageBehavior = false;
+            this.lvUpdates.View = System.Windows.Forms.View.Details;
             // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1508, 450);
+            this.ClientSize = new System.Drawing.Size(1508, 473);
+            this.Controls.Add(this.lvUpdates);
             this.Controls.Add(this.lblLikelyIssue);
             this.Controls.Add(this.btnAcknowledgeAlert);
             this.Controls.Add(this.btnStopMonitoring);
@@ -170,7 +191,7 @@
             this.Controls.Add(this.tbServerIP);
             this.Controls.Add(this.lbOutput);
             this.Name = "LayoutMonitorForm";
-            this.Text = "Form1";
+            this.Text = "JMRI Danger Early Warning System";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -190,6 +211,7 @@
         private System.Windows.Forms.Button btnStopMonitoring;
         private System.Windows.Forms.Button btnAcknowledgeAlert;
         private System.Windows.Forms.Label lblLikelyIssue;
+        private System.Windows.Forms.ListView lvUpdates;
     }
 }
 

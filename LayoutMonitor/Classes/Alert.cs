@@ -22,5 +22,7 @@ namespace LayoutMonitor.Classes
         public string LikelyIssue { get; set; }
 
         public BlockNavigationLog BNL { get; set; }
+        public bool Acknowledged { get; set; }
+        public bool Superceded { get; set; }
     }
 }

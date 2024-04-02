@@ -29,6 +29,9 @@ namespace LayoutMonitor
         public LayoutMonitorForm()
         {
             InitializeComponent();
+            lvUpdates.Columns.Add("Status");
+            lvUpdates.HeaderStyle = ColumnHeaderStyle.None;
+
             var cfgFilePath = ConfigurationManager.AppSettings["ConfigFilePath"];
             if (cfgFilePath != null)
             {
@@ -56,6 +59,12 @@ namespace LayoutMonitor
             activeBlocks = await webClient.GetOccupiedBlocks();
             alerts = new List<Alert>();
             lbOutput.Items.Add("Monitoring started");
+            ListViewItem item = new ListViewItem();
+            item.Text = "Monitoring started";
+            item.BackColor = Color.LimeGreen;
+            lvUpdates.Items.Add(item);
+            lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+            lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             while (monitorRuning)
             {
                 await MonitorLayout();
@@ -98,20 +107,25 @@ namespace LayoutMonitor
                         var trackSegments = config.GetTrackSegmentsForBlock(nab.data.userName).OrderBy(o => o.ident).ToList();
                         var ts = trackSegments.FirstOrDefault();
                         if (ts == null) return false;
-                        var firstBoundaryFromMiddle = await NavigateThroughBlockItems(nab.data.userName, ts.connect1name, ts.ident, ts.ident);
+                        var firstBoundaryFromMiddle = await NavigateThroughBlockItems(nab.data.userName, likelyPreviousBlock,ts.connect1name, ts.ident, ts.ident);
                         if (firstBoundaryFromMiddle == null)
                         {
                             activeBlocks = newActiveBlocks;
                             return false;
                         }
-                        var secondBoundary = await NavigateThroughBlockItems(nab.data.userName, firstBoundaryFromMiddle.EdgeConnectorDirectionConnector, firstBoundaryFromMiddle.EdgeConnector, firstBoundaryFromMiddle.EdgeConnector);
+                        var secondBoundary = await NavigateThroughBlockItems(nab.data.userName, likelyPreviousBlock, firstBoundaryFromMiddle.EdgeConnectorDirectionConnector, firstBoundaryFromMiddle.EdgeConnector, firstBoundaryFromMiddle.EdgeConnector);
                         if (secondBoundary == null)
                         {
                             activeBlocks = newActiveBlocks;
                             return false;
                         }
 
-                        var firstBoundary = await NavigateThroughBlockItems(nab.data.userName, secondBoundary.EdgeConnectorDirectionConnector, secondBoundary.EdgeConnector, secondBoundary.EdgeConnector);
+                        var firstBoundary = await NavigateThroughBlockItems(nab.data.userName, likelyPreviousBlock, secondBoundary.EdgeConnectorDirectionConnector, secondBoundary.EdgeConnector, secondBoundary.EdgeConnector);
+                        if (firstBoundary == null)
+                        {
+                            activeBlocks = newActiveBlocks;
+                            return false;
+                        }
 
                         int numberOfOccupiedBlocks = 0;
                         foreach (var connectedBlock in thisBlock.path)
@@ -148,10 +162,10 @@ namespace LayoutMonitor
 
                         if (ts != null && !issueFoundNextBlock)
                         {
-                            var bnl = await NavigateThroughBlockItems(nab.data.userName, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector, firstBoundary.EdgeConnector);
+                            var bnl = await NavigateThroughBlockItems(nab.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector, firstBoundary.EdgeConnector);
                             if (bnl.BlockFound == likelyPreviousBlock)
                             {
-                                BNLThisBlock = await NavigateThroughBlockItems(nab.data.userName, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
+                                BNLThisBlock = await NavigateThroughBlockItems(nab.data.userName,likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
                                 BNLThisBlock.BlockChecked=nab.data.userName;
 
                                 likelyNextBlock = BNLThisBlock.BlockFound;
@@ -165,7 +179,7 @@ namespace LayoutMonitor
                                     issueFoundThisBlock = true;
                                 }
 
-                                BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
+                                BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock,BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
                                 BNLNextBlock.BlockChecked = likelyNextBlock;
 
                                 if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
@@ -179,7 +193,7 @@ namespace LayoutMonitor
                                     issueFoundNextBlock = true;
                                     likelyIssueNextBlock += "Collision in " + liveNextBlock.data.userName;
                                 }
-                                BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                                BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                                 BNLTwoBlocks.BlockChecked = BNLNextBlock.BlockFound;
 
                                 if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
@@ -208,7 +222,7 @@ namespace LayoutMonitor
                                     issueFoundThisBlock = true;
                                 }
 
-                                BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
+                                BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
                                 if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
                                 {
                                     issueFoundNextBlock = true;
@@ -220,7 +234,7 @@ namespace LayoutMonitor
                                     issueFoundNextBlock = true;
                                     likelyIssueNextBlock += "Collision in "+liveNextBlock.data.userName;
                                 }
-                                BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                                BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound,BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                                 if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
                                 {
                                     issueFoundTwoBlocks = true;
@@ -299,132 +313,14 @@ namespace LayoutMonitor
                         {
                             lbOutput.Items.Add(("Proceed " + nab.data.userName));
                             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                            ListViewItem item = new ListViewItem();
+                            item.Text = "Proceed " + nab.data.userName;
+                            item.BackColor = Color.LimeGreen;
+                            lvUpdates.Items.Add(item);
+                            lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                            lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                         }
-
-                        /*
-
-                        foreach (var connectedBlock in thisBlock.path)
-                        {
-                            var configBlock = config.GetBlockBySystemName(connectedBlock.block);
-                            var liveBlock = await webClient.GetBlock(configBlock.userName);
-                            if (liveBlock.data.userName == likelyNextBlock)
-                            {
-                                direction = connectedBlock.todir;
-                                oneConnectedBlockUnoccipied = true;
-                                nextBlocks.Add(liveBlock);
-                            }
-                            else if (liveBlock.data.state == 4 && likelyNextBlock == "") //unoccupied
-                            {
-                                direction = connectedBlock.todir;
-                                oneConnectedBlockUnoccipied = true;
-                                nextBlocks.Add(liveBlock);
-                            }
-                            else if (liveBlock.data.state == 2)
-                            {
-                                oneConnectedBlockOccupied = true;
-                                likelyPreviousBlock = liveBlock.data.userName;
-                            }
-                        }
-
-                        Enums.direction dir = (Enums.direction)direction;
-                        var smDirection = dir.ToString();
-
-                        if (!oneConnectedBlockUnoccipied)
-                        {
-                            //danger
-                            alerts.Add(new Alert()
-                            {
-                                BlockSystemName = nab.data.name,
-                                BlockUserName = nab.data.userName,
-                                SignalMastSystemName = "",
-                                SignalMastUserName = "",
-                                Severity = AlertSeverity.Danger
-                            });
-                        }
-                        else if (!oneConnectedBlockOccupied && likelyNextBlock == "")
-                        {
-                            //single isolated block occupied - do nothing
-                            activeBlocks = newActiveBlocks;
-                            return true;
-                        }
-
-                        foreach (var block in nextBlocks)
-                        {
-                            lbOutput.Items.Add("Next block " + block.data.userName);
-                            signalmast sm = new signalmast();
-                            var signalMastName = "";
-                            if (connectingAnchorPoint != "")
-                            {
-                                var ap = config.GetTrackLayoutAnchorPoint(connectingAnchorPoint);
-                                string derivedDirection = config.GetDerivedDirection(smDirection);
-                                if (derivedDirection == "East")
-                                {
-                                    signalMastName = ap.eastboundsignalmast;
-                                }
-                                else
-                                {
-                                    signalMastName = ap.westboundsignalmast;
-                                }
-                                sm = config.GetSignalMastByUserName(signalMastName);
-                            }
-                            else
-                            {
-                                sm = config.GetSignalMastForBlock(nab.data.userName, block.data.userName, smDirection, null);
-                            }
-
-                            if (sm != null && !String.IsNullOrEmpty(sm.userName))
-                            {
-                                lbOutput.Items.Add("Signal mast " + signalMastName);
-                                var liveSM = await webClient.GetSignalMast(sm.systemName);
-                                if (liveSM != null)
-                                {
-                                    if (liveSM.data.state == "Danger")
-                                    {
-                                        var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Danger);
-                                        if (!alertExists)
-                                        {
-                                            alerts.Add(new Alert()
-                                            {
-                                                BlockSystemName = nab.data.name,
-                                                BlockUserName = nab.data.userName,
-                                                SignalMastSystemName = sm.systemName,
-                                                SignalMastUserName = sm.userName,
-                                                Severity = AlertSeverity.Danger,
-                                                PreviousBlockUserName = likelyPreviousBlock,
-                                                NextBlockUserName = likelyNextBlock,
-                                                LikelyIssue = likelyIssueNextBlock
-                                            });
-                                        }
-                                    }
-                                    else if (liveSM.data.state == "Caution")
-                                    {
-                                        var alertExists = alerts.Any(a => a.BlockSystemName == nab.data.name && a.Severity == AlertSeverity.Caution);
-                                        if (!alertExists)
-                                        {
-                                            alerts.Add(new Alert()
-                                            {
-                                                BlockSystemName = nab.data.name,
-                                                BlockUserName = nab.data.userName,
-                                                SignalMastSystemName = sm.systemName,
-                                                SignalMastUserName = sm.userName,
-                                                Severity = AlertSeverity.Caution,
-                                                PreviousBlockUserName = likelyPreviousBlock,
-                                                NextBlockUserName = likelyNextBlock,
-                                                LikelyIssue = likelyIssueNextBlock
-                                            }); 
-                                        }
-                                    }
-                                    else if (liveSM.data.state == "Proceed")
-                                    {
-                                        lbOutput.Items.Add(("Proceed " + nab.data.userName));
-                                        lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                                    }
-                                }
-                            }
-                        }
-                        */
-                    }
-                    
+                    }                    
 
                     var goneInactive = activeBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
                     foreach (var inactive in goneInactive)
@@ -451,6 +347,11 @@ namespace LayoutMonitor
         {
             lbOutput.Items.Add("Monitoring stopped");
             monitorRuning = false;
+            ListViewItem item = new ListViewItem();
+            item.Text = "Monitoring stopped";
+            item.BackColor = Color.Red;
+            lvUpdates.Items.Add(item);
+            lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
         }
 
         private string FindEdgeOfBlock(string currentBlock, string layoutItem, string previousLayoutItem)
@@ -458,7 +359,7 @@ namespace LayoutMonitor
             return "";
         }
 
-        private async Task<BlockNavigationLog> NavigateThroughBlockItems(string currentBlock, string LayoutItem, string previousLayoutItem, string breadcrumbStart)
+        private async Task<BlockNavigationLog> NavigateThroughBlockItems(string currentBlock, string previousBlock, string LayoutItem, string previousLayoutItem, string breadcrumbStart)
         {
             if (string.IsNullOrEmpty(LayoutItem) || string.IsNullOrEmpty(currentBlock) || string.IsNullOrEmpty(previousLayoutItem))
                 return null;
@@ -467,6 +368,7 @@ namespace LayoutMonitor
             bnl.BlockChecked = currentBlock;
             bnl.StartItem = LayoutItem;
             bnl.StartPreviousItem = previousLayoutItem;
+            bnl.PreviousBlock = previousBlock;
             if (breadcrumbStart != "") bnl.Breadcrumb += breadcrumbStart+";";
             if (LayoutItem.Substring(0, 2) == "TO")
             {
@@ -497,7 +399,7 @@ namespace LayoutMonitor
                 }
                 else derivedXoverBlockName = to.blockname;
 
-                if (derivedXoverBlockName != currentBlock)
+                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock)
                 {
                     bnl.EdgeConnector = to.ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
@@ -589,6 +491,24 @@ namespace LayoutMonitor
                                 nextItemIdent = to.connectbname;
                             }
                         }
+                        bnl.Breadcrumb += nextItemIdent + ";";
+                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.ident, "");
+                        bnl.Breadcrumb += newbnl.Breadcrumb;
+                        bnl.BlockFound = newbnl.BlockFound;
+                        bnl.EdgeConnector = newbnl.EdgeConnector;
+                        bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                        bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                        if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                        {
+                            if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                            {
+                                bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                            }
+                            else
+                            {
+                                bnl.LikelyIssue = newbnl.LikelyIssue;
+                            }
+                        }
                     }
                     else
                     {
@@ -616,26 +536,7 @@ namespace LayoutMonitor
                                 {
                                     nextItemIdent = to.connectaname;
                                 }
-                            }
-
-                            bnl.Breadcrumb += nextItemIdent + ";";
-                            var newbnl = await NavigateThroughBlockItems(currentBlock, nextItemIdent, to.ident, "");
-                            bnl.Breadcrumb += newbnl.Breadcrumb;
-                            bnl.BlockFound = newbnl.BlockFound;
-                            bnl.EdgeConnector = newbnl.EdgeConnector;
-                            bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
-                            bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
-                            if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
-                            {
-                                if (!String.IsNullOrEmpty(bnl.LikelyIssue))
-                                {
-                                    bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
-                                }
-                                else
-                                {
-                                    bnl.LikelyIssue = newbnl.LikelyIssue;
-                                }
-                            }                          
+                            }                         
                         }
                         else
                         {
@@ -659,24 +560,23 @@ namespace LayoutMonitor
                                     nextItemIdent = to.connectaname;
                                 }
                             }
-
-                            bnl.Breadcrumb += nextItemIdent + ";";
-                            var newbnl = await NavigateThroughBlockItems(currentBlock, nextItemIdent, to.ident, "");
-                            bnl.Breadcrumb += newbnl.Breadcrumb;
-                            bnl.BlockFound = newbnl.BlockFound;
-                            bnl.EdgeConnector = newbnl.EdgeConnector;
-                            bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
-                            bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
-                            if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                        }
+                        bnl.Breadcrumb += nextItemIdent + ";";
+                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.ident, "");
+                        bnl.Breadcrumb += newbnl.Breadcrumb;
+                        bnl.BlockFound = newbnl.BlockFound;
+                        bnl.EdgeConnector = newbnl.EdgeConnector;
+                        bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                        bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                        if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                        {
+                            if (!String.IsNullOrEmpty(bnl.LikelyIssue))
                             {
-                                if (!String.IsNullOrEmpty(bnl.LikelyIssue))
-                                {
-                                    bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
-                                }
-                                else
-                                {
-                                    bnl.LikelyIssue = newbnl.LikelyIssue;
-                                }
+                                bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                            }
+                            else
+                            {
+                                bnl.LikelyIssue = newbnl.LikelyIssue;
                             }
                         }
                     }
@@ -686,7 +586,7 @@ namespace LayoutMonitor
             {
                 //track
                 var ts = config.GetLayoutTrackSegment(LayoutItem);
-                if (ts.blockname != currentBlock)
+                if (ts.blockname != currentBlock && ts.blockname != previousBlock)
                 {
                     bnl.EdgeConnector = ts.ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
@@ -705,7 +605,7 @@ namespace LayoutMonitor
                     var nextItem = ts.connect2name;
                     if (ts.connect2name == previousLayoutItem) nextItem = ts.connect1name;
                     bnl.Breadcrumb += nextItem + ";";
-                    var newbnl = await NavigateThroughBlockItems(currentBlock, nextItem, ts.ident,"");
+                    var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, ts.ident,"");
                     bnl.Breadcrumb += newbnl.Breadcrumb;
                     bnl.BlockFound = newbnl.BlockFound;
                     bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -731,7 +631,7 @@ namespace LayoutMonitor
                 var nextItem = a.connect2name;
                 if (a.connect2name == previousLayoutItem) nextItem = a.connect1name;
                 bnl.Breadcrumb += nextItem + ";";
-                var newbnl = await NavigateThroughBlockItems(currentBlock, nextItem, a.ident,"");
+                var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, a.ident,"");
                 bnl.Breadcrumb += newbnl.Breadcrumb;
                 bnl.BlockFound = newbnl.BlockFound;
                 bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -756,8 +656,16 @@ namespace LayoutMonitor
         {
             var ackBlockName = lblBlockWarning.Text;
             var ackAlert = alerts.FirstOrDefault(f => f.BlockUserName == ackBlockName);
+            ListViewItem item = new ListViewItem();
+
             if (ackAlert != null)
             {
+                item.Text = "Acknowledged " + ackAlert.BlockUserName;
+                item.BackColor = Color.LimeGreen;
+                lvUpdates.Items.Add(item);
+                lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                alerts.Remove(ackAlert);
+                ackAlert.Acknowledged = true;
                 alerts.Remove(ackAlert);
             }
         }
@@ -777,13 +685,14 @@ namespace LayoutMonitor
             {
                 foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
-                    var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
+                    var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked,alert.BNL.PreviousBlock, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
                     var checkAlertLiveBlock = await webClient.GetBlock(alert.BNL.BlockChecked);
                     var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
                     var liveBlock = await webClient.GetBlock(alert.BlockUserName);
                     if ((liveBlock != null && liveBlock.data != null && liveBlock.data.state == 4) || !alertStillActive)
                     {
                         //if block now unoccupied clear alert
+                        alert.Acknowledged = false;
                         alertsToRemove.Add(alert);
                         continue;
                     }
@@ -793,6 +702,8 @@ namespace LayoutMonitor
                         var existingCuationAlert = alerts.FirstOrDefault(a => a.Severity == AlertSeverity.Caution && a.BlockUserName == alert.PreviousBlockUserName);
                         if (existingCuationAlert != null)
                         {
+                            existingCuationAlert.Acknowledged = false;
+                            existingCuationAlert.Superceded = true;
                             alertsToRemove.Add(existingCuationAlert);
                         }
                     }
@@ -830,82 +741,24 @@ namespace LayoutMonitor
             foreach (var alert in alertsToRemove)
             {
                 if (alerts.Contains(alert))
-                    alerts.Remove(alert);
-            }
-            return true;
-        }
-
-        private async Task<bool> ProcessAlertsOld()
-        {
-            if (alerts.Count == 0)
-            {
-                lblBlockWarning.Text = "";
-                lblLikelyIssue.Text = "";
-            }
-
-            var currentVisibleAlert = alerts.FirstOrDefault(f => f.Visible == true);
-            List<Alert> alertsToRemove = new List<Alert>();
-
-            try
-            {
-                foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
-                    var liveBlock = await webClient.GetBlock(alert.BlockUserName);
-                    if (liveBlock != null && liveBlock.data != null && liveBlock.data.state == 4)
+                    if (!alert.Superceded)
                     {
-                        //if block now unoccupied clear alert
-                        alertsToRemove.Add(alert);
-                        continue;
-                    }
-                    var liveSM = await webClient.GetSignalMast(alert.SignalMastSystemName);
-                    if (liveSM != null && liveSM.data != null && liveSM.data.state == "Proceed")
-                    {
-                        alertsToRemove.Add(alert);
-                        continue;
-                    }
-                    if (alert.Severity == AlertSeverity.Danger)
-                    {
-                        var existingCuationAlert = alerts.FirstOrDefault(a => a.Severity == AlertSeverity.Caution && a.BlockUserName == alert.PreviousBlockUserName);
-                        if (existingCuationAlert != null)
+                        ListViewItem item = new ListViewItem();
+                        if (!alert.Acknowledged)
                         {
-                            alertsToRemove.Add(existingCuationAlert);
+                            item.Text = "Proceed " + alert.BlockUserName;
                         }
-                    }
-
-                    TimeSpan timeDiff = DateTime.Now - alert.AlertStart;
-                    bool showAlert = false;
-
-                    if (liveSM.data.state != "Proceed" && !alertsToRemove.Contains(alert))
-                    {
-                        if (alert.Severity == AlertSeverity.Caution)
+                        else
                         {
-                            if (timeDiff.TotalSeconds >= 10) showAlert = true;
+                            item.Text = "Acknowledged " + alert.BlockUserName;
                         }
-                        else if (alert.Severity == AlertSeverity.Danger)
-                        {
-                            if (timeDiff.TotalSeconds > 5) showAlert = true;
-                        }
+                        item.BackColor = Color.LimeGreen;
+                        lvUpdates.Items.Add(item);
+                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                     }
-                    
-                    if (showAlert)
-                    {
-                        DisplayAlert(alert);
-                        alert.Visible = true;
-                        alert.AlertStart = DateTime.Now;
-                        var colour = alert.Severity.ToString();
-                        SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
-                        signalBeep.Play();                        
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                lbOutput.Items.Add(ex.Message);
-            }
-            foreach (var alert in alertsToRemove)
-            {
-                if (alerts.Contains(alert))
                     alerts.Remove(alert);
+                }
             }
             return true;
         }
@@ -922,6 +775,11 @@ namespace LayoutMonitor
                 lblLikelyIssue.BackColor = Color.Red;
                 lbOutput.Items.Add(alert.BlockUserName+" DANGER "+ alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                ListViewItem item = new ListViewItem();
+                item.Text = alert.BlockUserName+" "+alert.LikelyIssue+" in "+alert.BNL.BlockChecked;
+                item.BackColor = Color.Red;
+                lvUpdates.Items.Add(item);
+                lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
             }
             else if (alert.Severity == AlertSeverity.Caution)
             {
@@ -929,15 +787,14 @@ namespace LayoutMonitor
                 lblLikelyIssue.BackColor = Color.OrangeRed;
                 lbOutput.Items.Add(alert.BlockUserName + " CAUTION " + alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                ListViewItem item = new ListViewItem();
+                item.Text = alert.BlockUserName + " " + alert.LikelyIssue + " in " + alert.BNL.BlockChecked;
+                item.BackColor = Color.OrangeRed;
+                lvUpdates.Items.Add(item);
+                lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
             }
-        }
 
-        private async void btnTestNavigation_Click(object sender, EventArgs e)
-        {
-            config = new ConfigReader(tbConfigLocation.Text);
-            webClient = new JSONReader("http://" + tbServerIP.Text + ":" + tbServerPort.Text);
-            var navPath = "";
-            var block = await NavigateThroughBlockItems("AC Yard Entry", "TO19", "T60", "TO19");
+            lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
         }
     }
 }
