@@ -137,6 +137,7 @@ namespace LayoutMonitor
             bool issueFoundThisBlock = false;
             bool issueFoundNextBlock = false;
             bool issueFoundTwoBlocks = false;
+            bool determinedPreviousBlockFromAlerts = false;
             string connectingAnchorPoint = "";
             string likelyIssueThisBlock = "";
             string likelyIssueNextBlock = "";
@@ -195,11 +196,16 @@ namespace LayoutMonitor
                     List<string> ActiveCollisionAlertBlocks = alerts.Where(w => w.Severity == AlertSeverity.Caution && w.LikelyIssue.Contains("Collision")).Select(s => s.BNL.BlockChecked).ToList();
                     foreach (var lpb in LikelyPreviousBlocks)
                     {
-                        if (!ActiveCollisionAlertBlocks.Contains(lpb)) likelyPreviousBlock = lpb;
+                        if (!ActiveCollisionAlertBlocks.Contains(lpb))
+                        {
+                            likelyPreviousBlock = lpb;
+                            determinedPreviousBlockFromAlerts = true;
+                        }
+                        
                     }
                 }
 
-                if (numberOfOccupiedBlocks == thisBlock.path.Count() || !oneConnectedBlockUnoccipied)
+                if ((numberOfOccupiedBlocks == thisBlock.path.Count() || !oneConnectedBlockUnoccipied) && !determinedPreviousBlockFromAlerts)
                 {
                     issueFoundNextBlock = true;
                     likelyIssueNextBlock = "Collision all surrounding blocks occupied ";
@@ -376,10 +382,19 @@ namespace LayoutMonitor
                     lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                     lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
+                bool alertRemoved = false;
                 foreach (var alert in alertsToRemove)
                 {
                     if (alerts.Contains(alert))
                     alerts.Remove(alert);
+                    alertRemoved = true;
+                }
+                if (alertRemoved && alerts.Count == 0)
+                {
+                    var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
+                    lvUpdates.Items.Clear();
+                    lvUpdates.Items.Add(latestAlert);
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
             }
             return true;
@@ -731,6 +746,7 @@ namespace LayoutMonitor
             {
                 foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
+                    bool hasPrecedingAlert = false;
                     if (string.IsNullOrEmpty(alert.BNL.BlockFound))
                     {
                         if (!alert.Visible)
@@ -788,11 +804,16 @@ namespace LayoutMonitor
                         //    alertsToRemove.Add(existingCuationAlert);
                         //}
                     }
+                    else if (alert.Severity == AlertSeverity.Caution)
+                    {
+                        var blockAffected = alert.BNL.BlockChecked;
+                        hasPrecedingAlert = alerts.Any(a => a.BNL.BlockFound == blockAffected && a.Severity == AlertSeverity.Danger);
+                    }
 
                     TimeSpan timeDiff = DateTime.Now - alert.AlertStart;
                     bool showAlert = false;
 
-                    if (alertStillActive && !alertsToRemove.Contains(alert))
+                    if (alertStillActive && !hasPrecedingAlert && !alertsToRemove.Contains(alert))
                     {
                         if (alert.Severity == AlertSeverity.Caution)
                         {
@@ -819,6 +840,8 @@ namespace LayoutMonitor
             {
                 lbOutput.Items.Add(ex.Message);
             }
+
+            var alertsEmptied = false;
             foreach (var alert in alertsToRemove)
             {
                 if (alerts.Contains(alert))
@@ -839,7 +862,16 @@ namespace LayoutMonitor
                         lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                     }
                     alerts.Remove(alert);
+                    alertsEmptied = true;
                 }
+            }
+
+            if(alertsEmptied && alerts.Count == 0)
+            {
+                var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
+                lvUpdates.Items.Clear();
+                lvUpdates.Items.Add(latestAlert);
+                lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             }
             return true;
         }
