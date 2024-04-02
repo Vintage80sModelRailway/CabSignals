@@ -41,6 +41,7 @@
             this.btnAcknowledgeAlert = new System.Windows.Forms.Button();
             this.lblLikelyIssue = new System.Windows.Forms.Label();
             this.lvUpdates = new System.Windows.Forms.ListView();
+            this.lblBlockContainingDanger = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -54,35 +55,39 @@
             // 
             // tbServerIP
             // 
-            this.tbServerIP.Location = new System.Drawing.Point(97, 13);
+            this.tbServerIP.Location = new System.Drawing.Point(1039, 16);
             this.tbServerIP.Name = "tbServerIP";
             this.tbServerIP.Size = new System.Drawing.Size(125, 20);
             this.tbServerIP.TabIndex = 1;
+            this.tbServerIP.Visible = false;
             // 
             // tbServerPort
             // 
-            this.tbServerPort.Location = new System.Drawing.Point(266, 13);
+            this.tbServerPort.Location = new System.Drawing.Point(1064, 42);
             this.tbServerPort.Name = "tbServerPort";
             this.tbServerPort.Size = new System.Drawing.Size(100, 20);
             this.tbServerPort.TabIndex = 2;
+            this.tbServerPort.Visible = false;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(40, 16);
+            this.label1.Location = new System.Drawing.Point(982, 19);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(51, 13);
             this.label1.TabIndex = 3;
             this.label1.Text = "Server IP";
+            this.label1.Visible = false;
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(234, 16);
+            this.label2.Location = new System.Drawing.Point(1032, 45);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 4;
             this.label2.Text = "Port";
+            this.label2.Visible = false;
             // 
             // btnStartMonitoring
             // 
@@ -98,8 +103,9 @@
             // lblBlockWarning
             // 
             this.lblBlockWarning.AutoSize = true;
+            this.lblBlockWarning.BackColor = System.Drawing.SystemColors.ActiveCaption;
             this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblBlockWarning.Location = new System.Drawing.Point(23, 159);
+            this.lblBlockWarning.Location = new System.Drawing.Point(23, 14);
             this.lblBlockWarning.Name = "lblBlockWarning";
             this.lblBlockWarning.Size = new System.Drawing.Size(188, 63);
             this.lblBlockWarning.TabIndex = 6;
@@ -107,19 +113,21 @@
             // 
             // tbConfigLocation
             // 
-            this.tbConfigLocation.Location = new System.Drawing.Point(427, 12);
+            this.tbConfigLocation.Location = new System.Drawing.Point(896, 68);
             this.tbConfigLocation.Name = "tbConfigLocation";
             this.tbConfigLocation.Size = new System.Drawing.Size(268, 20);
             this.tbConfigLocation.TabIndex = 7;
+            this.tbConfigLocation.Visible = false;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(384, 15);
+            this.label3.Location = new System.Drawing.Point(853, 71);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(37, 13);
             this.label3.TabIndex = 8;
             this.label3.Text = "Config";
+            this.label3.Visible = false;
             // 
             // btnStopMonitoring
             // 
@@ -150,9 +158,10 @@
             // lblLikelyIssue
             // 
             this.lblLikelyIssue.AutoSize = true;
+            this.lblLikelyIssue.BackColor = System.Drawing.SystemColors.ActiveCaption;
             this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
-            this.lblLikelyIssue.Location = new System.Drawing.Point(23, 72);
+            this.lblLikelyIssue.Location = new System.Drawing.Point(23, 86);
             this.lblLikelyIssue.Name = "lblLikelyIssue";
             this.lblLikelyIssue.Size = new System.Drawing.Size(188, 63);
             this.lblLikelyIssue.TabIndex = 11;
@@ -171,12 +180,25 @@
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
             // 
+            // lblBlockContainingDanger
+            // 
+            this.lblBlockContainingDanger.AutoSize = true;
+            this.lblBlockContainingDanger.BackColor = System.Drawing.SystemColors.ActiveCaption;
+            this.lblBlockContainingDanger.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockContainingDanger.ForeColor = System.Drawing.Color.Black;
+            this.lblBlockContainingDanger.Location = new System.Drawing.Point(23, 158);
+            this.lblBlockContainingDanger.Name = "lblBlockContainingDanger";
+            this.lblBlockContainingDanger.Size = new System.Drawing.Size(188, 63);
+            this.lblBlockContainingDanger.TabIndex = 13;
+            this.lblBlockContainingDanger.Text = "Ready";
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1508, 473);
+            this.Controls.Add(this.lblBlockContainingDanger);
             this.Controls.Add(this.lvUpdates);
             this.Controls.Add(this.lblLikelyIssue);
             this.Controls.Add(this.btnAcknowledgeAlert);
@@ -212,6 +234,7 @@
         private System.Windows.Forms.Button btnAcknowledgeAlert;
         private System.Windows.Forms.Label lblLikelyIssue;
         private System.Windows.Forms.ListView lvUpdates;
+        private System.Windows.Forms.Label lblBlockContainingDanger;
     }
 }
 

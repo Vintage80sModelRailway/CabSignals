@@ -42,6 +42,10 @@ namespace JMRIReader
         public async Task<BlockRootObject> GetBlock(string UserName)
         {
             BlockRootObject block = new BlockRootObject();
+            if (block == null)
+            {
+                return null;
+            }
             var response = await client.GetAsync("/json/block/"+UserName);
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try

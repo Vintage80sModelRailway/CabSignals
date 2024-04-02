@@ -150,7 +150,9 @@ namespace LayoutMonitor
                         if (numberOfOccupiedBlocks == thisBlock.path.Count() || !oneConnectedBlockUnoccipied)
                         {
                             issueFoundNextBlock = true;
-                            likelyIssueNextBlock = "Collision";
+                            likelyIssueNextBlock = "Collision all surrounding blocks occupied ";
+                            BNLNextBlock.PreviousBlock = nab.data.userName;
+                            BNLNextBlock.BlockChecked = nab.data.userName;
                         }
 
                         if (!oneConnectedBlockOccupied)
@@ -191,7 +193,7 @@ namespace LayoutMonitor
                                 if (liveNextBlock.data.state == 2) //occupied
                                 {
                                     issueFoundNextBlock = true;
-                                    likelyIssueNextBlock += "Collision in " + liveNextBlock.data.userName;
+                                    likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
                                 }
                                 BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                                 BNLTwoBlocks.BlockChecked = BNLNextBlock.BlockFound;
@@ -205,7 +207,7 @@ namespace LayoutMonitor
                                 if (twoBlocksLiveBlock.data.state == 2)
                                 {
                                     issueFoundTwoBlocks = true;
-                                    likelyIssueTwoBlocks = "Collision in "+twoBlocksLiveBlock.data.userName;
+                                    likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
                                 }
                             }
                             else
@@ -232,7 +234,7 @@ namespace LayoutMonitor
                                 if (liveNextBlock.data.state == 2) //occupied
                                 {
                                     issueFoundNextBlock = true;
-                                    likelyIssueNextBlock += "Collision in "+liveNextBlock.data.userName;
+                                    likelyIssueNextBlock += "Collision ";// in "+liveNextBlock.data.userName;
                                 }
                                 BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound,BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                                 if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
@@ -244,7 +246,7 @@ namespace LayoutMonitor
                                 if (liveTwoBlocks.data.state == 2) //occupied
                                 {
                                     issueFoundTwoBlocks = true;
-                                    likelyIssueTwoBlocks += "Collision in " + liveTwoBlocks.data.userName; ;
+                                    likelyIssueTwoBlocks += "Collision  ";// in " + liveTwoBlocks.data.userName; ;
                                 }
                             }
                         }
@@ -314,7 +316,7 @@ namespace LayoutMonitor
                             lbOutput.Items.Add(("Proceed " + nab.data.userName));
                             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                             ListViewItem item = new ListViewItem();
-                            item.Text = "Proceed " + nab.data.userName;
+                            item.Text = "Proceed " + nab.data.userName+ " to "+likelyNextBlock;
                             item.BackColor = Color.LimeGreen;
                             lvUpdates.Items.Add(item);
                             lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
@@ -586,7 +588,7 @@ namespace LayoutMonitor
             {
                 //track
                 var ts = config.GetLayoutTrackSegment(LayoutItem);
-                if (ts.blockname != currentBlock && ts.blockname != previousBlock)
+                if (ts.blockname != currentBlock)
                 {
                     bnl.EdgeConnector = ts.ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
@@ -676,6 +678,7 @@ namespace LayoutMonitor
             {
                 lblBlockWarning.Text = "";
                 lblLikelyIssue.Text = "";
+                lblBlockContainingDanger.Text = "";
             }
 
             var currentVisibleAlert = alerts.FirstOrDefault(f => f.Visible == true);
@@ -685,7 +688,22 @@ namespace LayoutMonitor
             {
                 foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
+                    if (string.IsNullOrEmpty(alert.BNL.BlockFound))
+                    {
+                        if (!alert.Visible)
+                        {
+                            DisplayAlert(alert);
+                            alert.Visible = true;
+                            alert.AlertStart = DateTime.Now;
+                            var colour = alert.Severity.ToString();
+                            SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
+                            signalBeep.Play();
+                            continue;
+                        }
+                        continue;
+                    }
                     var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked,alert.BNL.PreviousBlock, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
+                    alert.LikelyIssue = checkAlert.LikelyIssue;
                     var checkAlertLiveBlock = await webClient.GetBlock(alert.BNL.BlockChecked);
                     var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
                     var liveBlock = await webClient.GetBlock(alert.BlockUserName);
@@ -769,27 +787,31 @@ namespace LayoutMonitor
             lblBlockWarning.ForeColor = Color.White;
             lblLikelyIssue.Text = alert.LikelyIssue;
             lblLikelyIssue.ForeColor = Color.White;
+            lblBlockContainingDanger.ForeColor = Color.White;
+            lblBlockContainingDanger.Text = "In "+ alert.BNL.BlockChecked;
             if (alert.Severity == AlertSeverity.Danger)
             {
                 lblBlockWarning.BackColor = Color.Red;
                 lblLikelyIssue.BackColor = Color.Red;
+                lblBlockContainingDanger.BackColor = Color.Red;
                 lbOutput.Items.Add(alert.BlockUserName+" DANGER "+ alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                 ListViewItem item = new ListViewItem();
-                item.Text = alert.BlockUserName+" "+alert.LikelyIssue+" in "+alert.BNL.BlockChecked;
+                item.Text = alert.BlockUserName+" - "+alert.LikelyIssue+"- in "+alert.BNL.BlockChecked;
                 item.BackColor = Color.Red;
                 lvUpdates.Items.Add(item);
                 lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
             }
             else if (alert.Severity == AlertSeverity.Caution)
             {
-                lblBlockWarning.BackColor = Color.OrangeRed;
-                lblLikelyIssue.BackColor = Color.OrangeRed;
+                lblBlockWarning.BackColor = Color.Orange;
+                lblLikelyIssue.BackColor = Color.Orange;
+                lblBlockContainingDanger.BackColor = Color.Orange;
                 lbOutput.Items.Add(alert.BlockUserName + " CAUTION " + alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                 ListViewItem item = new ListViewItem();
-                item.Text = alert.BlockUserName + " " + alert.LikelyIssue + " in " + alert.BNL.BlockChecked;
-                item.BackColor = Color.OrangeRed;
+                item.Text = alert.BlockUserName + " - " + alert.LikelyIssue + "- in " + alert.BNL.BlockChecked;
+                item.BackColor = Color.Orange;
                 lvUpdates.Items.Add(item);
                 lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
             }
