@@ -1,4 +1,5 @@
-﻿using System;
+﻿using JMRIReader.Classes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,5 +16,11 @@ namespace LayoutMonitor.Classes
         public DateTime AlertStart { get; set; }
         public AlertSeverity Severity { get; set; }
         public bool Visible { get; set; }
+
+        public string PreviousBlockUserName { get; set; }
+        public string NextBlockUserName { get; set; }
+        public string LikelyIssue { get; set; }
+
+        public BlockNavigationLog BNL { get; set; }
     }
 }

@@ -39,7 +39,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.btnStopMonitoring = new System.Windows.Forms.Button();
             this.btnAcknowledgeAlert = new System.Windows.Forms.Button();
-            this.btnTestNavigation = new System.Windows.Forms.Button();
+            this.lblLikelyIssue = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -84,7 +84,7 @@
             // 
             // btnStartMonitoring
             // 
-            this.btnStartMonitoring.Location = new System.Drawing.Point(914, 13);
+            this.btnStartMonitoring.Location = new System.Drawing.Point(713, 12);
             this.btnStartMonitoring.Name = "btnStartMonitoring";
             this.btnStartMonitoring.Size = new System.Drawing.Size(75, 23);
             this.btnStartMonitoring.TabIndex = 5;
@@ -96,10 +96,11 @@
             // 
             this.lblBlockWarning.AutoSize = true;
             this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblBlockWarning.Location = new System.Drawing.Point(13, 159);
+            this.lblBlockWarning.Location = new System.Drawing.Point(23, 159);
             this.lblBlockWarning.Name = "lblBlockWarning";
-            this.lblBlockWarning.Size = new System.Drawing.Size(0, 76);
+            this.lblBlockWarning.Size = new System.Drawing.Size(230, 76);
             this.lblBlockWarning.TabIndex = 6;
+            this.lblBlockWarning.Text = "Ready";
             // 
             // tbConfigLocation
             // 
@@ -119,7 +120,7 @@
             // 
             // btnStopMonitoring
             // 
-            this.btnStopMonitoring.Location = new System.Drawing.Point(914, 43);
+            this.btnStopMonitoring.Location = new System.Drawing.Point(794, 13);
             this.btnStopMonitoring.Name = "btnStopMonitoring";
             this.btnStopMonitoring.Size = new System.Drawing.Size(75, 23);
             this.btnStopMonitoring.TabIndex = 9;
@@ -129,31 +130,34 @@
             // 
             // btnAcknowledgeAlert
             // 
-            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(814, 72);
+            this.btnAcknowledgeAlert.BackColor = System.Drawing.Color.LimeGreen;
+            this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1009, 272);
             this.btnAcknowledgeAlert.Name = "btnAcknowledgeAlert";
-            this.btnAcknowledgeAlert.Size = new System.Drawing.Size(175, 52);
+            this.btnAcknowledgeAlert.Size = new System.Drawing.Size(487, 160);
             this.btnAcknowledgeAlert.TabIndex = 10;
             this.btnAcknowledgeAlert.Text = "Acknowledge";
-            this.btnAcknowledgeAlert.UseVisualStyleBackColor = true;
+            this.btnAcknowledgeAlert.UseVisualStyleBackColor = false;
             this.btnAcknowledgeAlert.Click += new System.EventHandler(this.btnAcknowledgeAlert_Click);
             // 
-            // btnTestNavigation
+            // lblLikelyIssue
             // 
-            this.btnTestNavigation.Location = new System.Drawing.Point(43, 61);
-            this.btnTestNavigation.Name = "btnTestNavigation";
-            this.btnTestNavigation.Size = new System.Drawing.Size(75, 23);
-            this.btnTestNavigation.TabIndex = 11;
-            this.btnTestNavigation.Text = "Test nav";
-            this.btnTestNavigation.UseVisualStyleBackColor = true;
-            this.btnTestNavigation.Click += new System.EventHandler(this.btnTestNavigation_Click);
+            this.lblLikelyIssue.AutoSize = true;
+            this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
+            this.lblLikelyIssue.Location = new System.Drawing.Point(23, 72);
+            this.lblLikelyIssue.Name = "lblLikelyIssue";
+            this.lblLikelyIssue.Size = new System.Drawing.Size(230, 76);
+            this.lblLikelyIssue.TabIndex = 11;
+            this.lblLikelyIssue.Text = "Ready";
             // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1001, 450);
-            this.Controls.Add(this.btnTestNavigation);
+            this.ClientSize = new System.Drawing.Size(1508, 450);
+            this.Controls.Add(this.lblLikelyIssue);
             this.Controls.Add(this.btnAcknowledgeAlert);
             this.Controls.Add(this.btnStopMonitoring);
             this.Controls.Add(this.label3);
@@ -185,7 +189,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button btnStopMonitoring;
         private System.Windows.Forms.Button btnAcknowledgeAlert;
-        private System.Windows.Forms.Button btnTestNavigation;
+        private System.Windows.Forms.Label lblLikelyIssue;
     }
 }
 

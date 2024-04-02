@@ -10,7 +10,8 @@ namespace LayoutMonitor.Classes
     {
         Proceed = 0,
         Caution = 1,
-        Danger = 2
+        Danger = 2,
+        Extreme = 3
 
     }
 }
