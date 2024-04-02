@@ -135,10 +135,10 @@ namespace LayoutMonitor
                             if (liveBlock.data.state == 2) //occupied
                             {
                                 numberOfOccupiedBlocks++;
+                                oneConnectedBlockOccupied = true;
                                 if (liveBlock.data.userName == firstBoundary.BlockFound || liveBlock.data.userName == secondBoundary.BlockFound)
                                 {
-                                    likelyPreviousBlock = liveBlock.data.userName;
-                                    oneConnectedBlockOccupied = true;
+                                    likelyPreviousBlock = liveBlock.data.userName;                                    
                                 }
                             }
                             else
@@ -401,7 +401,7 @@ namespace LayoutMonitor
                 }
                 else derivedXoverBlockName = to.blockname;
 
-                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock)
+                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock && to.connectaname != breadcrumbStart && to.connectbname != breadcrumbStart && to.connectcname != breadcrumbStart && to.connectdname != breadcrumbStart)
                 {
                     bnl.EdgeConnector = to.ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
@@ -438,8 +438,13 @@ namespace LayoutMonitor
                                 {
                                     //approaching A on a thrown LH XOver - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    nextItemIdent = to.connectbname;
                                 }
-                                nextItemIdent = to.connectcname;
+                                else
+                                {
+                                    nextItemIdent = to.connectcname;
+                                }
+                                
                             }
 
                         }
@@ -455,8 +460,13 @@ namespace LayoutMonitor
                                 {
                                     //approaching B on a RH Xover when it's open - short imminent - assign a SM that should be red
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    nextItemIdent = to.connectaname;
                                 }
-                                nextItemIdent = to.connectdname;
+                                else
+                                {
+                                    nextItemIdent = to.connectdname;
+                                }
+                                
                             }
                         }
                         else if (to.connectcname == previousLayoutItem)
@@ -472,8 +482,12 @@ namespace LayoutMonitor
                                 {
                                     //approaching C on a LH Xover when it's thrown - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    nextItemIdent = to.connectdname;
                                 }
-                                nextItemIdent = to.connectaname;
+                                else
+                                {
+                                    nextItemIdent = to.connectaname;
+                                }
                             }
                         }
                         else if (to.connectdname == previousLayoutItem)
@@ -489,8 +503,13 @@ namespace LayoutMonitor
                                 {
                                     //approaching D on a RH Xover when it's thrown - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    nextItemIdent = to.connectcname;
                                 }
-                                nextItemIdent = to.connectbname;
+                                else
+                                {
+                                    nextItemIdent = to.connectbname;
+                                }
+                                
                             }
                         }
                         bnl.Breadcrumb += nextItemIdent + ";";
