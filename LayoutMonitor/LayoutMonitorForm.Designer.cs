@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LayoutMonitorForm));
             this.lbOutput = new System.Windows.Forms.ListBox();
             this.tbServerIP = new System.Windows.Forms.TextBox();
             this.tbServerPort = new System.Windows.Forms.TextBox();
@@ -210,6 +211,7 @@
             this.Controls.Add(this.tbServerPort);
             this.Controls.Add(this.tbServerIP);
             this.Controls.Add(this.lbOutput);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "LayoutMonitorForm";
             this.Text = "JMRI Danger Early Warning System";
             this.ResumeLayout(false);
