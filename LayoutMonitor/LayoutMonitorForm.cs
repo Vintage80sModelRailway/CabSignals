@@ -194,10 +194,10 @@ namespace LayoutMonitor
             BlockNavigationLog BNLTwoBlocks = new BlockNavigationLog();
             List<BlockRootObject> nextBlocks = new List<BlockRootObject>();
 
-            var trackSegments = config.GetTrackSegmentsForBlock(blockUserName).OrderBy(o => o.ident).ToList();
+            var trackSegments = config.GetTracksegmentsForBlock(blockUserName).OrderBy(o => o.Ident).ToList();
             var ts = trackSegments.FirstOrDefault();
             if (ts == null) return false;
-            var firstBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, ts.connect1name, ts.ident, ts.ident);
+            var firstBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, ts.Connect1name, ts.Ident, ts.Ident);
             if (firstBoundaryFromMiddle == null)
             {
                 return false;
@@ -494,144 +494,144 @@ namespace LayoutMonitor
             {
                 //turnout
                 var to = config.GetLayuoutTurnout(LayoutItem);
-                var configTurnout = config.GetTurnoutByUserName(to.turnoutname);
+                var configTurnout = config.GetTurnoutByUserName(to.Turnoutname);
                 var liveTurnout = await webClient.GetTurnout(configTurnout.systemName);
                 var derivedXoverBlockName = "";
-                if (to.type.Contains("XOVER"))
+                if (to.Type.Contains("XOVER"))
                 {
-                    if (to.connectaname == previousLayoutItem)
+                    if (to.Connectaname == previousLayoutItem)
                     {
-                        derivedXoverBlockName = to.blockname;
+                        derivedXoverBlockName = to.Blockname;
                     }
-                    else if (to.connectbname == previousLayoutItem)
+                    else if (to.Connectbname == previousLayoutItem)
                     {
-                        derivedXoverBlockName = to.blockname;
+                        derivedXoverBlockName = to.Blockname;
                     }
-                    else if (to.connectcname == previousLayoutItem)
+                    else if (to.Connectcname == previousLayoutItem)
                     {
-                        derivedXoverBlockName = to.blockcname;
+                        derivedXoverBlockName = to.Blockcname;
                     }
-                    else if (to.connectdname == previousLayoutItem)
+                    else if (to.Connectdname == previousLayoutItem)
                     {
-                        derivedXoverBlockName = to.blockdname;
+                        derivedXoverBlockName = to.Blockdname;
                     }
 
                 }
-                else derivedXoverBlockName = to.blockname;
+                else derivedXoverBlockName = to.Blockname;
 
-                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock && to.connectaname != breadcrumbStart && to.connectbname != breadcrumbStart && to.connectcname != breadcrumbStart && to.connectdname != breadcrumbStart)
+                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock && to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
                 {
-                    bnl.EdgeConnector = to.ident;
+                    bnl.EdgeConnector = to.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    bnl.BlockFound = to.blockname;
-                    if (to.connectbname == previousLayoutItem || to.connectcname == previousLayoutItem)
+                    bnl.BlockFound = to.Blockname;
+                    if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                     {
-                        bnl.NextBlockEdgeConnector = to.connectaname;
+                        bnl.NextBlockEdgeConnector = to.Connectaname;
                     }
                     else if (liveTurnout.data.state == 2)
                     {
-                        bnl.NextBlockEdgeConnector = to.connectbname;
+                        bnl.NextBlockEdgeConnector = to.Connectbname;
                     }
                     else
                     {
-                        bnl.NextBlockEdgeConnector = to.connectcname;
+                        bnl.NextBlockEdgeConnector = to.Connectcname;
                     }
                 }
                 else
                 {
                     //turnout still in same block, keep going
                     string nextItemIdent = "";
-                    if (to.type.Contains("XOVER"))
+                    if (to.Type.Contains("XOVER"))
                     {
-                        if (to.connectaname == previousLayoutItem)
+                        if (to.Connectaname == previousLayoutItem)
                         {
                             if (liveTurnout.data.state == 2)
                             {
                                 //closed
-                                nextItemIdent = to.connectbname;
+                                nextItemIdent = to.Connectbname;
                             }
                             else
                             {
-                                if (to.type.StartsWith("LH"))
+                                if (to.Type.StartsWith("LH"))
                                 {
                                     //approaching A on a thrown LH XOver - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
-                                    nextItemIdent = to.connectbname;
+                                    nextItemIdent = to.Connectbname;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectcname;
+                                    nextItemIdent = to.Connectcname;
                                 }
                                 
                             }
 
                         }
-                        else if (to.connectbname == previousLayoutItem)
+                        else if (to.Connectbname == previousLayoutItem)
                         {
                             if (liveTurnout.data.state == 2)
                             {
-                                nextItemIdent = to.connectaname;
+                                nextItemIdent = to.Connectaname;
                             }
                             else
                             {
-                                if (to.type.StartsWith("RH"))
+                                if (to.Type.StartsWith("RH"))
                                 {
                                     //approaching B on a RH Xover when it's open - short imminent - assign a SM that should be red
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
-                                    nextItemIdent = to.connectaname;
+                                    nextItemIdent = to.Connectaname;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectdname;
+                                    nextItemIdent = to.Connectdname;
                                 }
                                 
                             }
                         }
-                        else if (to.connectcname == previousLayoutItem)
+                        else if (to.Connectcname == previousLayoutItem)
                         {
                             if (liveTurnout.data.state == 2)
                             {
                                 //closed
-                                nextItemIdent = to.connectdname;
+                                nextItemIdent = to.Connectdname;
                             }
                             else
                             {
-                                if (to.type.StartsWith("LH"))
+                                if (to.Type.StartsWith("LH"))
                                 {
                                     //approaching C on a LH Xover when it's thrown - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
-                                    nextItemIdent = to.connectdname;
+                                    nextItemIdent = to.Connectdname;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectaname;
+                                    nextItemIdent = to.Connectaname;
                                 }
                             }
                         }
-                        else if (to.connectdname == previousLayoutItem)
+                        else if (to.Connectdname == previousLayoutItem)
                         {
                             if (liveTurnout.data.state == 2)
                             {
                                 //closed
-                                nextItemIdent = to.connectcname;
+                                nextItemIdent = to.Connectcname;
                             }
                             else
                             {
-                                if (to.type.StartsWith("RH"))
+                                if (to.Type.StartsWith("RH"))
                                 {
                                     //approaching D on a RH Xover when it's thrown - short imminent
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
-                                    nextItemIdent = to.connectcname;
+                                    nextItemIdent = to.Connectcname;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectbname;
+                                    nextItemIdent = to.Connectbname;
                                 }
                                 
                             }
                         }
                         bnl.Breadcrumb += nextItemIdent + ";";
-                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.ident, "");
+                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.Ident, "");
                         bnl.Breadcrumb += newbnl.Breadcrumb;
                         bnl.BlockFound = newbnl.BlockFound;
                         bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -656,52 +656,52 @@ namespace LayoutMonitor
                         {
                             //thrown                        
                             //need to determine direction of travel. If one of the C or B connectors matches the previousLayout Item, we're traversing head on.
-                            if (to.connectbname == previousLayoutItem || to.connectcname == previousLayoutItem)
+                            if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                             {
-                                nextItemIdent = to.connectaname;
-                                if (to.connectbname == previousLayoutItem)
+                                nextItemIdent = to.Connectaname;
+                                if (to.Connectbname == previousLayoutItem)
                                 {
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
                                 }
                             }
                             else
                             {
-                                var thrownConnector = to.connectcname;
+                                var thrownConnector = to.Connectcname;
                                 if (thrownConnector != previousLayoutItem)
                                 {
                                     nextItemIdent = thrownConnector;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectaname;
+                                    nextItemIdent = to.Connectaname;
                                 }
                             }                         
                         }
                         else
                         {
-                            if (to.connectbname == previousLayoutItem || to.connectcname == previousLayoutItem)
+                            if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                             {
-                                nextItemIdent = to.connectaname;
-                                if (to.connectcname == previousLayoutItem)
+                                nextItemIdent = to.Connectaname;
+                                if (to.Connectcname == previousLayoutItem)
                                 {
                                     bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
                                 }
                             }
                             else
                             {
-                                var closedConnector = to.connectbname;
+                                var closedConnector = to.Connectbname;
                                 if (closedConnector != previousLayoutItem)
                                 {
                                     nextItemIdent = closedConnector;
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.connectaname;
+                                    nextItemIdent = to.Connectaname;
                                 }
                             }
                         }
                         bnl.Breadcrumb += nextItemIdent + ";";
-                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.ident, "");
+                        var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.Ident, "");
                         bnl.Breadcrumb += newbnl.Breadcrumb;
                         bnl.BlockFound = newbnl.BlockFound;
                         bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -724,27 +724,27 @@ namespace LayoutMonitor
             else if (LayoutItem.Substring(0, 1) == "T")
             {
                 //track
-                var ts = config.GetLayoutTrackSegment(LayoutItem);
-                if (ts.blockname != currentBlock)
+                var ts = config.GetLayoutTracksegment(LayoutItem);
+                if (ts.Blockname != currentBlock)
                 {
-                    bnl.EdgeConnector = ts.ident;
+                    bnl.EdgeConnector = ts.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    bnl.BlockFound = ts.blockname;
-                    if (ts.connect1name != previousLayoutItem)
+                    bnl.BlockFound = ts.Blockname;
+                    if (ts.Connect1name != previousLayoutItem)
                     {
-                        bnl.NextBlockEdgeConnector = ts.connect1name;
+                        bnl.NextBlockEdgeConnector = ts.Connect1name;
                     }
                     else
                     {
-                        bnl.NextBlockEdgeConnector = ts.connect2name;
+                        bnl.NextBlockEdgeConnector = ts.Connect2name;
                     }
                 }
                 else
                 {
-                    var nextItem = ts.connect2name;
-                    if (ts.connect2name == previousLayoutItem) nextItem = ts.connect1name;
+                    var nextItem = ts.Connect2name;
+                    if (ts.Connect2name == previousLayoutItem) nextItem = ts.Connect1name;
                     bnl.Breadcrumb += nextItem + ";";
-                    var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, ts.ident,"");
+                    var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, ts.Ident,"");
                     bnl.Breadcrumb += newbnl.Breadcrumb;
                     bnl.BlockFound = newbnl.BlockFound;
                     bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -767,10 +767,10 @@ namespace LayoutMonitor
             {
                 //anchor
                 var a = config.GetTrackLayoutAnchorPoint(LayoutItem);
-                var nextItem = a.connect2name;
-                if (a.connect2name == previousLayoutItem) nextItem = a.connect1name;
+                var nextItem = a.Connect2name;
+                if (a.Connect2name == previousLayoutItem) nextItem = a.Connect1name;
                 bnl.Breadcrumb += nextItem + ";";
-                var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, a.ident,"");
+                var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, a.Ident,"");
                 bnl.Breadcrumb += newbnl.Breadcrumb;
                 bnl.BlockFound = newbnl.BlockFound;
                 bnl.EdgeConnector = newbnl.EdgeConnector;
@@ -787,6 +787,11 @@ namespace LayoutMonitor
                         bnl.LikelyIssue = newbnl.LikelyIssue;
                     }
                 }
+            }
+            else if(LayoutItem.Substring(0,2) == "SL")
+            {
+                //slip
+
             }
             return bnl;
         }

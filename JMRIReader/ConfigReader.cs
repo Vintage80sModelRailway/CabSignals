@@ -144,62 +144,62 @@ namespace JMRIReader
             if (LayoutItem.Substring(0,2) == "TO")
             {
                 //turnout
-                var to = layout.layoutturnout.FirstOrDefault(f => f.ident == LayoutItem);
-                if (to.blockcname != currentBlock) newBlockName = to.blockname;
+                var to = layout.Layoutturnout.FirstOrDefault(f => f.Ident == LayoutItem);
+                if (to.Blockcname != currentBlock) newBlockName = to.Blockname;
             }
             else if (LayoutItem.Substring(0,1) == "T")
             {
                 //track
-                var tr = layout.tracksegment.FirstOrDefault(f => f.ident == LayoutItem);
-                if (tr.blockname != currentBlock)
+                var tr = layout.Tracksegment.FirstOrDefault(f => f.Ident == LayoutItem);
+                if (tr.Blockname != currentBlock)
                 {
-                    newBlockName = tr.blockname;
+                    newBlockName = tr.Blockname;
                 }
                 else
                 {
-                    var nextItem = tr.connect2name;
-                    if (tr.connect2name == previousLayoutItem) nextItem = tr.connect1name;
+                    var nextItem = tr.Connect2name;
+                    if (tr.Connect2name == previousLayoutItem) nextItem = tr.Connect1name;
                     newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, ref navigatedPath, layout);
                 }
             }
             else if (LayoutItem.Substring(0,1) == "A")
             {
                 //anchor
-                var a = layout.positionablepoint.Where(w => w.type == "ANCHOR").FirstOrDefault(f => f.ident == LayoutItem);
-                var nextItem = a.connect2name;
-                if (a.connect2name == previousLayoutItem) nextItem = a.connect1name;
+                var a = layout.Positionablepoint.Where(w => w.Type == "ANCHOR").FirstOrDefault(f => f.Ident == LayoutItem);
+                var nextItem = a.Connect2name;
+                if (a.Connect2name == previousLayoutItem) nextItem = a.Connect1name;
                 newBlockName = GetNextBlockForLayoutItem(currentBlock, nextItem, LayoutItem, ref navigatedPath, layout);
             }
             return newBlockName;
         }
 
-        public LayoutEditorLayoutturnout GetLayuoutTurnout(string ident)
+        public Layoutturnout GetLayuoutTurnout(string Ident)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            var to = layout.layoutturnout.FirstOrDefault(f => f.ident == ident);
+            var to = layout.Layoutturnout.FirstOrDefault(f => f.Ident == Ident);
             return to;
         }
 
-        public LayoutEditorTracksegment GetLayoutTrackSegment(string ident)
+        public Tracksegment GetLayoutTracksegment(string Ident)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            var ts = layout.tracksegment.FirstOrDefault(f => f.ident == ident);
+            var ts = layout.Tracksegment.FirstOrDefault(f => f.Ident == Ident);
             return ts;
         }
 
-        public LayoutEditorPositionablepoint GetTrackLayoutAnchorPoint(string ident)
+        public Positionablepoint GetTrackLayoutAnchorPoint(string Ident)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             var layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            var ap = layout.positionablepoint.Where(w => w.type == "ANCHOR").FirstOrDefault(f => f.ident == ident);
+            var ap = layout.Positionablepoint.Where(w => w.Type == "ANCHOR").FirstOrDefault(f => f.Ident == Ident);
             return ap;
         }
 
@@ -258,22 +258,22 @@ namespace JMRIReader
             }
         }
 
-        public List<LayoutEditorLayoutturnout> GetTurnoutsInBlock(string blockName)
+        public List<Layoutturnout> GetTurnoutsInBlock(string blockName)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
-            var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == blockName || w.blockcname == blockName || w.blockdname == blockName).ToList();
+            var turnoutsInThisBlock = layout.Layoutturnout.Where(w => w.Blockname == blockName || w.Blockcname == blockName || w.Blockdname == blockName).ToList();
             var thisTO = turnoutsInThisBlock.FirstOrDefault();    
             return turnoutsInThisBlock;
         }
 
-        public List<LayoutEditorTracksegment> GetTrackSegmentsForBlock(string blockName)
+        public List<Tracksegment> GetTracksegmentsForBlock(string blockName)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
-            var ts = layout.tracksegment.Where(w => w.blockname == blockName).ToList();
+            var ts = layout.Tracksegment.Where(w => w.Blockname == blockName).ToList();
             return ts;
         }
 
@@ -363,38 +363,38 @@ namespace JMRIReader
                 return "";
             }
 
-            var segments = layout.tracksegment.Where(w => w.blockname == currentBlock).ToList();
-            var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == nextBlock).ToList();
-            var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == currentBlock || w.blockcname == currentBlock || w.blockdname == currentBlock).ToList();
-            var nextBlockTurnouts = layout.layoutturnout.Where(w => w.blockcname == nextBlock).ToList();
-            var anchors = layout.positionablepoint.Where(w => w.type == "ANCHOR").ToList();
+            var segments = layout.Tracksegment.Where(w => w.Blockname == currentBlock).ToList();
+            var nextBlockSegments = layout.Tracksegment.Where(w => w.Blockname == nextBlock).ToList();
+            var turnoutsInThisBlock = layout.Layoutturnout.Where(w => w.Blockname == currentBlock || w.Blockcname == currentBlock || w.Blockdname == currentBlock).ToList();
+            var nextBlockTurnouts = layout.Layoutturnout.Where(w => w.Blockcname == nextBlock).ToList();
+            var anchors = layout.Positionablepoint.Where(w => w.Type == "ANCHOR").ToList();
 
             string signalMastName = "";
-            List<LayoutEditorPositionablepoint> anchorPointsWithNoSignalMasts = new List<LayoutEditorPositionablepoint>();
+            List<Positionablepoint> anchorPointsWithNoSignalMasts = new List<Positionablepoint>();
 
             foreach (var s in segments)
             {
-                var ap = new LayoutEditorPositionablepoint();
+                var ap = new Positionablepoint();
                 var isBoundary = false;
-                var prefix = s.connect1name.Substring(0, 1);
+                var prefix = s.Connect1name.Substring(0, 1);
                 if (prefix == "A")
                 {
-                    ap = anchors.FirstOrDefault(f => f.ident == s.connect1name);
+                    ap = anchors.FirstOrDefault(f => f.Ident == s.Connect1name);
                     if (ap != null)
                     {
-                        isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                        isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                         if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                     }
                 }
                 if (!isBoundary)
                 {
-                    prefix = s.connect2name.Substring(0, 1);
+                    prefix = s.Connect2name.Substring(0, 1);
                     if (prefix == "A")
                     {
-                        ap = anchors.FirstOrDefault(f => f.ident == s.connect2name);
+                        ap = anchors.FirstOrDefault(f => f.Ident == s.Connect2name);
                         if (ap != null)
                         {
-                            isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                            isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                             if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                         }
                     }
@@ -404,27 +404,27 @@ namespace JMRIReader
                 {
                     if (DestinationMastNames != null && DestinationMastNames.Count > 0)
                     {
-                        var eastMatches = DestinationMastNames.Where(w => w == ap.eastboundsignalmast);
-                        var westMatches = DestinationMastNames.Where(w => w == ap.westboundsignalmast);
+                        var eastMatches = DestinationMastNames.Where(w => w == ap.Eastboundsignalmast);
+                        var westMatches = DestinationMastNames.Where(w => w == ap.Westboundsignalmast);
 
 
                         if (eastMatches != null && eastMatches.Count() == 1)
                         {
-                            signalMastName = ap.eastboundsignalmast;
+                            signalMastName = ap.Eastboundsignalmast;
                         }
                         else if (westMatches != null && westMatches.Count() == 1)
                         {
-                            signalMastName = ap.westboundsignalmast;
+                            signalMastName = ap.Westboundsignalmast;
                         }
                         else
                         {
                             if (direction == "East")
                             {
-                                signalMastName = ap.eastboundsignalmast;
+                                signalMastName = ap.Eastboundsignalmast;
                             }
                             else
                             {
-                                signalMastName = ap.westboundsignalmast;
+                                signalMastName = ap.Westboundsignalmast;
                             }
                         }
                     }
@@ -432,11 +432,11 @@ namespace JMRIReader
                     {
                         if (direction == "East")
                         {
-                            signalMastName = ap.eastboundsignalmast;
+                            signalMastName = ap.Eastboundsignalmast;
                         }
                         else
                         {
-                            signalMastName = ap.westboundsignalmast;
+                            signalMastName = ap.Westboundsignalmast;
                         }
                     }
                     break;
@@ -447,7 +447,7 @@ namespace JMRIReader
             {
                 //been through all track segments and APs with no luck - try turnouts
                 //it may be that a turnout is a block boundary
-                var turnoutsWithBoundaries = turnoutsInThisBlock.Where(w => w.blockname == nextBlock || w.blockcname == nextBlock || w.blockdname == nextBlock);
+                var turnoutsWithBoundaries = turnoutsInThisBlock.Where(w => w.Blockname == nextBlock || w.Blockcname == nextBlock || w.Blockdname == nextBlock);
                 if (turnoutsWithBoundaries != null)
                 {
                     //the route takes the train out of the current block, into the next one, before the 'official' anchor poing signal mast
@@ -474,38 +474,38 @@ namespace JMRIReader
                 return "";
             }
 
-            var segments = layout.tracksegment.Where(w => w.blockname == currentBlock.BlockUserName).ToList();
-            var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == nextBlock.BlockUserName).ToList();
-            var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == currentBlock.BlockUserName || w.blockcname == currentBlock.BlockUserName || w.blockdname == currentBlock.BlockUserName).ToList();
-            var nextBlockTurnouts = layout.layoutturnout.Where(w => w.blockcname == nextBlock.BlockUserName).ToList();
-            var anchors = layout.positionablepoint.Where(w => w.type == "ANCHOR").ToList();
+            var segments = layout.Tracksegment.Where(w => w.Blockname == currentBlock.BlockUserName).ToList();
+            var nextBlockSegments = layout.Tracksegment.Where(w => w.Blockname == nextBlock.BlockUserName).ToList();
+            var turnoutsInThisBlock = layout.Layoutturnout.Where(w => w.Blockname == currentBlock.BlockUserName || w.Blockcname == currentBlock.BlockUserName || w.Blockdname == currentBlock.BlockUserName).ToList();
+            var nextBlockTurnouts = layout.Layoutturnout.Where(w => w.Blockcname == nextBlock.BlockUserName).ToList();
+            var anchors = layout.Positionablepoint.Where(w => w.Type == "ANCHOR").ToList();
 
             string signalMastName = "";
-            List<LayoutEditorPositionablepoint> anchorPointsWithNoSignalMasts = new List<LayoutEditorPositionablepoint>();
+            List<Positionablepoint> anchorPointsWithNoSignalMasts = new List<Positionablepoint>();
 
             foreach (var s in segments)
             {
-                var ap = new LayoutEditorPositionablepoint();
+                var ap = new Positionablepoint();
                 var isBoundary = false;
-                var prefix = s.connect1name.Substring(0, 1);
+                var prefix = s.Connect1name.Substring(0, 1);
                 if (prefix == "A")
                 {
-                    ap = anchors.FirstOrDefault(f => f.ident == s.connect1name);
+                    ap = anchors.FirstOrDefault(f => f.Ident == s.Connect1name);
                     if (ap != null)
                     {
-                        isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                        isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                         if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                     }
                 }
                 if (!isBoundary)
                 {
-                    prefix = s.connect2name.Substring(0, 1);
+                    prefix = s.Connect2name.Substring(0, 1);
                     if (prefix == "A")
                     {
-                        ap = anchors.FirstOrDefault(f => f.ident == s.connect2name);
+                        ap = anchors.FirstOrDefault(f => f.Ident == s.Connect2name);
                         if (ap != null)
                         {
-                            isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                            isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                             if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                         }
                     }
@@ -515,27 +515,27 @@ namespace JMRIReader
                 {
                     if (DestinationMastNames != null && DestinationMastNames.Count > 0)
                     {
-                        var eastMatches = DestinationMastNames.Where(w => w == ap.eastboundsignalmast);
-                        var westMatches = DestinationMastNames.Where(w => w == ap.westboundsignalmast);
+                        var eastMatches = DestinationMastNames.Where(w => w == ap.Eastboundsignalmast);
+                        var westMatches = DestinationMastNames.Where(w => w == ap.Westboundsignalmast);
 
 
                         if (eastMatches != null &&  eastMatches.Count() == 1)
                         {
-                            signalMastName = ap.eastboundsignalmast;
+                            signalMastName = ap.Eastboundsignalmast;
                         }
                         else if (westMatches != null && westMatches.Count() == 1)
                         {
-                            signalMastName = ap.westboundsignalmast;
+                            signalMastName = ap.Westboundsignalmast;
                         }
                         else
                         {
                             if (direction == "East")
                             {
-                                signalMastName = ap.eastboundsignalmast;
+                                signalMastName = ap.Eastboundsignalmast;
                             }
                             else
                             {
-                                signalMastName = ap.westboundsignalmast;
+                                signalMastName = ap.Westboundsignalmast;
                             }
                         }
                     }
@@ -543,11 +543,11 @@ namespace JMRIReader
                     {
                         if (direction == "East")
                         {
-                            signalMastName = ap.eastboundsignalmast;
+                            signalMastName = ap.Eastboundsignalmast;
                         }
                         else
                         {
-                            signalMastName = ap.westboundsignalmast;
+                            signalMastName = ap.Westboundsignalmast;
                         }
                     }
                     break;
@@ -558,7 +558,7 @@ namespace JMRIReader
             {
                 //been through all track segments and APs with no luck - try turnouts
                 //it may be that a turnout is a block boundary
-                var turnoutsWithBoundaries = turnoutsInThisBlock.Where(w => w.blockname == nextBlock.BlockUserName || w.blockcname == nextBlock.BlockUserName || w.blockdname == nextBlock.BlockUserName);
+                var turnoutsWithBoundaries = turnoutsInThisBlock.Where(w => w.Blockname == nextBlock.BlockUserName || w.Blockcname == nextBlock.BlockUserName || w.Blockdname == nextBlock.BlockUserName);
                 if (turnoutsWithBoundaries != null)
                 {
                     //the route takes the train out of the current block, into the next one, before the 'official' anchor poing signal mast
@@ -576,61 +576,61 @@ namespace JMRIReader
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            if (thisObject.GetType() == typeof(LayoutEditorPositionablepoint))
+            if (thisObject.GetType() == typeof(Positionablepoint))
             {
-                LayoutEditorPositionablepoint ap = (LayoutEditorPositionablepoint)thisObject;
+                Positionablepoint ap = (Positionablepoint)thisObject;
                 
 
             }
-            else if (thisObject.GetType() == typeof(LayoutEditorTracksegment))
+            else if (thisObject.GetType() == typeof(Tracksegment))
             {
 
             }
-            else if (thisObject.GetType() == typeof(LayoutEditorLayoutturnout))
+            else if (thisObject.GetType() == typeof(Layoutturnout))
             {
 
             }
             return "";
         }
 
-        public List<LayoutEditorPositionablepoint> GetBoundariesForBlock(string blockName)
+        public List<Positionablepoint> GetBoundariesForBlock(string blockName)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
             var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
             LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
 
-            List<LayoutEditorPositionablepoint> boundaries = new List<LayoutEditorPositionablepoint>();
-            var segments = layout.tracksegment.Where(w => w.blockname == blockName).ToList();
-            var nextBlockSegments = layout.tracksegment.Where(w => w.blockname == blockName).ToList();
-            var turnoutsInThisBlock = layout.layoutturnout.Where(w => w.blockname == blockName || w.blockcname == blockName || w.blockdname == blockName).ToList();
-            var nextBlockTurnouts = layout.layoutturnout.Where(w => w.blockcname == blockName).ToList();
-            var anchors = layout.positionablepoint.Where(w => w.type == "ANCHOR").ToList();
+            List<Positionablepoint> boundaries = new List<Positionablepoint>();
+            var segments = layout.Tracksegment.Where(w => w.Blockname == blockName).ToList();
+            var nextBlockSegments = layout.Tracksegment.Where(w => w.Blockname == blockName).ToList();
+            var turnoutsInThisBlock = layout.Layoutturnout.Where(w => w.Blockname == blockName || w.Blockname == blockName || w.Blockdname == blockName).ToList();
+            var nextBlockTurnouts = layout.Layoutturnout.Where(w => w.Blockname == blockName).ToList();
+            var anchors = layout.Positionablepoint.Where(w => w.Type == "ANCHOR").ToList();
 
-            List<LayoutEditorPositionablepoint> anchorPointsWithNoSignalMasts = new List<LayoutEditorPositionablepoint>();
+            List<Positionablepoint> anchorPointsWithNoSignalMasts = new List<Positionablepoint>();
 
             foreach (var s in segments)
             {
-                var ap = new LayoutEditorPositionablepoint();
+                var ap = new Positionablepoint();
                 var isBoundary = false;
-                var prefix = s.connect1name.Substring(0, 1);
+                var prefix = s.Connect1name.Substring(0, 1);
                 if (prefix == "A")
                 {
-                    ap = anchors.FirstOrDefault(f => f.ident == s.connect1name);
+                    ap = anchors.FirstOrDefault(f => f.Ident == s.Connect1name);
                     if (ap != null)
                     {
-                        isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                        isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                         if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                     }
                 }
                 if (!isBoundary)
                 {
-                    prefix = s.connect2name.Substring(0, 1);
+                    prefix = s.Connect2name.Substring(0, 1);
                     if (prefix == "A")
                     {
-                        ap = anchors.FirstOrDefault(f => f.ident == s.connect2name);
+                        ap = anchors.FirstOrDefault(f => f.Ident == s.Connect2name);
                         if (ap != null)
                         {
-                            isBoundary = CheckForBoundary(nextBlockSegments, ap.ident);
+                            isBoundary = CheckForBoundary(nextBlockSegments, ap.Ident);
                             if (!isBoundary) anchorPointsWithNoSignalMasts.Add(ap);
                         }
                     }
@@ -644,15 +644,15 @@ namespace JMRIReader
             return boundaries;
         }
 
-        private bool CheckForBoundary(List<LayoutEditorTracksegment> NextBlockSegments, string AnchorPointID)
+        private bool CheckForBoundary(List<Tracksegment> NextBlockSegments, string AnchorPointID)
         {
-            var nbSegment = NextBlockSegments.FirstOrDefault(f =>f.connect1name == AnchorPointID);
+            var nbSegment = NextBlockSegments.FirstOrDefault(f =>f.Connect1name == AnchorPointID);
             if (nbSegment != null)
             {
                 return true;
             }
 
-            nbSegment = NextBlockSegments.FirstOrDefault(f => f.connect2name == AnchorPointID);
+            nbSegment = NextBlockSegments.FirstOrDefault(f => f.Connect2name == AnchorPointID);
             if (nbSegment != null)
             {
                 return true;
@@ -660,15 +660,15 @@ namespace JMRIReader
             return false;
         }
 
-        private bool CheckForBoundary(List<LayoutEditorTracksegment> NextBlockSegments, string AnchorPointID, string currentBlockName)
+        private bool CheckForBoundary(List<Tracksegment> NextBlockSegments, string AnchorPointID, string currentBlockName)
         {
-            var nbSegment = NextBlockSegments.FirstOrDefault(f => f.connect1name == AnchorPointID);
+            var nbSegment = NextBlockSegments.FirstOrDefault(f => f.Connect1name == AnchorPointID);
             if (nbSegment != null)
             {
                 return true;
             }
 
-            nbSegment = NextBlockSegments.FirstOrDefault(f => f.connect2name == AnchorPointID);
+            nbSegment = NextBlockSegments.FirstOrDefault(f => f.Connect2name == AnchorPointID);
             if (nbSegment != null)
             {
                 return true;
@@ -726,10 +726,10 @@ namespace JMRIReader
                     dir = (direction)path.todir;                    
 
                     //not determined by a turnout state
-                    foreach (var ap in layout.positionablepoint.Where(w => w.type == "ANCHOR"))
+                    foreach (var ap in layout.Positionablepoint.Where(w => w.Type == "ANCHOR"))
                     {
-                        var block1 = GetConnectingBlockNameForAnchorPointConnection(ap.connect1name, layout);
-                        var block2 = GetConnectingBlockNameForAnchorPointConnection(ap.connect2name, layout);
+                        var block1 = GetConnectingBlockNameForAnchorPointConnection(ap.Connect1name, layout);
+                        var block2 = GetConnectingBlockNameForAnchorPointConnection(ap.Connect2name, layout);
 
                         if ((block1 == thisBlock.userName && block2 == nextBlock.userName) || (block2 == thisBlock.userName && block1 == nextBlock.userName))
                         {
@@ -742,12 +742,12 @@ namespace JMRIReader
                             // if (strDir == "East" || strDir.Contains("east") || strDir == "South")
                             if (strDir == "East" || strDir.Contains("South") || strDir.Contains("east") || strDir == "South")
                             {
-                                signalMastNameFound = ap.eastboundsignalmast;
+                                signalMastNameFound = ap.Eastboundsignalmast;
                                 //break;
                             }
                             else if (strDir == "West" || strDir.Contains("North") || strDir.Contains("west") || strDir == "North")
                             {
-                                signalMastNameFound = ap.westboundsignalmast;
+                                signalMastNameFound = ap.Westboundsignalmast;
                                 //break;
                             }
                             else
@@ -783,8 +783,8 @@ namespace JMRIReader
                         {
                             var turnout = path.beansetting.turnout;
                             var state = path.beansetting.setting;
-                            var lTurnout = layout.layoutturnout.FirstOrDefault(f => f.turnoutname == turnout.systemName);
-                            var blockInManifest = manifest.FirstOrDefault(f => f.BlockUserName == lTurnout.blockname && f.Sequence >= currentBlockIndex);
+                            var lTurnout = layout.Layoutturnout.FirstOrDefault(f => f.Turnoutname == turnout.systemName);
+                            var blockInManifest = manifest.FirstOrDefault(f => f.BlockUserName == lTurnout.Blockname && f.Sequence >= currentBlockIndex);
                             var manifestIndex = manifest.IndexOf(blockInManifest);
 
                             blockJumpCount++;
@@ -825,10 +825,10 @@ namespace JMRIReader
             else if (connection.Substring(0,1) == "T")
             {
                 //track segment
-                var ts = layout.tracksegment.FirstOrDefault(f => f.ident == connection);
+                var ts = layout.Tracksegment.FirstOrDefault(f => f.Ident == connection);
                 if (ts != null)
                 {
-                    connectingBlock = ts.blockname;
+                    connectingBlock = ts.Blockname;
                 }
             }
             return connectingBlock;
