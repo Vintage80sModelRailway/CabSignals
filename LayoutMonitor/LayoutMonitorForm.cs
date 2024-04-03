@@ -335,38 +335,44 @@ namespace LayoutMonitor
                     }
 
                     BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
-                    if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
+                    if (BNLNextBlock != null)
                     {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
-                    }
-                    var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
-                    if (liveNextBlock.data.state == 2) //occupied
-                    {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock += "Collision ";// in "+liveNextBlock.data.userName;
-                    }
-                    if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
-                    {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
-                    }
-                    BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
-                    if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
-                    }
-                    var liveTwoBlocks = await webClient.GetBlock(BNLNextBlock.BlockFound);
-                    if (liveTwoBlocks.data.state == 2) //occupied
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks += "Collision  ";// in " + liveTwoBlocks.data.userName; ;
-                    }
-                    if (!string.IsNullOrEmpty(liveTwoBlocks.data.value) && TrackAllocation)
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks += "Allocated to " + liveTwoBlocks.data.value + " ";
+                        if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
+                        }
+                        var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
+                        if (liveNextBlock.data.state == 2) //occupied
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock += "Collision ";// in "+liveNextBlock.data.userName;
+                        }
+                        if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                        }
+                        BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                        if (BNLTwoBlocks != null)
+                        {
+                            if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
+                            }
+                            var liveTwoBlocks = await webClient.GetBlock(BNLNextBlock.BlockFound);
+                            if (liveTwoBlocks.data.state == 2) //occupied
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks += "Collision  ";// in " + liveTwoBlocks.data.userName; ;
+                            }
+                            if (!string.IsNullOrEmpty(liveTwoBlocks.data.value) && TrackAllocation)
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks += "Allocated to " + liveTwoBlocks.data.value + " ";
+                            }
+                        }
                     }
                 }
             }
@@ -442,7 +448,14 @@ namespace LayoutMonitor
                 if (ShowProceedMessages)
                 {
                     ListViewItem item = new ListViewItem();
-                    item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock+" to "+BNLTwoBlocks.BlockChecked;
+                    if (BNLTwoBlocks != null)
+                    {
+                        item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " to " + BNLTwoBlocks.BlockChecked;
+                    }
+                    else
+                    {
+                        item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " then possible end of blocks";
+                    }
                     item.BackColor = Color.LimeGreen;
                     lvUpdates.Items.Add(item);
                     lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
@@ -555,7 +568,7 @@ namespace LayoutMonitor
                                 if (to.Type.StartsWith("LH"))
                                 {
                                     //approaching A on a thrown LH XOver - short imminent
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " THROWN AGAINST";
                                     nextItemIdent = to.Connectbname;
                                 }
                                 else
@@ -577,7 +590,7 @@ namespace LayoutMonitor
                                 if (to.Type.StartsWith("RH"))
                                 {
                                     //approaching B on a RH Xover when it's open - short imminent - assign a SM that should be red
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " THROWN AGAINST";
                                     nextItemIdent = to.Connectaname;
                                 }
                                 else
@@ -599,7 +612,7 @@ namespace LayoutMonitor
                                 if (to.Type.StartsWith("LH"))
                                 {
                                     //approaching C on a LH Xover when it's thrown - short imminent
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " THROWN AGAINST";
                                     nextItemIdent = to.Connectdname;
                                 }
                                 else
@@ -620,7 +633,7 @@ namespace LayoutMonitor
                                 if (to.Type.StartsWith("RH"))
                                 {
                                     //approaching D on a RH Xover when it's thrown - short imminent
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " THROWN AGAINST";
                                     nextItemIdent = to.Connectcname;
                                 }
                                 else
@@ -661,7 +674,7 @@ namespace LayoutMonitor
                                 nextItemIdent = to.Connectaname;
                                 if (to.Connectbname == previousLayoutItem)
                                 {
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " THROWN AGAINST";
                                 }
                             }
                             else
@@ -684,7 +697,7 @@ namespace LayoutMonitor
                                 nextItemIdent = to.Connectaname;
                                 if (to.Connectcname == previousLayoutItem)
                                 {
-                                    bnl.LikelyIssue = liveTurnout.data.userName + " AGAINST";
+                                    bnl.LikelyIssue = liveTurnout.data.userName + " CLOSED AGAINST";
                                 }
                             }
                             else
@@ -791,7 +804,118 @@ namespace LayoutMonitor
             else if(LayoutItem.Substring(0,2) == "SL")
             {
                 //slip
+                var slip = config.GetSlip(LayoutItem);
+                var cfgTurnoutA = config.GetTurnoutByUserName(slip.Turnout);
+                var cfgTurnoutB = config.GetTurnoutByUserName(slip.TurnoutB);
+                var liveTA = await webClient.GetTurnout(cfgTurnoutA.systemName);
+                var liveTB = await webClient.GetTurnout(cfgTurnoutB.systemName);
+                var nextItem = "";
 
+                //Approaching from...
+                if (slip.Connectaname == previousLayoutItem)
+                {
+                    if (liveTB.data.state == 2)
+                    {
+                        //straight over
+                        nextItem = slip.Connectcname;
+                        var states = slip.States.AC;
+                    }
+                    else
+                    {
+                        nextItem = slip.Connectdname;
+                        var states = slip.States.AD;
+                    }
+                    if (liveTA.data.state == 4)
+                    {
+                        //oncoming thrown - alert
+                        bnl.LikelyIssue = liveTA.data.userName + " THROWN AGAINST";
+                    }
+                }
+                else if (slip.Connectbname == previousLayoutItem)
+                {
+                    if (liveTB.data.state == 4)
+                    {
+                        //c
+                        nextItem = slip.Connectcname;
+                        var states = slip.States.BC;
+                    }
+                    else
+                    {
+                        //d
+                        nextItem = slip.Connectdname;
+                        var states = slip.States.BD;
+                    }
+                    if (liveTA.data.state == 2)
+                    {
+                        //alert - TA against 
+                        bnl.LikelyIssue = liveTA.data.userName + " CLOSED AGAINST";
+                    }
+                }
+                else if (slip.Connectcname == previousLayoutItem)
+                {
+                    if (liveTA.data.state == 2)
+                    {
+                        //straight over
+                        nextItem = slip.Connectaname;
+                        var states = slip.States.AC;
+                    }
+                    else
+                    {
+                        nextItem = slip.Connectbname;
+                        var states = slip.States.BC;
+                    }
+                    if (liveTB.data.state == 4)
+                    {
+                        //alert approaching closed but thrown
+                        bnl.LikelyIssue = liveTA.data.userName + " THROWN AGAINST";
+                    }
+                }
+                else if (slip.Connectdname == previousLayoutItem)
+                {
+                    if (liveTA.data.state == 2)
+                    {
+                        nextItem = slip.Connectaname;
+                        var states = slip.States.AD;
+                    }
+                    else
+                    {
+                        nextItem = slip.Connectbname;
+                        var states = slip.States.BD;
+                    }
+                    if (liveTB.data.state == 2)
+                    {
+                        //alert approaching thrown but closed
+                        bnl.LikelyIssue = liveTA.data.userName + " CLOSED AGAINST";
+                    }
+                }
+                if(slip.Blockname != currentBlock)
+                {
+                    bnl.EdgeConnector = slip.Ident;
+                    bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
+                    bnl.BlockFound = slip.Blockname; 
+                    bnl.NextBlockEdgeConnector = nextItem;
+                }
+                else
+                {
+                    bnl.Breadcrumb += nextItem + ";";
+                    var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, slip.Ident, "");
+                    bnl.Breadcrumb += newbnl.Breadcrumb;
+                    bnl.BlockFound = newbnl.BlockFound;
+                    bnl.EdgeConnector = newbnl.EdgeConnector;
+                    bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                    bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                    if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                    {
+                        if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                        {
+                            bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                        }
+                        else
+                        {
+                            bnl.LikelyIssue = newbnl.LikelyIssue;
+                        }
+                    }
+                }
             }
             return bnl;
         }

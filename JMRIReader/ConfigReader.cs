@@ -276,6 +276,14 @@ namespace JMRIReader
             var ts = layout.Tracksegment.Where(w => w.Blockname == blockName).ToList();
             return ts;
         }
+        public LayoutSlip GetSlip(string id)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+            var s = layout.LayoutSlip.FirstOrDefault(w => w.Ident == id);
+            return s;
+        }
 
         public signalmast GetSignalMastForBlock(string thisBlock, string nextBlock, string direction, List<string> ChainedSignalMasts)
         {
