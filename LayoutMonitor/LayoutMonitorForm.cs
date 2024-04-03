@@ -284,40 +284,44 @@ namespace LayoutMonitor
                     }
 
                     BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
-
-                    if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
+                    if (BNLNextBlock != null)
                     {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
-                    }
-                    var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
-                    if (liveNextBlock.data.state == 2) //occupied
-                    {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
-                    }
-                    if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
-                    {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
-                    }
-                    BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
-
-                    if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
-                    }
-                    var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
-                    if (twoBlocksLiveBlock.data.state == 2)
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
-                    }
-                    if (!string.IsNullOrEmpty(twoBlocksLiveBlock.data.value) && TrackAllocation)
-                    {
-                        issueFoundTwoBlocks = true;
-                        likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
+                        if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
+                        }
+                        var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
+                        if (liveNextBlock.data.state == 2) //occupied
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
+                        }
+                        if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                        }
+                        BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                        if (BNLTwoBlocks != null)
+                        {
+                            if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
+                            }
+                            var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
+                            if (twoBlocksLiveBlock.data.state == 2)
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                            }
+                            if (!string.IsNullOrEmpty(twoBlocksLiveBlock.data.value) && TrackAllocation)
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
+                            }
+                        }
                     }
                 }
                 else
@@ -646,7 +650,15 @@ namespace LayoutMonitor
                         bnl.Breadcrumb += nextItemIdent + ";";
                         var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.Ident, "");
                         bnl.Breadcrumb += newbnl.Breadcrumb;
-                        bnl.BlockFound = newbnl.BlockFound;
+                        bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                        if (newbnl.BlockFound == null)
+                        {
+                            bnl.NoMoreBlocksFound = true;
+                        }
+                        else
+                        {
+                            bnl.BlockFound = newbnl.BlockFound;
+                        }
                         bnl.EdgeConnector = newbnl.EdgeConnector;
                         bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                         bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
@@ -716,7 +728,15 @@ namespace LayoutMonitor
                         bnl.Breadcrumb += nextItemIdent + ";";
                         var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItemIdent, to.Ident, "");
                         bnl.Breadcrumb += newbnl.Breadcrumb;
-                        bnl.BlockFound = newbnl.BlockFound;
+                        bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                        if (newbnl.BlockFound == null)
+                        {
+                            bnl.NoMoreBlocksFound = true;
+                        }
+                        else
+                        {
+                            bnl.BlockFound = newbnl.BlockFound;
+                        }
                         bnl.EdgeConnector = newbnl.EdgeConnector;
                         bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                         bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
@@ -759,7 +779,15 @@ namespace LayoutMonitor
                     bnl.Breadcrumb += nextItem + ";";
                     var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, ts.Ident,"");
                     bnl.Breadcrumb += newbnl.Breadcrumb;
-                    bnl.BlockFound = newbnl.BlockFound;
+                    bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                    if (newbnl.BlockFound == null)
+                    {
+                        bnl.NoMoreBlocksFound = true;
+                    }
+                    else
+                    {
+                        bnl.BlockFound = newbnl.BlockFound;
+                    }
                     bnl.EdgeConnector = newbnl.EdgeConnector;
                     bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                     bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
@@ -785,7 +813,15 @@ namespace LayoutMonitor
                 bnl.Breadcrumb += nextItem + ";";
                 var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, a.Ident,"");
                 bnl.Breadcrumb += newbnl.Breadcrumb;
-                bnl.BlockFound = newbnl.BlockFound;
+                bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                if (newbnl.BlockFound == null)
+                {
+                    bnl.NoMoreBlocksFound = true;
+                }
+                else
+                {
+                    bnl.BlockFound = newbnl.BlockFound;
+                }
                 bnl.EdgeConnector = newbnl.EdgeConnector;
                 bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                 bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
@@ -810,6 +846,7 @@ namespace LayoutMonitor
                 var liveTA = await webClient.GetTurnout(cfgTurnoutA.systemName);
                 var liveTB = await webClient.GetTurnout(cfgTurnoutB.systemName);
                 var nextItem = "";
+                var issueFound = "";
 
                 //Approaching from...
                 if (slip.Connectaname == previousLayoutItem)
@@ -828,7 +865,7 @@ namespace LayoutMonitor
                     if (liveTA.data.state == 4)
                     {
                         //oncoming thrown - alert
-                        bnl.LikelyIssue = liveTA.data.userName + " THROWN AGAINST";
+                        issueFound = liveTA.data.userName + " THROWN AGAINST";
                     }
                 }
                 else if (slip.Connectbname == previousLayoutItem)
@@ -848,7 +885,7 @@ namespace LayoutMonitor
                     if (liveTA.data.state == 2)
                     {
                         //alert - TA against 
-                        bnl.LikelyIssue = liveTA.data.userName + " CLOSED AGAINST";
+                        issueFound = liveTA.data.userName + " CLOSED AGAINST";
                     }
                 }
                 else if (slip.Connectcname == previousLayoutItem)
@@ -867,7 +904,7 @@ namespace LayoutMonitor
                     if (liveTB.data.state == 4)
                     {
                         //alert approaching closed but thrown
-                        bnl.LikelyIssue = liveTA.data.userName + " THROWN AGAINST";
+                        issueFound = liveTA.data.userName + " THROWN AGAINST";
                     }
                 }
                 else if (slip.Connectdname == previousLayoutItem)
@@ -885,7 +922,7 @@ namespace LayoutMonitor
                     if (liveTB.data.state == 2)
                     {
                         //alert approaching thrown but closed
-                        bnl.LikelyIssue = liveTA.data.userName + " CLOSED AGAINST";
+                        issueFound = liveTA.data.userName + " CLOSED AGAINST";
                     }
                 }
                 if(slip.Blockname != currentBlock)
@@ -897,10 +934,19 @@ namespace LayoutMonitor
                 }
                 else
                 {
+                    bnl.LikelyIssue = issueFound;
                     bnl.Breadcrumb += nextItem + ";";
                     var newbnl = await NavigateThroughBlockItems(currentBlock, previousBlock, nextItem, slip.Ident, "");
                     bnl.Breadcrumb += newbnl.Breadcrumb;
-                    bnl.BlockFound = newbnl.BlockFound;
+                    bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                    if (newbnl.BlockFound == null)
+                    {
+                        bnl.NoMoreBlocksFound = true;
+                    } 
+                    else
+                    {
+                        bnl.BlockFound = newbnl.BlockFound;
+                    }
                     bnl.EdgeConnector = newbnl.EdgeConnector;
                     bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                     bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
@@ -956,7 +1002,7 @@ namespace LayoutMonitor
                 foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
                     bool hasPrecedingAlert = false;
-                    if (string.IsNullOrEmpty(alert.BNL.BlockFound))
+                    if (string.IsNullOrEmpty(alert.BNL.BlockFound) && !alert.BNL.NoMoreBlocksFound)
                     {
                         if (!alert.Visible)
                         {

@@ -19,6 +19,7 @@ namespace JMRIReader.Classes
         public string LikelyIssue { get; set; }
         public string NextBlockEdgeConnector { get; set; }
         public string OriginalAlertBlock { get; set; }
+        public bool NoMoreBlocksFound { get; set; }
 
     }
 }
