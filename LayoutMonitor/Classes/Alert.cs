@@ -9,6 +9,7 @@ namespace LayoutMonitor.Classes
 {
     public class Alert
     {
+        public Guid id { get; set; }
         public string BlockSystemName { get; set; }
         public string BlockUserName { get; set; }
         public string SignalMastSystemName { get; set; }
@@ -16,14 +17,13 @@ namespace LayoutMonitor.Classes
         public DateTime AlertStart { get; set; }
         public AlertSeverity Severity { get; set; }
         public bool Visible { get; set; }
-
         public string PreviousBlockUserName { get; set; }
         public string AffectedBlockUserName { get; set; }
         public string NextBlockUserName { get; set; }
         public string LikelyIssue { get; set; }
-
         public BlockNavigationLog BNL { get; set; }
         public bool Acknowledged { get; set; }
         public bool Superceded { get; set; }
+
     }
 }

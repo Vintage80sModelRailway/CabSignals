@@ -177,6 +177,7 @@
             this.lvUpdates.TabIndex = 12;
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
+            this.lvUpdates.SelectedIndexChanged += new System.EventHandler(this.lvUpdates_SelectedIndexChanged);
             // 
             // lblBlockContainingDanger
             // 

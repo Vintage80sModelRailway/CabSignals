@@ -25,6 +25,10 @@ namespace LayoutMonitor
         private List<BlockRootObject> activeBlocks;
         private bool monitorRuning;
         private List<Alert> alerts;
+        private bool ShowProceedMessages;
+        private bool TrackAllocation;
+        private int CautionNagFrequencySeconds;
+        private int DangerNagFrequencySeconds;
 
         public LayoutMonitorForm()
         {
@@ -48,6 +52,33 @@ namespace LayoutMonitor
             if (cfgWebServerPort != null)
             {
                 tbServerPort.Text = cfgWebServerPort.ToString();
+            }
+
+            var cfgShowProceed = ConfigurationManager.AppSettings["ShowProceed"];
+            if (cfgShowProceed != null)
+            {
+                var success = bool.TryParse(cfgShowProceed.ToString(), out ShowProceedMessages);
+                if (!success) ShowProceedMessages = false;
+            }
+
+            var cfgTrackAllocation = ConfigurationManager.AppSettings["TrackBlockAllocation"];
+            if (cfgTrackAllocation != null)
+            {
+                var success = bool.TryParse(cfgTrackAllocation.ToString(), out TrackAllocation);
+                if (!success) TrackAllocation = false;
+            }
+
+            var cfgCautionNagFrequency = ConfigurationManager.AppSettings["CautionNagSeconds"];
+            if (cfgCautionNagFrequency != null)
+            {
+                var success = int.TryParse(cfgCautionNagFrequency.ToString(), out CautionNagFrequencySeconds);
+                if (!success) CautionNagFrequencySeconds = -1;
+            }
+            var cfgDangerNagFrequency = ConfigurationManager.AppSettings["DangerNagSeconds"];
+            if (cfgDangerNagFrequency != null)
+            {
+                var success = int.TryParse(cfgDangerNagFrequency.ToString(), out DangerNagFrequencySeconds);
+                if (!success) DangerNagFrequencySeconds = -1;
             }
         }
 
@@ -93,14 +124,30 @@ namespace LayoutMonitor
                 }
             }
 
+            var alertRemoved = false;
             var goneInactive = activeBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
             foreach (var inactive in goneInactive)
             {
                 var relatedAlert = alerts.FirstOrDefault(f => f.BlockUserName == inactive.data.userName);
                 if (relatedAlert != null)
                 {
+                    alertRemoved = true;
+                    ListViewItem item = new ListViewItem();
+                    item.Text = "Proceed " + relatedAlert.BlockUserName + " cleared";
+                    item.BackColor = Color.LimeGreen;
+                    lvUpdates.Items.Add(item);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                     alerts.Remove(relatedAlert);
                 }
+            }
+
+            if (alertRemoved && alerts.Count == 0)
+            {
+                var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
+                lvUpdates.Items.Clear();
+                lvUpdates.Items.Add(latestAlert);
+                lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             }
 
             activeBlocks = newActiveBlocks;
@@ -249,6 +296,11 @@ namespace LayoutMonitor
                         issueFoundNextBlock = true;
                         likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
                     }
+                    if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
+                    {
+                        issueFoundNextBlock = true;
+                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                    }
                     BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
 
                     if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
@@ -261,6 +313,11 @@ namespace LayoutMonitor
                     {
                         issueFoundTwoBlocks = true;
                         likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                    }
+                    if (!string.IsNullOrEmpty(twoBlocksLiveBlock.data.value) && TrackAllocation)
+                    {
+                        issueFoundTwoBlocks = true;
+                        likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
                     }
                 }
                 else
@@ -289,6 +346,11 @@ namespace LayoutMonitor
                         issueFoundNextBlock = true;
                         likelyIssueNextBlock += "Collision ";// in "+liveNextBlock.data.userName;
                     }
+                    if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation)
+                    {
+                        issueFoundNextBlock = true;
+                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                    }
                     BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                     if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
                     {
@@ -301,6 +363,11 @@ namespace LayoutMonitor
                         issueFoundTwoBlocks = true;
                         likelyIssueTwoBlocks += "Collision  ";// in " + liveTwoBlocks.data.userName; ;
                     }
+                    if (!string.IsNullOrEmpty(liveTwoBlocks.data.value) && TrackAllocation)
+                    {
+                        issueFoundTwoBlocks = true;
+                        likelyIssueTwoBlocks += "Allocated to " + liveTwoBlocks.data.value + " ";
+                    }
                 }
             }
 
@@ -311,6 +378,7 @@ namespace LayoutMonitor
                 {
                     alerts.Add(new Alert()
                     {
+                        id = Guid.NewGuid(),
                         BlockSystemName = blockSystemName,
                         BlockUserName = blockUserName,
                         SignalMastSystemName = "",
@@ -332,6 +400,7 @@ namespace LayoutMonitor
                 {
                     alerts.Add(new Alert()
                     {
+                        id = Guid.NewGuid(),
                         BlockSystemName = blockSystemName,
                         BlockUserName = blockUserName,
                         SignalMastSystemName = "",
@@ -352,6 +421,7 @@ namespace LayoutMonitor
                 {
                     alerts.Add(new Alert()
                     {
+                        id = Guid.NewGuid(),
                         BlockSystemName = blockSystemName,
                         BlockUserName = blockUserName,
                         SignalMastSystemName = "",
@@ -369,6 +439,15 @@ namespace LayoutMonitor
             {
                 lbOutput.Items.Add(("Proceed " + blockUserName));
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                if (ShowProceedMessages)
+                {
+                    ListViewItem item = new ListViewItem();
+                    item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock+" to "+BNLTwoBlocks.BlockChecked;
+                    item.BackColor = Color.LimeGreen;
+                    lvUpdates.Items.Add(item);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                }
 
                 var alertsForThisBlock = alerts.Where(w => w.BlockSystemName == blockSystemName);
                 var alertsToRemove = new List<Alert>();
@@ -715,7 +794,8 @@ namespace LayoutMonitor
         private void btnAcknowledgeAlert_Click(object sender, EventArgs e)
         {
             var ackBlockName = lblBlockWarning.Text;
-            var ackAlert = alerts.FirstOrDefault(f => f.BlockUserName == ackBlockName);
+            var ackBlockChecked = lblBlockContainingDanger.Text.Substring(3);
+            var ackAlert = alerts.FirstOrDefault(f => f.BlockUserName == ackBlockName && f.BNL.BlockChecked == ackBlockChecked);
             ListViewItem item = new ListViewItem();
 
             if (ackAlert != null)
@@ -777,11 +857,14 @@ namespace LayoutMonitor
                     alert.BNL = checkAlert;
                     
                     var checkAlertLiveBlock = await webClient.GetBlock(alert.BNL.BlockChecked);
-                    var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
-                    var liveBlock = await webClient.GetBlock(alert.BlockUserName);
-                    if ((liveBlock != null && liveBlock.data != null && liveBlock.data.state == 4) || !alertStillActive)
+                    var alertStillActive = false;
+                    if (!string.IsNullOrEmpty(checkAlert.LikelyIssue)) alertStillActive = true;
+                    if (checkAlertLiveBlock.data.state == 2) alertStillActive = true;
+                    if (TrackAllocation && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value)) alertStillActive = true;
+                    //var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
+
+                    if (!alertStillActive)
                     {
-                        //if block now unoccupied clear alert
                         alert.Acknowledged = false;
                         alertsToRemove.Add(alert);
                         continue;
@@ -817,11 +900,11 @@ namespace LayoutMonitor
                     {
                         if (alert.Severity == AlertSeverity.Caution)
                         {
-                            if (timeDiff.TotalSeconds >= 10) showAlert = true;
+                            if (timeDiff.TotalSeconds >= CautionNagFrequencySeconds) showAlert = true;
                         }
                         else if (alert.Severity == AlertSeverity.Danger)
                         {
-                            if (timeDiff.TotalSeconds > 5) showAlert = true;
+                            if (timeDiff.TotalSeconds > DangerNagFrequencySeconds) showAlert = true;
                         }
                     }
 
@@ -892,6 +975,7 @@ namespace LayoutMonitor
                 lbOutput.Items.Add(alert.BlockUserName+" DANGER "+ alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                 ListViewItem item = new ListViewItem();
+                item.Name = alert.id.ToString();
                 item.Text = alert.BlockUserName+" - "+alert.LikelyIssue+"- in "+alert.BNL.BlockChecked;
                 item.BackColor = Color.Red;
                 lvUpdates.Items.Add(item);
@@ -905,6 +989,7 @@ namespace LayoutMonitor
                 lbOutput.Items.Add(alert.BlockUserName + " CAUTION " + alerts.Count.ToString());
                 lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
                 ListViewItem item = new ListViewItem();
+                item.Name = alert.id.ToString();
                 item.Text = alert.BlockUserName + " - " + alert.LikelyIssue + "- in " + alert.BNL.BlockChecked;
                 item.BackColor = Color.Orange;
                 lvUpdates.Items.Add(item);
@@ -912,6 +997,23 @@ namespace LayoutMonitor
             }
 
             lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+        }
+
+        private void lvUpdates_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            return;
+            ListViewItem item = (ListViewItem)sender;
+            var alertId = item.Name;
+            var alert = alerts.FirstOrDefault(f => f.id.ToString() == alertId);
+            if (alert != null)
+            {
+                item.Text = "Acknowledged " + alert.BlockUserName;
+                item.BackColor = Color.LimeGreen;
+                lvUpdates.Items.Add(item);
+                lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                alerts.Remove(alert);
+            }
         }
     }
 }
