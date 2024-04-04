@@ -29,6 +29,7 @@ namespace LayoutMonitor
         private bool TrackAllocation;
         private int CautionNagFrequencySeconds;
         private int DangerNagFrequencySeconds;
+        private List<DeOccupiedBlock> DeoccupiedBlocks;
 
         public LayoutMonitorForm()
         {
@@ -80,6 +81,7 @@ namespace LayoutMonitor
                 var success = int.TryParse(cfgDangerNagFrequency.ToString(), out DangerNagFrequencySeconds);
                 if (!success) DangerNagFrequencySeconds = -1;
             }
+            DeoccupiedBlocks = new List<DeOccupiedBlock>();
         }
 
         private async void btnStartMonitoring_Click(object sender, EventArgs e)
@@ -100,6 +102,7 @@ namespace LayoutMonitor
             {
                 await MonitorLayout();
                 await ProcessAlerts();
+                ProcessDeoccupiedBlocks();
             }
         }
 
@@ -112,7 +115,8 @@ namespace LayoutMonitor
                 try {
 
                     var alreadyExists = activeBlocks.Any(a => a.data.name == nab.data.name);
-                    if (!alreadyExists)
+                    var justDeactivated = DeoccupiedBlocks.Any(a => a.BlockName == nab.data.name);
+                    if (!alreadyExists && !justDeactivated)
                     {
                         if (nab.data == null) continue;
                         var result = await ProcessNewActiveBlock(nab.data.userName, nab.data.name);
@@ -128,6 +132,15 @@ namespace LayoutMonitor
             var goneInactive = activeBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
             foreach (var inactive in goneInactive)
             {
+                var alreadyExists = DeoccupiedBlocks.Any(a => a.BlockName == inactive.data.name);
+                if (!alreadyExists)
+                {
+                    DeoccupiedBlocks.Add(new DeOccupiedBlock
+                    {
+                        BlockName = inactive.data.name,
+                        DeactivatedTime = DateTime.Now
+                    });
+                }
                 var relatedAlert = alerts.FirstOrDefault(f => f.BlockUserName == inactive.data.userName);
                 if (relatedAlert != null)
                 {
@@ -199,6 +212,11 @@ namespace LayoutMonitor
             if (ts == null) return false;
             var firstBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, ts.Connect1name, ts.Ident, ts.Ident);
             if (firstBoundaryFromMiddle == null)
+            {
+                return false;
+            }
+            var secondBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, ts.Connect2name, ts.Ident, firstBoundaryFromMiddle.EdgeConnector);
+            if (secondBoundaryFromMiddle == null)
             {
                 return false;
             }
@@ -1174,6 +1192,26 @@ namespace LayoutMonitor
             lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
         }
 
+        private void ProcessDeoccupiedBlocks()
+        {
+            try
+            {
+                List<DeOccupiedBlock> toRemove = new List<DeOccupiedBlock>();
+                foreach (var dob in DeoccupiedBlocks)
+                {
+                    TimeSpan diff = DateTime.Now - dob.DeactivatedTime;
+                    if (diff.TotalSeconds > 2) toRemove.Add(dob);
+                }
+                foreach(var dob2r in toRemove)
+                {
+                    DeoccupiedBlocks.Remove(dob2r);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
         private void lvUpdates_SelectedIndexChanged(object sender, EventArgs e)
         {
             return;

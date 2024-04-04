@@ -34,3 +34,4 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\Layout
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CopyComplete
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Assets\cabsig_ico2.ico
