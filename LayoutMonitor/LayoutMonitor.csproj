@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Classes\Alert.cs" />
     <Compile Include="Classes\Enums.cs" />
+    <Compile Include="Classes\LiveTrainLog.cs" />
     <Compile Include="LayoutMonitorForm.cs">
       <SubType>Form</SubType>
     </Compile>

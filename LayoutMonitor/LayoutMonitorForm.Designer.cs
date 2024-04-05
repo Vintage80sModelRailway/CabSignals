@@ -43,6 +43,8 @@
             this.lblLikelyIssue = new System.Windows.Forms.Label();
             this.lvUpdates = new System.Windows.Forms.ListView();
             this.lblBlockContainingDanger = new System.Windows.Forms.Label();
+            this.btnPostTest = new System.Windows.Forms.Button();
+            this.MQTT = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -191,12 +193,34 @@
             this.lblBlockContainingDanger.Size = new System.Drawing.Size(0, 63);
             this.lblBlockContainingDanger.TabIndex = 13;
             // 
+            // btnPostTest
+            // 
+            this.btnPostTest.Location = new System.Drawing.Point(1192, 84);
+            this.btnPostTest.Name = "btnPostTest";
+            this.btnPostTest.Size = new System.Drawing.Size(75, 23);
+            this.btnPostTest.TabIndex = 14;
+            this.btnPostTest.Text = "POST";
+            this.btnPostTest.UseVisualStyleBackColor = true;
+            this.btnPostTest.Click += new System.EventHandler(this.btnPostTest_Click);
+            // 
+            // MQTT
+            // 
+            this.MQTT.Location = new System.Drawing.Point(1290, 86);
+            this.MQTT.Name = "MQTT";
+            this.MQTT.Size = new System.Drawing.Size(75, 23);
+            this.MQTT.TabIndex = 15;
+            this.MQTT.Text = "MQTT";
+            this.MQTT.UseVisualStyleBackColor = true;
+            this.MQTT.Click += new System.EventHandler(this.MQTT_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1508, 527);
+            this.Controls.Add(this.MQTT);
+            this.Controls.Add(this.btnPostTest);
             this.Controls.Add(this.lblBlockContainingDanger);
             this.Controls.Add(this.lvUpdates);
             this.Controls.Add(this.lblLikelyIssue);
@@ -235,6 +259,8 @@
         private System.Windows.Forms.Label lblLikelyIssue;
         private System.Windows.Forms.ListView lvUpdates;
         private System.Windows.Forms.Label lblBlockContainingDanger;
+        private System.Windows.Forms.Button btnPostTest;
+        private System.Windows.Forms.Button MQTT;
     }
 }
 

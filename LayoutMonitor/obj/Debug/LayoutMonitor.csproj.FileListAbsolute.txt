@@ -35,3 +35,5 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Debug\LayoutMo
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.exe
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.pdb
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\Assets\cabsig_ico2.ico
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.xml

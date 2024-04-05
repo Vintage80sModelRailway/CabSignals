@@ -1,11 +1,14 @@
 ﻿using JMRIReader.Classes;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 
 namespace JMRIReader
 {    
@@ -37,6 +40,31 @@ namespace JMRIReader
                 var test = ex.Message;
             }
             return blocks;
+        }
+
+        public void AllocateBlock(string systemName, string allocatedValue)
+        {
+            APIAllocationBlock block = new APIAllocationBlock();
+            block.value = allocatedValue;
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer+"/json/block/"+systemName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+           // string blockString = new JavaScriptSerializer().Serialize(block);
+
+            var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            {
+                streamWriter.Write(blockString);
+            }
+
+            var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+            using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+            {
+                var result = streamReader.ReadToEnd();
+            }
+
+
         }
 
         public async Task<BlockRootObject> GetBlock(string UserName)

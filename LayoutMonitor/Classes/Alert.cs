@@ -24,6 +24,8 @@ namespace LayoutMonitor.Classes
         public BlockNavigationLog BNL { get; set; }
         public bool Acknowledged { get; set; }
         public bool Superceded { get; set; }
+        public bool Deactivated { get; set; }
+        public DateTime DeactivatedTime { get; set; }
 
     }
 }
