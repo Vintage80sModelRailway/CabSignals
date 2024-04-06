@@ -45,6 +45,9 @@
             this.lblBlockContainingDanger = new System.Windows.Forms.Label();
             this.btnPostTest = new System.Windows.Forms.Button();
             this.MQTT = new System.Windows.Forms.Button();
+            this.ddlTrainSelector = new System.Windows.Forms.ComboBox();
+            this.btnTerminateTrain = new System.Windows.Forms.Button();
+            this.btnTrainInfo = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -58,7 +61,7 @@
             // 
             // tbServerIP
             // 
-            this.tbServerIP.Location = new System.Drawing.Point(1039, 16);
+            this.tbServerIP.Location = new System.Drawing.Point(1526, 18);
             this.tbServerIP.Name = "tbServerIP";
             this.tbServerIP.Size = new System.Drawing.Size(125, 20);
             this.tbServerIP.TabIndex = 1;
@@ -66,7 +69,7 @@
             // 
             // tbServerPort
             // 
-            this.tbServerPort.Location = new System.Drawing.Point(1064, 42);
+            this.tbServerPort.Location = new System.Drawing.Point(1551, 44);
             this.tbServerPort.Name = "tbServerPort";
             this.tbServerPort.Size = new System.Drawing.Size(100, 20);
             this.tbServerPort.TabIndex = 2;
@@ -75,7 +78,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(982, 19);
+            this.label1.Location = new System.Drawing.Point(1469, 21);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(51, 13);
             this.label1.TabIndex = 3;
@@ -85,7 +88,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(1032, 45);
+            this.label2.Location = new System.Drawing.Point(1519, 47);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 4;
@@ -95,7 +98,7 @@
             // btnStartMonitoring
             // 
             this.btnStartMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnStartMonitoring.Location = new System.Drawing.Point(1170, 15);
+            this.btnStartMonitoring.Location = new System.Drawing.Point(1712, 12);
             this.btnStartMonitoring.Name = "btnStartMonitoring";
             this.btnStartMonitoring.Size = new System.Drawing.Size(89, 62);
             this.btnStartMonitoring.TabIndex = 5;
@@ -115,7 +118,7 @@
             // 
             // tbConfigLocation
             // 
-            this.tbConfigLocation.Location = new System.Drawing.Point(896, 68);
+            this.tbConfigLocation.Location = new System.Drawing.Point(1383, 70);
             this.tbConfigLocation.Name = "tbConfigLocation";
             this.tbConfigLocation.Size = new System.Drawing.Size(268, 20);
             this.tbConfigLocation.TabIndex = 7;
@@ -124,7 +127,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(853, 71);
+            this.label3.Location = new System.Drawing.Point(1340, 73);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(37, 13);
             this.label3.TabIndex = 8;
@@ -136,7 +139,7 @@
             this.btnStopMonitoring.BackColor = System.Drawing.Color.Red;
             this.btnStopMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnStopMonitoring.ForeColor = System.Drawing.Color.White;
-            this.btnStopMonitoring.Location = new System.Drawing.Point(1265, 12);
+            this.btnStopMonitoring.Location = new System.Drawing.Point(1807, 9);
             this.btnStopMonitoring.Name = "btnStopMonitoring";
             this.btnStopMonitoring.Size = new System.Drawing.Size(104, 66);
             this.btnStopMonitoring.TabIndex = 9;
@@ -149,7 +152,7 @@
             this.btnAcknowledgeAlert.BackColor = System.Drawing.Color.LimeGreen;
             this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAcknowledgeAlert.ForeColor = System.Drawing.Color.White;
-            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1375, 12);
+            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1917, 9);
             this.btnAcknowledgeAlert.Name = "btnAcknowledgeAlert";
             this.btnAcknowledgeAlert.Size = new System.Drawing.Size(121, 66);
             this.btnAcknowledgeAlert.TabIndex = 10;
@@ -176,7 +179,7 @@
             this.lvUpdates.Location = new System.Drawing.Point(12, 240);
             this.lvUpdates.MultiSelect = false;
             this.lvUpdates.Name = "lvUpdates";
-            this.lvUpdates.Size = new System.Drawing.Size(1484, 252);
+            this.lvUpdates.Size = new System.Drawing.Size(2021, 252);
             this.lvUpdates.TabIndex = 12;
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
@@ -195,30 +198,70 @@
             // 
             // btnPostTest
             // 
-            this.btnPostTest.Location = new System.Drawing.Point(1192, 84);
+            this.btnPostTest.Enabled = false;
+            this.btnPostTest.Location = new System.Drawing.Point(1958, 175);
             this.btnPostTest.Name = "btnPostTest";
             this.btnPostTest.Size = new System.Drawing.Size(75, 23);
             this.btnPostTest.TabIndex = 14;
             this.btnPostTest.Text = "POST";
             this.btnPostTest.UseVisualStyleBackColor = true;
+            this.btnPostTest.Visible = false;
             this.btnPostTest.Click += new System.EventHandler(this.btnPostTest_Click);
             // 
             // MQTT
             // 
-            this.MQTT.Location = new System.Drawing.Point(1290, 86);
+            this.MQTT.Enabled = false;
+            this.MQTT.Location = new System.Drawing.Point(1877, 175);
             this.MQTT.Name = "MQTT";
             this.MQTT.Size = new System.Drawing.Size(75, 23);
             this.MQTT.TabIndex = 15;
             this.MQTT.Text = "MQTT";
             this.MQTT.UseVisualStyleBackColor = true;
+            this.MQTT.Visible = false;
             this.MQTT.Click += new System.EventHandler(this.MQTT_Click);
+            // 
+            // ddlTrainSelector
+            // 
+            this.ddlTrainSelector.Font = new System.Drawing.Font("Microsoft Sans Serif", 15F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ddlTrainSelector.FormattingEnabled = true;
+            this.ddlTrainSelector.Location = new System.Drawing.Point(1712, 86);
+            this.ddlTrainSelector.Name = "ddlTrainSelector";
+            this.ddlTrainSelector.Size = new System.Drawing.Size(321, 33);
+            this.ddlTrainSelector.TabIndex = 16;
+            // 
+            // btnTerminateTrain
+            // 
+            this.btnTerminateTrain.BackColor = System.Drawing.Color.Red;
+            this.btnTerminateTrain.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnTerminateTrain.ForeColor = System.Drawing.Color.White;
+            this.btnTerminateTrain.Location = new System.Drawing.Point(1867, 125);
+            this.btnTerminateTrain.Name = "btnTerminateTrain";
+            this.btnTerminateTrain.Size = new System.Drawing.Size(166, 44);
+            this.btnTerminateTrain.TabIndex = 17;
+            this.btnTerminateTrain.Text = "Terminate";
+            this.btnTerminateTrain.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
+            this.btnTerminateTrain.UseVisualStyleBackColor = false;
+            this.btnTerminateTrain.Click += new System.EventHandler(this.btnTerminateTrain_Click);
+            // 
+            // btnTrainInfo
+            // 
+            this.btnTrainInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnTrainInfo.Location = new System.Drawing.Point(1765, 125);
+            this.btnTrainInfo.Name = "btnTrainInfo";
+            this.btnTrainInfo.Size = new System.Drawing.Size(96, 44);
+            this.btnTrainInfo.TabIndex = 18;
+            this.btnTrainInfo.Text = "Info";
+            this.btnTrainInfo.UseVisualStyleBackColor = true;
             // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1508, 527);
+            this.ClientSize = new System.Drawing.Size(2045, 527);
+            this.Controls.Add(this.btnTrainInfo);
+            this.Controls.Add(this.btnTerminateTrain);
+            this.Controls.Add(this.ddlTrainSelector);
             this.Controls.Add(this.MQTT);
             this.Controls.Add(this.btnPostTest);
             this.Controls.Add(this.lblBlockContainingDanger);
@@ -261,6 +304,9 @@
         private System.Windows.Forms.Label lblBlockContainingDanger;
         private System.Windows.Forms.Button btnPostTest;
         private System.Windows.Forms.Button MQTT;
+        private System.Windows.Forms.ComboBox ddlTrainSelector;
+        private System.Windows.Forms.Button btnTerminateTrain;
+        private System.Windows.Forms.Button btnTrainInfo;
     }
 }
 

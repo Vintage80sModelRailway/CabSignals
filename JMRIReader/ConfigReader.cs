@@ -19,7 +19,7 @@ namespace JMRIReader
         public ConfigReader(string FilePath)
         {
             filePath = FilePath;
-            config = XDocument.Load(filePath);          
+            config = XDocument.Load(filePath);        
 
         }
 
@@ -97,7 +97,7 @@ namespace JMRIReader
 
         public block GetBlockByUserName(string userName)
         {
-            var configBlock = config.Elements("layout-config").Elements("blocks").Elements("block").FirstOrDefault(f => f.Attribute("userName").Value.Equals(userName));
+            var configBlock = config.Elements("layout-config").Elements("blocks").Elements("block").FirstOrDefault(f => f.Element("userName").Value.Equals(userName));
             var blockSerializer = new XmlSerializer(typeof(block));
             block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
             return b;

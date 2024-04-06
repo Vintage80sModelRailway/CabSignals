@@ -26,6 +26,7 @@ namespace LayoutMonitor.Classes
         public bool Superceded { get; set; }
         public bool Deactivated { get; set; }
         public DateTime DeactivatedTime { get; set; }
+        public string TrainName { get; set; }
 
     }
 }
