@@ -231,8 +231,10 @@ namespace LayoutMonitor
                 var allocateTwoBlocks = false;
 
                 var newLog = log;
+                //Go back to the start of the block in case we're joining it in the middle
+                var currentBlockReverse = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
 
-                var currentBlockRoute = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.StartItem, log.CurrentBlockBNL.StartPreviousItem, log.CurrentBlockBNL.StartItem);
+                var currentBlockRoute = await NavigateThroughBlockItems(currentBlockReverse.BlockChecked, currentBlockReverse.PreviousBlock, currentBlockReverse.EdgeConnectorDirectionConnector, currentBlockReverse.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
                 var nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                 var twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
                 if (currentBlockRoute.BlockFound != log.CurrentBlockBNL.BlockFound)
@@ -253,6 +255,20 @@ namespace LayoutMonitor
 
                     allocateNextBlock = true;
                     allocateTwoBlocks = true;
+
+                    var alertsForNextBlock = alerts.Where(w => w.BNL.BlockChecked == nextBlock.BlockChecked && w.TrainName == newLog.TrainName);
+                    foreach (var alert in alertsForNextBlock)
+                    {
+                        alert.Deactivated = true;
+                        alert.DeactivatedTime = DateTime.Now;
+                    }
+
+                    var alertsForTwoBlock = alerts.Where(w => w.BNL.BlockChecked == twoBlock.BlockChecked && w.TrainName == newLog.TrainName);
+                    foreach (var alert in alertsForTwoBlock)
+                    {
+                        alert.Deactivated = true;
+                        alert.DeactivatedTime = DateTime.Now;
+                    }
 
                     //log.History.RemoveRange(log.History.Count - 2, 2);
                     //handle issues
@@ -573,7 +589,7 @@ namespace LayoutMonitor
             }
 
 
-            if (!string.IsNullOrEmpty(blockLog.CurrentBlock) && thisBlock.path.Any(a => a.block == blockLog.NextNextBlock))
+            if (!string.IsNullOrEmpty(blockLog.CurrentBlock)) //&& thisBlock.path.Any(a => a.block == blockLog.NextNextBlock))
             {
                 likelyPreviousBlock = blockLog.CurrentBlock;
             }
@@ -1403,6 +1419,7 @@ namespace LayoutMonitor
             {
                 foreach (var alert in alerts.OrderBy(o => o.Severity))
                 {
+                    if (alert.Deactivated) continue;
                     bool hasPrecedingAlert = false;
                     if (string.IsNullOrEmpty(alert.BNL.BlockFound) && !alert.BNL.NoMoreBlocksFound && !alert.Deactivated)
                     {
@@ -1418,8 +1435,19 @@ namespace LayoutMonitor
                         }
                         continue;
                     }
-                    var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked,alert.BNL.PreviousBlock, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
-                    var recheck = await ProcessNewActiveBlock(alert.BlockUserName, alert.BlockSystemName,alert.PreviousBlockUserName,alert.TrainName,true);
+                   // var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked,alert.BNL.PreviousBlock, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
+                    var checkAlert = new BlockNavigationLog();
+
+                    var log = Log.FirstOrDefault(f => f.Name == alert.TrainName);
+                    if (log.CurrentBlockBNL.BlockChecked == alert.BNL.BlockChecked)
+                        checkAlert = log.CurrentBlockBNL;
+                    else if (log.NextBlockBNL.BlockChecked == alert.BNL.BlockChecked)
+                        checkAlert = log.NextBlockBNL;
+                    else if (log.TwoBlocksBNL.BlockChecked == alert.BNL.BlockChecked)
+                        checkAlert = log.TwoBlocksBNL;
+
+                    if (string.IsNullOrEmpty(checkAlert.BlockChecked)) continue;
+                    //var recheck = await ProcessNewActiveBlock(alert.BlockUserName, alert.BlockSystemName,alert.PreviousBlockUserName,alert.TrainName,true);
                     if (!string.IsNullOrEmpty(checkAlert.LikelyIssue))
                     {
                         if (!alert.LikelyIssue.Contains("Collision"))
