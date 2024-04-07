@@ -35,10 +35,11 @@ namespace LayoutMonitor
         private string MQTTServer;
         private string BlockAllocateTopic;
         private string BlockReleaseTopic;
-        public List<string> AllocatedBlocks;
-        public List<LiveTrainLog> Log;
-        public int TrainCounter;
-        public bool AllocateBlocks;
+        private List<string> AllocatedBlocks;
+        private List<LiveTrainLog> Log;
+        private int TrainCounter;
+        private bool AllocateBlocks;
+
 
         public LayoutMonitorForm()
         {
@@ -147,6 +148,7 @@ namespace LayoutMonitor
 
         private async Task<bool> MonitorLayout()
         {
+            List<string> blocksProcessed = new List<string>();
             var newBlockStates = await webClient.GetBlocks();
             var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
             var oldActiveBlocks = allBlocks.Where(w => w.data.state == 2).ToList();
@@ -161,7 +163,11 @@ namespace LayoutMonitor
                     if (!alreadyExists && !justDeactivated)
                     {
                         if (nab.data == null) continue;
-                        var tResult = await ProcessNewActiveBlock(nab.data.userName, nab.data.name,"",previousBlockState.data.value);
+                        var success = await ProcessNewActiveBlock(nab.data.userName, nab.data.name,"",previousBlockState.data.value);
+                        if (success)
+                        {
+                            blocksProcessed.Add(nab.data.userName);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -240,7 +246,7 @@ namespace LayoutMonitor
                 if (currentBlockRoute.BlockFound != log.CurrentBlockBNL.BlockFound)
                 {
 
-                    nextBlock =  await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
+                    nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                     twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
 
                     var sysName = config.GetBlockByUserName(log.CurrentBlockBNL.BlockFound);
@@ -250,25 +256,28 @@ namespace LayoutMonitor
                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
                     webClient.AllocateBlock(sysName.userName, "");
 
-                    log.AllocatedBlocks.Remove(log.CurrentBlockBNL.BlockFound);
-                    log.AllocatedBlocks.Remove(log.NextBlockBNL.BlockFound);
+                    newLog.AllocatedBlocks.Remove(log.CurrentBlockBNL.BlockFound);
+                    newLog.AllocatedBlocks.Remove(log.NextBlockBNL.BlockFound);
 
                     allocateNextBlock = true;
                     allocateTwoBlocks = true;
 
-                    var alertsForNextBlock = alerts.Where(w => w.BNL.BlockChecked == nextBlock.BlockChecked && w.TrainName == newLog.TrainName);
+                    var alertsForNextBlock = alerts.Where(w => w.BNL.BlockChecked == nextBlock.BlockChecked && w.TrainName == newLog.Name);
                     foreach (var alert in alertsForNextBlock)
                     {
                         alert.Deactivated = true;
                         alert.DeactivatedTime = DateTime.Now;
                     }
 
-                    var alertsForTwoBlock = alerts.Where(w => w.BNL.BlockChecked == twoBlock.BlockChecked && w.TrainName == newLog.TrainName);
+                    var alertsForTwoBlock = alerts.Where(w => w.BNL.BlockChecked == twoBlock.BlockChecked && w.TrainName == newLog.Name);
                     foreach (var alert in alertsForTwoBlock)
                     {
                         alert.Deactivated = true;
                         alert.DeactivatedTime = DateTime.Now;
                     }
+
+                    newLog.AllocatedBlocks.Add(currentBlockRoute.BlockFound);
+                    newLog.AllocatedBlocks.Add(nextBlock.BlockFound);
 
                     //log.History.RemoveRange(log.History.Count - 2, 2);
                     //handle issues
@@ -283,6 +292,7 @@ namespace LayoutMonitor
                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
                     webClient.AllocateBlock(sysName.userName, "");
                     log.AllocatedBlocks.Remove(log.NextBlockBNL.BlockFound);
+                    newLog.AllocatedBlocks.Add(nextBlock.BlockFound);
                     allocateTwoBlocks = true;
                 }
 
@@ -308,9 +318,9 @@ namespace LayoutMonitor
                 {
                     issueFoundNextBlock = true;
                     if (issueNextBlockDetails == "")
-                        issueNextBlockDetails = "Allocated to "+liveNextBlock.data.value;
+                        issueNextBlockDetails = "Allocated to " + liveNextBlock.data.value;
                     else
-                        issueNextBlockDetails = issueNextBlockDetails+ " - Allocated to " + liveNextBlock.data.value;
+                        issueNextBlockDetails = issueNextBlockDetails + " - Allocated to " + liveNextBlock.data.value;
                 }
 
                 var liveTwoBlocks = newBlockStates.FirstOrDefault(f => f.data.userName == twoBlock.BlockChecked);
@@ -409,7 +419,7 @@ namespace LayoutMonitor
                 if (issueFoundTwoBlocks)
                 {
                     //Caution alert
-                    var alertExists = alerts.Any(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked  && a.Severity == AlertSeverity.Caution && a.TrainName == log.Name);
+                    var alertExists = alerts.Any(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked && a.Severity == AlertSeverity.Caution && a.TrainName == log.Name);
                     var existingAlert = alerts.FirstOrDefault(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked && a.Severity == AlertSeverity.Caution && a.TrainName == log.Name);
                     var dangerAlertExistsForNextBlock = alerts.Any(a => a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.TrainName == log.Name);
 
@@ -445,15 +455,35 @@ namespace LayoutMonitor
                     {
                         var tbConfig = config.GetBlockByUserName(nextBlock.BlockFound);
                         await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + tbConfig.userName, tbConfig.userName, false);
-                        webClient.AllocateBlock(tbConfig.userName, "");
+                        webClient.AllocateBlock(tbConfig.systemName, newLog.Name);
                         if (!log.AllocatedBlocks.Contains(nextBlock.BlockFound))
                             log.AllocatedBlocks.Add(nextBlock.BlockFound);
                     }
                 }
+
+                //check allocation in case a collision alert has been cleared
+                if (blocksProcessed.Count <= 0)
+                {
+                    foreach (var allocation in newLog.AllocatedBlocks)
+                    {
+                        var liveBlock = newBlockStates.FirstOrDefault(f => f.data.userName == allocation);
+                        if (liveBlock != null && liveBlock.data.state == 4)
+                        {
+                            if (string.IsNullOrEmpty(liveBlock.data.value))
+                            {
+                                await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveBlock.data.userName, liveBlock.data.userName, false);
+                                webClient.AllocateBlock(liveBlock.data.name, log.Name);
+                            }
+                        }
+                    }
+                }
+
                 int logIndex = Log.IndexOf(log);
                 if (logIndex >= 0)
                     Log[logIndex] = newLog;
             }
+
+
             
 
             allBlocks = newBlockStates;
@@ -666,10 +696,10 @@ namespace LayoutMonitor
                         {
                             webClient.AllocateBlock(liveNextBlock.data.name,blockLog.Name);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic+"/"+liveNextBlock.data.name, liveNextBlock.data.userName, false);
-                            if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
-                                blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
                         }
-                        
+                        if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
+                            blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
+
                         BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                         if (BNLTwoBlocks != null)
                         {
@@ -694,9 +724,9 @@ namespace LayoutMonitor
                             {
                                 webClient.AllocateBlock(twoBlocksLiveBlock.data.name, blockLog.Name);
                                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + twoBlocksLiveBlock.data.name, twoBlocksLiveBlock.data.userName, false);
-                                if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
-                                    blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
                             }
+                            if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
+                                blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
                         }
                     }
                 }
@@ -740,9 +770,10 @@ namespace LayoutMonitor
                         {
                             webClient.AllocateBlock(liveNextBlock.data.name, blockLog.Name);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveNextBlock.data.name, liveNextBlock.data.userName, false);
-                            if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
-                                blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
                         }
+                        if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
+                            blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
+
                         blockLog.NextNextBlock = BNLNextBlock.BlockFound;
                         BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                         if (BNLTwoBlocks != null)
@@ -768,9 +799,9 @@ namespace LayoutMonitor
                             {
                                 webClient.AllocateBlock(liveTwoBlocks.data.name, blockLog.Name); ;
                                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveTwoBlocks.data.name, liveTwoBlocks.data.userName, false);
-                                if (!blockLog.AllocatedBlocks.Contains(liveTwoBlocks.data.userName))
-                                    blockLog.AllocatedBlocks.Add(liveTwoBlocks.data.userName);
                             }
+                            if (!blockLog.AllocatedBlocks.Contains(liveTwoBlocks.data.userName))
+                                blockLog.AllocatedBlocks.Add(liveTwoBlocks.data.userName);
                         }
                     }
                 }
@@ -1466,7 +1497,7 @@ namespace LayoutMonitor
                     var alertStillActive = false;
                     if (!string.IsNullOrEmpty(checkAlert.LikelyIssue)) alertStillActive = true;
                     if (checkAlertLiveBlock.data.state == 2) alertStillActive = true;
-                    if (TrackAllocation && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value)) alertStillActive = true;
+                    if (TrackAllocation && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value) && checkAlertLiveBlock.data.value != log.Name) alertStillActive = true;
                     //var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
 
                     if (!alertStillActive)
@@ -1480,6 +1511,12 @@ namespace LayoutMonitor
                             lblBlockContainingDanger.Text = "";
                             lblLikelyIssue.Text = "";
                         }
+                        ListViewItem item = new ListViewItem();
+                        item.Name = alert.id.ToString();
+                        item.Text = "Cleared "+ alert.BNL.BlockChecked + " - proceed";
+                        item.BackColor = Color.LimeGreen;
+                        lvUpdates.Items.Add(item);
+                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                         continue;
                     }
 
@@ -1630,17 +1667,6 @@ namespace LayoutMonitor
                 lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 alerts.Remove(alert);
             }
-        }
-
-        private void btnPostTest_Click(object sender, EventArgs e)
-        {
-            webClient = new JSONReader("http://" + tbServerIP.Text + ":" + tbServerPort.Text);
-            webClient.AllocateBlock("IB:AUTO:0001","");
-        }
-
-        private async void MQTT_Click(object sender, EventArgs e)
-        {
-            await MQTTClient.SendMQTTMessage("192.168.1.29", "layout/block/allocate/IB:AUTO:0001", "Yard AC Line 4 Block 1", false);
         }
 
         private void btnTerminateTrain_Click(object sender, EventArgs e)

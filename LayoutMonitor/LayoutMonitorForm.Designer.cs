@@ -43,8 +43,6 @@
             this.lblLikelyIssue = new System.Windows.Forms.Label();
             this.lvUpdates = new System.Windows.Forms.ListView();
             this.lblBlockContainingDanger = new System.Windows.Forms.Label();
-            this.btnPostTest = new System.Windows.Forms.Button();
-            this.MQTT = new System.Windows.Forms.Button();
             this.ddlTrainSelector = new System.Windows.Forms.ComboBox();
             this.btnTerminateTrain = new System.Windows.Forms.Button();
             this.btnTrainInfo = new System.Windows.Forms.Button();
@@ -196,30 +194,6 @@
             this.lblBlockContainingDanger.Size = new System.Drawing.Size(0, 63);
             this.lblBlockContainingDanger.TabIndex = 13;
             // 
-            // btnPostTest
-            // 
-            this.btnPostTest.Enabled = false;
-            this.btnPostTest.Location = new System.Drawing.Point(1958, 175);
-            this.btnPostTest.Name = "btnPostTest";
-            this.btnPostTest.Size = new System.Drawing.Size(75, 23);
-            this.btnPostTest.TabIndex = 14;
-            this.btnPostTest.Text = "POST";
-            this.btnPostTest.UseVisualStyleBackColor = true;
-            this.btnPostTest.Visible = false;
-            this.btnPostTest.Click += new System.EventHandler(this.btnPostTest_Click);
-            // 
-            // MQTT
-            // 
-            this.MQTT.Enabled = false;
-            this.MQTT.Location = new System.Drawing.Point(1877, 175);
-            this.MQTT.Name = "MQTT";
-            this.MQTT.Size = new System.Drawing.Size(75, 23);
-            this.MQTT.TabIndex = 15;
-            this.MQTT.Text = "MQTT";
-            this.MQTT.UseVisualStyleBackColor = true;
-            this.MQTT.Visible = false;
-            this.MQTT.Click += new System.EventHandler(this.MQTT_Click);
-            // 
             // ddlTrainSelector
             // 
             this.ddlTrainSelector.Font = new System.Drawing.Font("Microsoft Sans Serif", 15F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -262,8 +236,6 @@
             this.Controls.Add(this.btnTrainInfo);
             this.Controls.Add(this.btnTerminateTrain);
             this.Controls.Add(this.ddlTrainSelector);
-            this.Controls.Add(this.MQTT);
-            this.Controls.Add(this.btnPostTest);
             this.Controls.Add(this.lblBlockContainingDanger);
             this.Controls.Add(this.lvUpdates);
             this.Controls.Add(this.lblLikelyIssue);
@@ -302,8 +274,6 @@
         private System.Windows.Forms.Label lblLikelyIssue;
         private System.Windows.Forms.ListView lvUpdates;
         private System.Windows.Forms.Label lblBlockContainingDanger;
-        private System.Windows.Forms.Button btnPostTest;
-        private System.Windows.Forms.Button MQTT;
         private System.Windows.Forms.ComboBox ddlTrainSelector;
         private System.Windows.Forms.Button btnTerminateTrain;
         private System.Windows.Forms.Button btnTrainInfo;
