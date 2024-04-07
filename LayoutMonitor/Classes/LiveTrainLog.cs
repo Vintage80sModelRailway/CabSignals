@@ -21,5 +21,8 @@ namespace LayoutMonitor.Classes
         public BlockNavigationLog TwoBlocksBNL { get; set; }
         public List<string> AllocatedBlocks { get; set; }
 
+        public bool Terminated { get; set; }
+        public string TerminatedReason { get; set; }
+
     }
 }

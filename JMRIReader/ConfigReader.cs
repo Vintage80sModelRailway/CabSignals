@@ -268,6 +268,15 @@ namespace JMRIReader
             return turnoutsInThisBlock;
         }
 
+        public List<LayoutSlip> GetSlipsInBlock(string blockName)
+        {
+            var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
+            var layoutSerializer = new XmlSerializer(typeof(LayoutEditor));
+            LayoutEditor layout = (LayoutEditor)layoutSerializer.Deserialize(layoutXML.CreateReader());
+            var slipsInThisBlock = layout.LayoutSlip.Where(w => w.Blockname == blockName).ToList();
+            return slipsInThisBlock;
+        }
+
         public List<Tracksegment> GetTracksegmentsForBlock(string blockName)
         {
             var layoutXML = config.Elements("layout-config").Elements("LayoutEditor").FirstOrDefault();
