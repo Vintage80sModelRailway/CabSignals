@@ -16,3 +16,5 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReade
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\MQTTnet.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\bin\Release\MQTTnet.xml

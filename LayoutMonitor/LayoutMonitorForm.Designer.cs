@@ -59,7 +59,7 @@
             // 
             // tbServerIP
             // 
-            this.tbServerIP.Location = new System.Drawing.Point(1526, 18);
+            this.tbServerIP.Location = new System.Drawing.Point(1374, 20);
             this.tbServerIP.Name = "tbServerIP";
             this.tbServerIP.Size = new System.Drawing.Size(125, 20);
             this.tbServerIP.TabIndex = 1;
@@ -67,7 +67,7 @@
             // 
             // tbServerPort
             // 
-            this.tbServerPort.Location = new System.Drawing.Point(1551, 44);
+            this.tbServerPort.Location = new System.Drawing.Point(1399, 46);
             this.tbServerPort.Name = "tbServerPort";
             this.tbServerPort.Size = new System.Drawing.Size(100, 20);
             this.tbServerPort.TabIndex = 2;
@@ -76,7 +76,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(1469, 21);
+            this.label1.Location = new System.Drawing.Point(1317, 23);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(51, 13);
             this.label1.TabIndex = 3;
@@ -86,7 +86,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(1519, 47);
+            this.label2.Location = new System.Drawing.Point(1367, 49);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 4;
@@ -96,7 +96,7 @@
             // btnStartMonitoring
             // 
             this.btnStartMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnStartMonitoring.Location = new System.Drawing.Point(1712, 12);
+            this.btnStartMonitoring.Location = new System.Drawing.Point(1560, 14);
             this.btnStartMonitoring.Name = "btnStartMonitoring";
             this.btnStartMonitoring.Size = new System.Drawing.Size(89, 62);
             this.btnStartMonitoring.TabIndex = 5;
@@ -116,7 +116,7 @@
             // 
             // tbConfigLocation
             // 
-            this.tbConfigLocation.Location = new System.Drawing.Point(1383, 70);
+            this.tbConfigLocation.Location = new System.Drawing.Point(1231, 72);
             this.tbConfigLocation.Name = "tbConfigLocation";
             this.tbConfigLocation.Size = new System.Drawing.Size(268, 20);
             this.tbConfigLocation.TabIndex = 7;
@@ -125,7 +125,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(1340, 73);
+            this.label3.Location = new System.Drawing.Point(1188, 75);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(37, 13);
             this.label3.TabIndex = 8;
@@ -137,7 +137,7 @@
             this.btnStopMonitoring.BackColor = System.Drawing.Color.Red;
             this.btnStopMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnStopMonitoring.ForeColor = System.Drawing.Color.White;
-            this.btnStopMonitoring.Location = new System.Drawing.Point(1807, 9);
+            this.btnStopMonitoring.Location = new System.Drawing.Point(1655, 11);
             this.btnStopMonitoring.Name = "btnStopMonitoring";
             this.btnStopMonitoring.Size = new System.Drawing.Size(104, 66);
             this.btnStopMonitoring.TabIndex = 9;
@@ -150,7 +150,7 @@
             this.btnAcknowledgeAlert.BackColor = System.Drawing.Color.LimeGreen;
             this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAcknowledgeAlert.ForeColor = System.Drawing.Color.White;
-            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1917, 9);
+            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1765, 11);
             this.btnAcknowledgeAlert.Name = "btnAcknowledgeAlert";
             this.btnAcknowledgeAlert.Size = new System.Drawing.Size(121, 66);
             this.btnAcknowledgeAlert.TabIndex = 10;
@@ -177,7 +177,7 @@
             this.lvUpdates.Location = new System.Drawing.Point(12, 240);
             this.lvUpdates.MultiSelect = false;
             this.lvUpdates.Name = "lvUpdates";
-            this.lvUpdates.Size = new System.Drawing.Size(2021, 252);
+            this.lvUpdates.Size = new System.Drawing.Size(1869, 252);
             this.lvUpdates.TabIndex = 12;
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
@@ -198,7 +198,7 @@
             // 
             this.ddlTrainSelector.Font = new System.Drawing.Font("Microsoft Sans Serif", 15F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ddlTrainSelector.FormattingEnabled = true;
-            this.ddlTrainSelector.Location = new System.Drawing.Point(1712, 86);
+            this.ddlTrainSelector.Location = new System.Drawing.Point(1560, 88);
             this.ddlTrainSelector.Name = "ddlTrainSelector";
             this.ddlTrainSelector.Size = new System.Drawing.Size(321, 33);
             this.ddlTrainSelector.TabIndex = 16;
@@ -208,7 +208,7 @@
             this.btnTerminateTrain.BackColor = System.Drawing.Color.Red;
             this.btnTerminateTrain.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnTerminateTrain.ForeColor = System.Drawing.Color.White;
-            this.btnTerminateTrain.Location = new System.Drawing.Point(1867, 125);
+            this.btnTerminateTrain.Location = new System.Drawing.Point(1715, 127);
             this.btnTerminateTrain.Name = "btnTerminateTrain";
             this.btnTerminateTrain.Size = new System.Drawing.Size(166, 44);
             this.btnTerminateTrain.TabIndex = 17;
@@ -220,7 +220,7 @@
             // btnTrainInfo
             // 
             this.btnTrainInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnTrainInfo.Location = new System.Drawing.Point(1765, 125);
+            this.btnTrainInfo.Location = new System.Drawing.Point(1613, 127);
             this.btnTrainInfo.Name = "btnTrainInfo";
             this.btnTrainInfo.Size = new System.Drawing.Size(96, 44);
             this.btnTrainInfo.TabIndex = 18;
@@ -232,7 +232,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(2045, 527);
+            this.ClientSize = new System.Drawing.Size(1904, 527);
             this.Controls.Add(this.btnTrainInfo);
             this.Controls.Add(this.btnTerminateTrain);
             this.Controls.Add(this.ddlTrainSelector);

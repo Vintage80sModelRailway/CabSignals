@@ -590,6 +590,7 @@ namespace LayoutMonitor
             }
             if (ts == null)
             {
+                if (blockLog.CurrentBlockBNL == null) return false;
                 //could be a DS or turnout
                 //need previous item
                 var prev = blockLog.CurrentBlockBNL.EdgeConnectorDirectionConnector;
@@ -623,6 +624,15 @@ namespace LayoutMonitor
             {
                 return false;
             }
+
+            //if first boundary from middle has a warning - turnout closed against - we know we've gone the wrong way.
+            //need to go the other way
+            else if (firstBoundaryFromMiddle.LikelyIssue != null && firstBoundaryFromMiddle.LikelyIssue.Contains("AGAINST"))
+            {
+                firstBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, connector2, previousConnector, firstBoundaryFromMiddle.EdgeConnector);
+            }
+
+
             var secondBoundaryFromMiddle = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, connector2, previousConnector, firstBoundaryFromMiddle.EdgeConnector);
             if (secondBoundaryFromMiddle == null)
             {
@@ -1365,84 +1375,189 @@ namespace LayoutMonitor
                 var liveTB = await webClient.GetTurnout(cfgTurnoutB.systemName);
                 var nextItem = "";
                 var issueFound = "";
+                string astate = liveTA.data.state.ToString();
+                string bstate = liveTB.data.state.ToString();
 
                 //Approaching from...
                 if (slip.Connectaname == previousLayoutItem)
                 {
-                    if (liveTB.data.state == 2)
+                    if (slip.States.AC.Turnout == astate && slip.States.AC.TurnoutB == bstate)
                     {
-                        //straight over
                         nextItem = slip.Connectcname;
-                        var states = slip.States.AC;
+                    }
+                    else if (slip.States.AD.Turnout == astate && slip.States.AD.TurnoutB == bstate)
+                    {
+                        nextItem = slip.Connectdname;
                     }
                     else
                     {
-                        nextItem = slip.Connectdname;
-                        var states = slip.States.AD;
-                    }
-                    if (liveTA.data.state == 4)
-                    {
-                        //oncoming thrown - alert
-                        issueFound = liveTA.data.userName + " THROWN AGAINST";
+                        
+                        string state = " THROWN";
+                        if (liveTA.data.state == 2) state = " CLOSED";
+                        if (slip.States.AC.Turnout == astate)
+                        {
+                            nextItem = slip.Connectcname;
+                        }
+                        else
+                        {
+                            nextItem = slip.Connectdname;
+                        }
+                        issueFound = liveTA.data.userName + state + " AGAINST";
                     }
                 }
                 else if (slip.Connectbname == previousLayoutItem)
                 {
-                    if (liveTB.data.state == 4)
+                    if (slip.States.BC.Turnout == astate && slip.States.BC.TurnoutB == bstate)
                     {
-                        //c
+                        nextItem = slip.Connectcname;
+                    }
+                    else if (slip.States.BD.Turnout == astate && slip.States.BD.TurnoutB == bstate)
+                    {
                         nextItem = slip.Connectdname;
-                        var states = slip.States.BD;
                     }
                     else
                     {
-                        //d
-                        nextItem = slip.Connectcname;
-                        var states = slip.States.BC;
-                    }
-                    if (liveTA.data.state == 2)
-                    {
-                        //alert - TA against 
-                        issueFound = liveTA.data.userName + " CLOSED AGAINST";
+                        string state = " THROWN";
+                        if (liveTA.data.state == 2) state = " CLOSED";
+                        if (slip.States.BC.Turnout == astate)
+                        {
+                            nextItem = slip.Connectcname;
+                        }
+                        else
+                        {
+                            nextItem = slip.Connectdname;
+                        }
+                        issueFound = liveTA.data.userName + state + " AGAINST";
                     }
                 }
                 else if (slip.Connectcname == previousLayoutItem)
                 {
-                    if (liveTA.data.state == 2)
+                    if (slip.States.AC.Turnout == astate && slip.States.AC.TurnoutB == bstate)
                     {
-                        //straight over
                         nextItem = slip.Connectaname;
-                        var states = slip.States.AC;
+                    }
+                    else if (slip.States.BC.Turnout == astate && slip.States.BC.TurnoutB == bstate)
+                    {
+                        nextItem = slip.Connectbname;
                     }
                     else
                     {
-                        nextItem = slip.Connectbname;
-                        var states = slip.States.BC;
-                    }
-                    if (liveTB.data.state == 4)
-                    {
-                        //alert approaching closed but thrown
-                        issueFound = liveTB.data.userName + " THROWN AGAINST";
+                        string state = " THROWN";
+                        if (liveTB.data.state == 2) state = " CLOSED";
+                        if (slip.States.AC.TurnoutB == bstate)
+                        {
+                            nextItem = slip.Connectaname;
+                        }
+                        else
+                        {
+                            nextItem = slip.Connectbname;
+                        }
+                        issueFound = liveTB.data.userName + state + " AGAINST";
                     }
                 }
                 else if (slip.Connectdname == previousLayoutItem)
                 {
-                    if (liveTA.data.state == 2)
+                    if (slip.States.AD.Turnout == astate && slip.States.AD.TurnoutB == bstate)
                     {
                         nextItem = slip.Connectaname;
-                        var states = slip.States.AD;
+                    }
+                    else if (slip.States.BD.Turnout == astate && slip.States.BD.TurnoutB == bstate)
+                    {
+                        nextItem = slip.Connectbname;
                     }
                     else
                     {
-                        nextItem = slip.Connectbname;
-                        var states = slip.States.BD;
-                    }
-                    if (liveTB.data.state == 2)
-                    {
-                        //alert approaching thrown but closed
-                        issueFound = liveTB.data.userName + " CLOSED AGAINST";
+                        string state = " THROWN";
+                        if (liveTB.data.state == 2) state = " CLOSED";
+                        if (slip.States.AD.TurnoutB == bstate)
+                        {
+                            nextItem = slip.Connectaname;
+                        }
+                        else
+                        {
+                            nextItem = slip.Connectbname;
+                        }
+                        issueFound = liveTB.data.userName + state + " AGAINST";
                     }
                 }
+                //if (slip.Connectaname == previousLayoutItem)
+                //{
+                //    if (liveTB.data.state == 2)
+                //    {
+                //        nextItem = slip.Connectdname;
+                //        var states = slip.States.AD;
+
+                //    }
+                //    else
+                //    {
+                //        nextItem = slip.Connectcname;
+                //        var states = slip.States.AC;
+                //    }
+                //    if (liveTA.data.state == 2)
+                //    {
+                //        //oncoming thrown - alert
+                //        issueFound = liveTA.data.userName + " CLOSED AGAINST";
+                //    }
+                //}
+                //else if (slip.Connectbname == previousLayoutItem)
+                //{
+                //    if (liveTB.data.state == 2)
+                //    {
+                //        //c
+                //        nextItem = slip.Connectdname;
+                //        var states = slip.States.BD;
+                //    }
+                //    else
+                //    {
+                //        //d
+                //        nextItem = slip.Connectcname;
+                //        var states = slip.States.BC;
+                //    }
+                //    if (liveTA.data.state == 4)
+                //    {
+                //        //alert - TA against 
+                //        issueFound = liveTA.data.userName + " THROWN AGAINST";
+                //    }
+                //}
+                //else if (slip.Connectcname == previousLayoutItem)
+                //{
+                //    if (liveTA.data.state == 2)
+                //    {
+                //        //straight over
+                //        nextItem = slip.Connectbname;
+                //        var states = slip.States.BC;
+
+                //    }
+                //    else
+                //    {
+                //        nextItem = slip.Connectaname;
+                //        var states = slip.States.AC;
+                //    }
+                //    if (liveTB.data.state == 2)
+                //    {
+                //        //alert approaching closed but thrown
+                //        issueFound = liveTB.data.userName + " CLOSED AGAINST";
+                //    }
+                //}
+                //else if (slip.Connectdname == previousLayoutItem)
+                //{
+                //    if (liveTA.data.state == 2)
+                //    {
+                //        nextItem = slip.Connectbname;
+                //        var states = slip.States.BD;
+
+                //    }
+                //    else
+                //    {
+                //        nextItem = slip.Connectaname;
+                //        var states = slip.States.AD;
+                //    }
+                //    if (liveTB.data.state == 4)
+                //    {
+                //        //alert approaching thrown but closed
+                //        issueFound = liveTB.data.userName + " THROWN AGAINST";
+                //    }
+                //}
                 if(slip.Blockname != currentBlock)
                 {
                     bnl.EdgeConnector = slip.Ident;
@@ -1768,7 +1883,6 @@ namespace LayoutMonitor
             TerminateTrain(trainName);
             var log = Log.FirstOrDefault(f => f.Name == trainName);
             if (log != null) Log.Remove(log);
-            ddlTrainSelector.SelectedIndex = 0;
             ddlTrainSelector.Items.Remove(trainName);
         }
 
