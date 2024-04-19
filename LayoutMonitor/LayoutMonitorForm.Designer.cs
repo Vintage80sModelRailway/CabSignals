@@ -46,6 +46,7 @@
             this.ddlTrainSelector = new System.Windows.Forms.ComboBox();
             this.btnTerminateTrain = new System.Windows.Forms.Button();
             this.btnTrainInfo = new System.Windows.Forms.Button();
+            this.btnCancelAllocations = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -227,12 +228,25 @@
             this.btnTrainInfo.Text = "Info";
             this.btnTrainInfo.UseVisualStyleBackColor = true;
             // 
+            // btnCancelAllocations
+            // 
+            this.btnCancelAllocations.BackColor = System.Drawing.Color.Gold;
+            this.btnCancelAllocations.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnCancelAllocations.Location = new System.Drawing.Point(1593, 178);
+            this.btnCancelAllocations.Name = "btnCancelAllocations";
+            this.btnCancelAllocations.Size = new System.Drawing.Size(288, 43);
+            this.btnCancelAllocations.TabIndex = 19;
+            this.btnCancelAllocations.Text = "Cancel Allocations";
+            this.btnCancelAllocations.UseVisualStyleBackColor = false;
+            this.btnCancelAllocations.Click += new System.EventHandler(this.btnCancelAllocations_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1904, 527);
+            this.Controls.Add(this.btnCancelAllocations);
             this.Controls.Add(this.btnTrainInfo);
             this.Controls.Add(this.btnTerminateTrain);
             this.Controls.Add(this.ddlTrainSelector);
@@ -252,7 +266,7 @@
             this.Controls.Add(this.lbOutput);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "LayoutMonitorForm";
-            this.Text = "JMRI Danger Early Warning System";
+            this.Text = "JMRI Danger Early Warning System v0.1";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -277,6 +291,7 @@
         private System.Windows.Forms.ComboBox ddlTrainSelector;
         private System.Windows.Forms.Button btnTerminateTrain;
         private System.Windows.Forms.Button btnTrainInfo;
+        private System.Windows.Forms.Button btnCancelAllocations;
     }
 }
 

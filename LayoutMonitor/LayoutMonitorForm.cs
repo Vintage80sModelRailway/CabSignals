@@ -231,13 +231,14 @@ namespace LayoutMonitor
                 {
                     TerminateTrain(log.Name);
                     ListViewItem item = new ListViewItem();
-                    item.Text = log.Name+ " terminated - " + log.TerminatedReason;
+                    item.Text = log.Name + " terminated - " + log.TerminatedReason;
                     item.BackColor = Color.LimeGreen;
                     lvUpdates.Items.Add(item);
                     lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                     lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                     continue;
                 }
+                else if (log.IsAutomated) continue;
 
                 var issueFoundThisBlock = false;
                 var issueFoundNextBlock = false;
@@ -257,7 +258,6 @@ namespace LayoutMonitor
                 var twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
                 if (currentBlockRoute.BlockFound != log.CurrentBlockBNL.BlockFound)
                 {
-
                     nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                     twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
 
@@ -290,12 +290,6 @@ namespace LayoutMonitor
 
                     newLog.AllocatedBlocks.Add(currentBlockRoute.BlockFound);
                     newLog.AllocatedBlocks.Add(nextBlock.BlockFound);
-
-                    //log.History.RemoveRange(log.History.Count - 2, 2);
-                    //handle issues
-                    //get live block state                    
-                    //remove previous allocations
-                    //allocate new route
                 }
                 else if (nextBlock.BlockFound != log.NextBlockBNL.BlockFound)
                 {
@@ -390,7 +384,6 @@ namespace LayoutMonitor
                         existingAlert.Deactivated = false;
                     }
                 }
-
 
                 if (issueFoundNextBlock)
                 {
@@ -497,10 +490,7 @@ namespace LayoutMonitor
                 int logIndex = Log.IndexOf(log);
                 if (logIndex >= 0)
                     Log[logIndex] = newLog;
-            }
-
-
-            
+            }            
 
             allBlocks = newBlockStates;
             activeBlocks = newActiveBlocks;
@@ -525,7 +515,7 @@ namespace LayoutMonitor
             alerts.Clear();
         }
 
-        private async Task<bool> ProcessNewActiveBlock(string blockUserName, string blockSystemName, string previousBlockName = "", string trainName = "", bool isRecheck = false)
+        private async Task<bool> ProcessNewActiveBlock(string blockUserName, string blockSystemName, string previousBlockName = "", string trainName = "")
         {
             //new block gone occupied
             var likelyNextBlock = "";
@@ -539,6 +529,7 @@ namespace LayoutMonitor
             bool issueFoundTwoBlocks = false;
             bool determinedPreviousBlockFromAlerts = false;
             bool noMoreBlocks = false;
+            bool handlingNewTrain = false;
             string connectingAnchorPoint = "";
             string likelyIssueThisBlock = "";
             string likelyIssueNextBlock = "";
@@ -557,15 +548,12 @@ namespace LayoutMonitor
             if (existingLog == null)
                  existingLog = Log.FirstOrDefault(f => f.NextBlock == blockUserName);
 
-            if (isRecheck)
-                existingLog = Log.FirstOrDefault(f => f.CurrentBlock == blockUserName);
-
             if (existingLog == null)
             {
                 var splitBlock = blockUserName.Split(' ');
-                blockLog.Name = trainName = "Manual train " + TrainCounter.ToString()+" " + splitBlock[0];
-                ddlTrainSelector.Items.Add(trainName);
-                TrainCounter++;
+                handlingNewTrain = true;
+                blockLog.IsAutomated = false;
+                blockLog.Name = trainName = "Manual train " + TrainCounter.ToString() + " " + splitBlock[0];
             }
             else
             {
@@ -671,7 +659,7 @@ namespace LayoutMonitor
                 }
             }
 
-            if ((numberOfOccupiedBlocks == thisBlock.path.Count() || !oneConnectedBlockUnoccipied) && !determinedPreviousBlockFromAlerts)
+            if ((numberOfOccupiedBlocks == thisBlock.path.Count() || !oneConnectedBlockUnoccipied) && !determinedPreviousBlockFromAlerts && handlingNewTrain)
             {
                 issueFoundNextBlock = true;
                 likelyIssueNextBlock = "Collision all surrounding blocks occupied ";
@@ -689,10 +677,6 @@ namespace LayoutMonitor
             if (!string.IsNullOrEmpty(blockLog.CurrentBlock)) //&& thisBlock.path.Any(a => a.block == blockLog.NextNextBlock))
             {
                 likelyPreviousBlock = blockLog.CurrentBlock;
-            }
-            else if (isRecheck)
-            {
-                likelyPreviousBlock = previousBlockName;
             }
             else
             {
@@ -717,6 +701,7 @@ namespace LayoutMonitor
             blockLog.PreviousBlock = likelyPreviousBlock;
             blockLog.History.Add(blockUserName);
             blockLog.CurrentBlock = blockUserName;
+            
 
             if (!issueFoundNextBlock)
             {
@@ -724,166 +709,131 @@ namespace LayoutMonitor
                 if (bnl.BlockFound == likelyPreviousBlock)
                 {
                     BNLThisBlock = await NavigateThroughBlockItems(blockUserName, likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
+                }
+                else
+                {
+                    BNLThisBlock = bnl;
+                }
                     
-                    likelyNextBlock = BNLThisBlock.BlockFound;
-                    blockLog.NextBlock = likelyNextBlock;
-                    if (BNLThisBlock.EdgeConnectorDirectionConnector.StartsWith("A"))
+                likelyNextBlock = BNLThisBlock.BlockFound;
+                blockLog.NextBlock = likelyNextBlock;
+                blockLog.CurrentBlockBNL = bnl;
+                BNLThisBlock.BlockCheckedSystemName = blockSystemName;
+                if (BNLThisBlock.EdgeConnectorDirectionConnector.StartsWith("A"))
+                {
+                    connectingAnchorPoint = BNLThisBlock.EdgeConnectorDirectionConnector;
+                }
+                if (!string.IsNullOrEmpty(BNLThisBlock.LikelyIssue))
+                {
+                    likelyIssueThisBlock = BNLThisBlock.LikelyIssue;
+                    issueFoundThisBlock = true;
+                }
+                blockLog.CurrentBlockBNL = BNLThisBlock;
+                if (BNLThisBlock.NoMoreBlocksFound)
+                {
+                    noMoreBlocks = true;
+                }
+
+                BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
+                if (BNLNextBlock != null && !noMoreBlocks)
+                {
+                    blockLog.NextNextBlock = BNLNextBlock.BlockFound;
+                    blockLog.NextBlockBNL = BNLNextBlock;
+
+                    if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
                     {
-                        connectingAnchorPoint = BNLThisBlock.EdgeConnectorDirectionConnector;
+                        issueFoundNextBlock = true;
+                        likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
                     }
-                    if (!string.IsNullOrEmpty(BNLThisBlock.LikelyIssue))
+                    var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
+                    BNLNextBlock.BlockCheckedSystemName = liveNextBlock.data.name;
+                    if (liveNextBlock.data.state == 2) //occupied
                     {
-                        likelyIssueThisBlock = BNLThisBlock.LikelyIssue;
-                        issueFoundThisBlock = true;
+                        issueFoundNextBlock = true;
+                        likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
                     }
-                    blockLog.CurrentBlockBNL = BNLThisBlock;
-                    if (BNLThisBlock.NoMoreBlocksFound)
+                    if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation && liveNextBlock.data.value != blockLog.Name)
                     {
-                        noMoreBlocks = true;
+                        issueFoundNextBlock = true;
+                        BNLNextBlock.BlockCheckedAllocatedTo = liveNextBlock.data.value;
+                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
                     }
 
-                    BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
-                    if (BNLNextBlock != null && !noMoreBlocks)
+                    if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
+                        blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
+
+                    BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                    if (BNLTwoBlocks != null)
                     {
-                        blockLog.NextNextBlock = BNLNextBlock.BlockFound;
-                        blockLog.NextBlockBNL = BNLNextBlock;
-
-                        if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
+                        blockLog.TwoBlocksBNL = BNLTwoBlocks;
+                        if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
                         {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
+                            issueFoundTwoBlocks = true;
+                            likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
                         }
-                        var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
-                        if (liveNextBlock.data.state == 2) //occupied
+                        var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
+                        BNLTwoBlocks.BlockCheckedSystemName = twoBlocksLiveBlock.data.name;
+                        if (twoBlocksLiveBlock.data.state == 2)
                         {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
+                            issueFoundTwoBlocks = true;
+                            likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
                         }
-                        if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation && liveNextBlock.data.value != blockLog.Name)
+                        if (!string.IsNullOrEmpty(twoBlocksLiveBlock.data.value) && TrackAllocation && twoBlocksLiveBlock.data.value != blockLog.Name)
                         {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                            issueFoundTwoBlocks = true;
+                            likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
+                            BNLTwoBlocks.BlockCheckedAllocatedTo = twoBlocksLiveBlock.data.value;
                         }
-                        if (!issueFoundNextBlock)
+                        if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
+                            blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
+                    }
+                }
+            }
+            if (handlingNewTrain)
+            {
+                //if future blocks assigned to non-manual block value then this is an auto train
+                bool isAutomated = true;
+                if (BNLNextBlock.BlockCheckedAllocatedTo != null)
+                {                    
+                    if (BNLNextBlock.BlockCheckedAllocatedTo.Contains("Manual"))
+                    {
+                        isAutomated = false;
+                    }
+                    else
+                    {
+                        if (BNLTwoBlocks.BlockCheckedAllocatedTo == null)
                         {
-                            webClient.AllocateBlock(liveNextBlock.data.name,blockLog.Name);
-                            await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic+"/"+liveNextBlock.data.name, liveNextBlock.data.userName, false);
+                            isAutomated = false;
                         }
-                        if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
-                            blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
-
-                        BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
-                        if (BNLTwoBlocks != null)
+                        else
                         {
-                            blockLog.TwoBlocksBNL = BNLTwoBlocks;
-                            if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
+                            if (BNLTwoBlocks.BlockCheckedAllocatedTo.Contains("Manual"))
                             {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
+                                isAutomated = false;
                             }
-                            var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
-                            if (twoBlocksLiveBlock.data.state == 2)
-                            {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
-                            }
-                            if (!string.IsNullOrEmpty(twoBlocksLiveBlock.data.value) && TrackAllocation && twoBlocksLiveBlock.data.value != blockLog.Name)
-                            {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
-                            }
-                            if (!issueFoundTwoBlocks)
-                            {
-                                webClient.AllocateBlock(twoBlocksLiveBlock.data.name, blockLog.Name);
-                                await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + twoBlocksLiveBlock.data.name, twoBlocksLiveBlock.data.userName, false);
-                            }
-                            if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
-                                blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
                         }
                     }
                 }
                 else
                 {
-                    likelyNextBlock = bnl.BlockFound;
-                    blockLog.NextBlock = likelyNextBlock;
-                    blockLog.CurrentBlockBNL = bnl;
-                    BNLThisBlock = bnl;
-                    if (BNLThisBlock.NoMoreBlocksFound)
-                    {
-                        noMoreBlocks = true;
-                    }
-                    if (BNLThisBlock.EdgeConnectorDirectionConnector.StartsWith("A"))
-                    {
-                        connectingAnchorPoint = BNLThisBlock.EdgeConnectorDirectionConnector;
-                    }
-                    if (!string.IsNullOrEmpty(BNLThisBlock.LikelyIssue))
-                    {
-                        likelyIssueThisBlock = BNLThisBlock.LikelyIssue;
-                        issueFoundThisBlock = true;
-                    }
-
-                    BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
-                    if (BNLNextBlock != null && !noMoreBlocks)
-                    {
-                        blockLog.NextBlockBNL = BNLNextBlock;
-                        if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
-                        {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
-                        }
-                        var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
-                        if (liveNextBlock.data.state == 2) //occupied
-                        {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock += "Collision ";// in "+liveNextBlock.data.userName;
-                        }
-                        if (!string.IsNullOrEmpty(liveNextBlock.data.value) && TrackAllocation && liveNextBlock.data.value != blockLog.Name)
-                        {
-                            issueFoundNextBlock = true;
-                            likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
-                        }
-                        if (!issueFoundNextBlock)
-                        {
-                            webClient.AllocateBlock(liveNextBlock.data.name, blockLog.Name);
-                            await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveNextBlock.data.name, liveNextBlock.data.userName, false);
-                        }
-                        if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
-                            blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
-
-                        blockLog.NextNextBlock = BNLNextBlock.BlockFound;
-                        BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
-                        if (BNLTwoBlocks != null)
-                        {
-                            blockLog.TwoBlocksBNL = BNLTwoBlocks;
-                            if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
-                            {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
-                            }
-                            var liveTwoBlocks = await webClient.GetBlock(BNLNextBlock.BlockFound);
-                            if (liveTwoBlocks.data.state == 2) //occupied
-                            {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks += "Collision  ";// in " + liveTwoBlocks.data.userName; ;
-                            }
-                            if (!string.IsNullOrEmpty(liveTwoBlocks.data.value) && TrackAllocation && liveTwoBlocks.data.value != blockLog.Name)
-                            {
-                                issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks += "Allocated to " + liveTwoBlocks.data.value + " ";
-                            }
-                            if (!issueFoundTwoBlocks)
-                            {
-                                webClient.AllocateBlock(liveTwoBlocks.data.name, blockLog.Name); ;
-                                await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveTwoBlocks.data.name, liveTwoBlocks.data.userName, false);
-                            }
-                            if (!blockLog.AllocatedBlocks.Contains(liveTwoBlocks.data.userName))
-                                blockLog.AllocatedBlocks.Add(liveTwoBlocks.data.userName);
-                        }
-                    }
+                    isAutomated = false;
                 }
+                if (isAutomated)
+                {
+                    blockLog.Name = "Automated train " + TrainCounter.ToString();
+                    blockLog.Name = BNLNextBlock.BlockCheckedAllocatedTo + " (A)";
+                    blockLog.IsAutomated = true;
+                }
+                else
+                {
+                    blockLog.IsAutomated = false;                    
+                }
+
+                ddlTrainSelector.Items.Add(blockLog.Name);
+                TrainCounter++;
             }
 
-            if (issueFoundThisBlock && !isRecheck)
+            if (issueFoundThisBlock)
             {
                 var alertExists = alerts.Any(a => a.BlockSystemName == blockSystemName && a.Severity == AlertSeverity.Extreme);
                 if (!alertExists)
@@ -906,7 +856,7 @@ namespace LayoutMonitor
                 }
             }
 
-            if (issueFoundNextBlock && !isRecheck)
+            if (issueFoundNextBlock)
             {
                 //Danger alert
                 var alertExists = alerts.Any(a => a.BlockSystemName == blockSystemName && a.Severity == AlertSeverity.Danger);
@@ -929,7 +879,7 @@ namespace LayoutMonitor
                     });
                 }
             }
-            if (issueFoundTwoBlocks && !isRecheck)
+            if (issueFoundTwoBlocks)
             {
                 //Caution alert
                 var alertExists = alerts.Any(a => a.BlockSystemName == blockSystemName && a.Severity == AlertSeverity.Caution);
@@ -966,26 +916,23 @@ namespace LayoutMonitor
 
             if (!issueFoundThisBlock && !issueFoundNextBlock && !issueFoundTwoBlocks)
             {
-                if (!isRecheck)
+                lbOutput.Items.Add(("Proceed " + blockUserName));
+                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                if (ShowProceedMessages)
                 {
-                    lbOutput.Items.Add(("Proceed " + blockUserName));
-                    lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                    if (ShowProceedMessages)
+                    ListViewItem item = new ListViewItem();
+                    if (BNLTwoBlocks != null)
                     {
-                        ListViewItem item = new ListViewItem();
-                        if (BNLTwoBlocks != null)
-                        {
-                            item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " to " + BNLTwoBlocks.BlockChecked;
-                        }
-                        else
-                        {
-                            item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " then possible end of blocks";
-                        }
-                        item.BackColor = Color.LimeGreen;
-                        lvUpdates.Items.Add(item);
-                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                        lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                        item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " to " + BNLTwoBlocks.BlockChecked;
                     }
+                    else
+                    {
+                        item.Text = "Proceed " + blockUserName + " to " + likelyNextBlock + " then possible end of blocks";
+                    }
+                    item.BackColor = Color.LimeGreen;
+                    lvUpdates.Items.Add(item);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
 
                 var alertsForThisBlock = alerts.Where(w => w.BlockSystemName == blockSystemName && !w.Deactivated);
@@ -1015,10 +962,19 @@ namespace LayoutMonitor
 
                 }
             }
+            
+            if (!issueFoundNextBlock && !blockLog.IsAutomated)
+            {
+                webClient.AllocateBlock(BNLNextBlock.BlockCheckedSystemName, blockLog.Name);
+                await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + BNLNextBlock.BlockCheckedSystemName, BNLNextBlock.BlockChecked, false);
+            }
+            if (!issueFoundTwoBlocks && !blockLog.IsAutomated)
+            {
+                webClient.AllocateBlock(BNLTwoBlocks.BlockCheckedSystemName, blockLog.Name);
+                await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + BNLTwoBlocks.BlockCheckedSystemName, BNLTwoBlocks.BlockChecked, false);
+            }
             blockLog.LastUpdated = DateTime.Now;
-            //if (!isRecheck)
-            //var existingLogRecheck = Log.FirstOrDefault(f => f.Name == trainName && f.NextBlock == blockUserName);
-            //if (existingLogRecheck == null)
+
             Log.Remove(existingLog);
             Log.Add(blockLog);
             return true;
@@ -1106,10 +1062,8 @@ namespace LayoutMonitor
                                 else
                                 {
                                     nextItemIdent = to.Connectcname;
-                                }
-                                
+                                }                                
                             }
-
                         }
                         else if (to.Connectbname == previousLayoutItem)
                         {
@@ -1128,8 +1082,7 @@ namespace LayoutMonitor
                                 else
                                 {
                                     nextItemIdent = to.Connectdname;
-                                }
-                                
+                                }                                
                             }
                         }
                         else if (to.Connectcname == previousLayoutItem)
@@ -1390,8 +1343,7 @@ namespace LayoutMonitor
                         nextItem = slip.Connectdname;
                     }
                     else
-                    {
-                        
+                    {                        
                         string state = " THROWN";
                         if (liveTA.data.state == 2) state = " CLOSED";
                         if (slip.States.AC.Turnout == astate)
@@ -1480,84 +1432,7 @@ namespace LayoutMonitor
                         issueFound = liveTB.data.userName + state + " AGAINST";
                     }
                 }
-                //if (slip.Connectaname == previousLayoutItem)
-                //{
-                //    if (liveTB.data.state == 2)
-                //    {
-                //        nextItem = slip.Connectdname;
-                //        var states = slip.States.AD;
 
-                //    }
-                //    else
-                //    {
-                //        nextItem = slip.Connectcname;
-                //        var states = slip.States.AC;
-                //    }
-                //    if (liveTA.data.state == 2)
-                //    {
-                //        //oncoming thrown - alert
-                //        issueFound = liveTA.data.userName + " CLOSED AGAINST";
-                //    }
-                //}
-                //else if (slip.Connectbname == previousLayoutItem)
-                //{
-                //    if (liveTB.data.state == 2)
-                //    {
-                //        //c
-                //        nextItem = slip.Connectdname;
-                //        var states = slip.States.BD;
-                //    }
-                //    else
-                //    {
-                //        //d
-                //        nextItem = slip.Connectcname;
-                //        var states = slip.States.BC;
-                //    }
-                //    if (liveTA.data.state == 4)
-                //    {
-                //        //alert - TA against 
-                //        issueFound = liveTA.data.userName + " THROWN AGAINST";
-                //    }
-                //}
-                //else if (slip.Connectcname == previousLayoutItem)
-                //{
-                //    if (liveTA.data.state == 2)
-                //    {
-                //        //straight over
-                //        nextItem = slip.Connectbname;
-                //        var states = slip.States.BC;
-
-                //    }
-                //    else
-                //    {
-                //        nextItem = slip.Connectaname;
-                //        var states = slip.States.AC;
-                //    }
-                //    if (liveTB.data.state == 2)
-                //    {
-                //        //alert approaching closed but thrown
-                //        issueFound = liveTB.data.userName + " CLOSED AGAINST";
-                //    }
-                //}
-                //else if (slip.Connectdname == previousLayoutItem)
-                //{
-                //    if (liveTA.data.state == 2)
-                //    {
-                //        nextItem = slip.Connectbname;
-                //        var states = slip.States.BD;
-
-                //    }
-                //    else
-                //    {
-                //        nextItem = slip.Connectaname;
-                //        var states = slip.States.AD;
-                //    }
-                //    if (liveTB.data.state == 4)
-                //    {
-                //        //alert approaching thrown but closed
-                //        issueFound = liveTB.data.userName + " THROWN AGAINST";
-                //    }
-                //}
                 if(slip.Blockname != currentBlock)
                 {
                     bnl.EdgeConnector = slip.Ident;
@@ -1657,7 +1532,6 @@ namespace LayoutMonitor
                         }
                         continue;
                     }
-                   // var checkAlert = await NavigateThroughBlockItems(alert.BNL.BlockChecked,alert.BNL.PreviousBlock, alert.BNL.StartItem, alert.BNL.StartPreviousItem, alert.BNL.StartItem);
                     var checkAlert = new BlockNavigationLog();
 
                     var log = Log.FirstOrDefault(f => f.Name == alert.TrainName);
@@ -1679,7 +1553,7 @@ namespace LayoutMonitor
                         }
                     }
                     if (string.IsNullOrEmpty(checkAlert.BlockChecked)) continue;
-                    //var recheck = await ProcessNewActiveBlock(alert.BlockUserName, alert.BlockSystemName,alert.PreviousBlockUserName,alert.TrainName,true);
+
                     if (!string.IsNullOrEmpty(checkAlert.LikelyIssue))
                     {
                         if (!alert.LikelyIssue.Contains("Collision"))
@@ -1699,8 +1573,6 @@ namespace LayoutMonitor
                     if (!string.IsNullOrEmpty(checkAlert.LikelyIssue)) alertStillActive = true;
                     if (checkAlertLiveBlock.data.state == 2) alertStillActive = true;
                     if (TrackAllocation && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value) && log != null && checkAlertLiveBlock.data.value != log.Name) alertStillActive = true;
-                    //if (!log.Terminated) alertStillActive = true;
-                    //var alertStillActive = !string.IsNullOrEmpty(checkAlert.LikelyIssue) || checkAlertLiveBlock.data.state == 2;
 
                     if (!alertStillActive)
                     {
@@ -1910,6 +1782,26 @@ namespace LayoutMonitor
             foreach (var remainingLog in Log)
             {
                 ddlTrainSelector.Items.Add(remainingLog.Name);
+            }
+        }
+
+        private async void btnCancelAllocations_Click(object sender, EventArgs e)
+        {
+            if (webClient == null || config == null)
+            {
+                config = new ConfigReader(tbConfigLocation.Text);
+                webClient = new JSONReader("http://" + tbServerIP.Text + ":" + tbServerPort.Text);
+            }
+            var blocks = await webClient.GetBlocks();
+            var allocatedBlocks = blocks.Where(w => w.data.value != null);
+            foreach (var alloc in allocatedBlocks)
+            {
+                if (!string.IsNullOrEmpty(alloc.data.value))
+                {
+                    webClient.AllocateBlock(alloc.data.userName, "");
+                    var sysName = config.GetBlockByUserName(alloc.data.userName);
+                    await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
+                }
             }
         }
     }

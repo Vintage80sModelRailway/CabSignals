@@ -20,6 +20,7 @@ namespace LayoutMonitor.Classes
         public BlockNavigationLog NextBlockBNL { get; set; }
         public BlockNavigationLog TwoBlocksBNL { get; set; }
         public List<string> AllocatedBlocks { get; set; }
+        public bool IsAutomated { get; set; }
 
         public bool Terminated { get; set; }
         public string TerminatedReason { get; set; }
