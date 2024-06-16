@@ -54,3 +54,5 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\obj\Release\JMRI
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.CopyComplete
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.exe
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.pdb
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\bin\Release\MQTTnet.dll
+M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\bin\Release\MQTTnet.xml
