@@ -10,6 +10,7 @@ namespace LayoutMonitor.Classes
     public class LiveTrainLog
     {
         public string Name { get; set; }
+        public string DCCiD { get; set; }
         public string PreviousBlock { get; set; }
         public string CurrentBlock { get; set; }
         public string NextBlock { get; set; }

@@ -13,7 +13,7 @@ namespace JMRIReader.Classes
         public string comment { get; set; }
         public string[] properties { get; set; }
         public int state { get; set; }
-        public string value { get; set; }
+        public BlockValue value { get; set; }
         public string sensor { get; set; }
         public string reporter { get; set; }
         public string speed { get; set; }
@@ -24,4 +24,26 @@ namespace JMRIReader.Classes
         public float speedLimit { get; set; }
         public string[] denied { get; set; }
     }
+
+    // Root myDeserializedClass = JsonConvert.DeserializeObject<List<Root>>(myJsonResponse);
+    public class BlockData
+    {
+        public string name { get; set; }
+        public string userName { get; set; }
+        public string comment { get; set; }
+        public List<Property> properties { get; set; }
+    }
+
+    public class Property
+    {
+        public string content { get; set; }
+    }
+
+    public class BlockValue
+    {
+        public string type { get; set; }
+        public BlockData data { get; set; }
+    }
+
+
 }

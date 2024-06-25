@@ -32,7 +32,7 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                ICollection<BlockRootObject>  blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
+                ICollection<BlockRootObject>  blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
                 blocks = blockRoot.ToList();
             }
             catch (Exception ex)
@@ -99,11 +99,11 @@ namespace JMRIReader
                 ICollection<BlockRootObject> blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
                 if (includeOccupied)
                 {
-                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName).ToList();
+                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value.data.userName == TrainName).ToList();
                 }
                 else
                 {
-                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName && w.data.state == 4).ToList();
+                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value.data.userName == TrainName && w.data.state == 4).ToList();
                 }
             }
             catch (Exception ex)

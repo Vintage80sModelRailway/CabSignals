@@ -57,10 +57,12 @@
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\BlockNavigationLog.cs" />
     <Compile Include="Classes\DeOccupiedBlock.cs" />
+    <Compile Include="Classes\DTO\RosterEntry.cs" />
     <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
     <Compile Include="Classes\OtherTransit.cs" />
+    <Compile Include="Classes\Roster.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />
     <Compile Include="Classes\Test.cs" />
     <Compile Include="Classes\TurnoutRootObject.cs" />
@@ -80,6 +82,7 @@
     <Compile Include="JSONReader.cs" />
     <Compile Include="MQTTClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RosterReader.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
