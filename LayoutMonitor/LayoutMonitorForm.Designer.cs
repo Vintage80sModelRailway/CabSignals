@@ -54,9 +54,8 @@
             this.lbOutput.FormattingEnabled = true;
             this.lbOutput.Location = new System.Drawing.Point(12, 498);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1484, 17);
+            this.lbOutput.Size = new System.Drawing.Size(1869, 238);
             this.lbOutput.TabIndex = 0;
-            this.lbOutput.Visible = false;
             // 
             // tbServerIP
             // 
@@ -245,7 +244,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1904, 527);
+            this.ClientSize = new System.Drawing.Size(1904, 771);
             this.Controls.Add(this.btnCancelAllocations);
             this.Controls.Add(this.btnTrainInfo);
             this.Controls.Add(this.btnTerminateTrain);
