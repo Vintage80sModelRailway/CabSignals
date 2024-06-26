@@ -321,21 +321,7 @@ namespace LayoutMonitor
                     if (relatedAlert != null)
                     {
                         alertRemoved = true;
-                        ListViewItem item = new ListViewItem();
-                        item.Text = "Proceed " + relatedAlert.TrainName + " - " + relatedAlert.BlockUserName + " cleared";
-                        item.BackColor = Color.LimeGreen;
-                        lvUpdates.Items.Add(item);
-                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                        lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-                        relatedAlert.Deactivated = true;
-                        relatedAlert.DeactivatedTime = DateTime.Now;
-                        if (lblBlockWarning.Text == relatedAlert.BlockUserName)
-                        {
-                            lblBlockWarning.Text = "";
-                            lblBlockContainingDanger.Text = "";
-                            lblLikelyIssue.Text = "";
-                            lblTrainName.Text = "";
-                        }
+                        DeactivateAlert(relatedAlert,true);
                     }
                     var activeLog = Log.Where(w => w.CurrentBlock == inactive.data.userName).ToList();
                     foreach (var al in activeLog)
@@ -418,15 +404,13 @@ namespace LayoutMonitor
                         var alertsForNextBlock = alerts.Where(w => w.BNL.BlockChecked == nextBlock.BlockChecked && w.TrainName == newLog.Name);
                         foreach (var alert in alertsForNextBlock)
                         {
-                            alert.Deactivated = true;
-                            alert.DeactivatedTime = DateTime.Now;
+                            DeactivateAlert(alert, false);
                         }
 
                         var alertsForTwoBlock = alerts.Where(w => w.BNL.BlockChecked == twoBlock.BlockChecked && w.TrainName == newLog.Name);
                         foreach (var alert in alertsForTwoBlock)
                         {
-                            alert.Deactivated = true;
-                            alert.DeactivatedTime = DateTime.Now;
+                            DeactivateAlert(alert, false);
                         }
                         if (AllocateBlocks)
                         {
@@ -515,7 +499,7 @@ namespace LayoutMonitor
                         var existingAlert = alerts.FirstOrDefault(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme);
                         if (existingAlert == null)
                         {
-                            alerts.Add(new Alert()
+                            AddAlert(new Alert()
                             {
                                 id = Guid.NewGuid(),
                                 BlockSystemName = currentBlockcfg.systemName,
@@ -532,10 +516,6 @@ namespace LayoutMonitor
                                 TrainId = log.DCCiD
                             });
                         }
-                        else
-                        {
-                            existingAlert.Deactivated = false;
-                        }
                     }
 
                     if (issueFoundNextBlock)
@@ -545,7 +525,7 @@ namespace LayoutMonitor
                         var existingAlert = alerts.FirstOrDefault(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger);
                         if (existingAlert == null)
                         {
-                            alerts.Add(new Alert()
+                            AddAlert(new Alert()
                             {
                                 id = Guid.NewGuid(),
                                 BlockSystemName = currentBlockcfg.systemName,
@@ -561,10 +541,6 @@ namespace LayoutMonitor
                                 TrainName = log.Name,
                                 TrainId = log.DCCiD
                             });
-                        }
-                        else if (existingAlert == null)
-                        {
-                            existingAlert.Deactivated = false;
                         }
                     }
                     else
@@ -590,7 +566,7 @@ namespace LayoutMonitor
                         {
                             if (!dangerAlertExistsForNextBlock)
                             {
-                                alerts.Add(new Alert()
+                            AddAlert(new Alert()
                                 {
                                     id = Guid.NewGuid(),
                                     BlockSystemName = currentBlockcfg.systemName,
@@ -608,10 +584,6 @@ namespace LayoutMonitor
                                     
                                 }); ;
                             }
-                        }
-                        else
-                        {
-                            existingAlert.Deactivated = false;
                         }
                     }
                     else
@@ -1000,7 +972,7 @@ namespace LayoutMonitor
                 var alertExists = alerts.Any(a => a.BlockSystemName == block.data.name && a.Severity == AlertSeverity.Extreme);
                 if (!alertExists)
                 {
-                    alerts.Add(new Alert()
+                    AddAlert(new Alert()
                     {
                         id = Guid.NewGuid(),
                         BlockSystemName = block.data.name,
@@ -1025,7 +997,7 @@ namespace LayoutMonitor
                 var alertExists = alerts.Any(a => a.BlockSystemName == block.data.name && a.Severity == AlertSeverity.Danger);
                 if (!alertExists)
                 {
-                    alerts.Add(new Alert()
+                    AddAlert(new Alert()
                     {
                         id = Guid.NewGuid(),
                         BlockSystemName = block.data.name,
@@ -1051,7 +1023,7 @@ namespace LayoutMonitor
 
                 if (!alertExists && !dangerAlertExistsForNextBlock)
                 {
-                    alerts.Add(new Alert()
+                    AddAlert(new Alert()
                     {
                         id = Guid.NewGuid(),
                         BlockSystemName = block.data.name,
@@ -1103,6 +1075,8 @@ namespace LayoutMonitor
                 var alertsForThisBlock = alerts.Where(w => w.BlockSystemName == block.data.name && !w.Deactivated);
                 foreach (var alert in alertsForThisBlock)
                 {
+                    DeactivateAlert(alert,true);
+                    /*
                     ListViewItem item = new ListViewItem();
                     if (BNLTwoBlocks != null)
                     {
@@ -1125,6 +1099,7 @@ namespace LayoutMonitor
                         lblLikelyIssue.Text = "";
                         lblTrainName.Text = "";
                     }
+                    */
                 }
             }
 
@@ -2182,8 +2157,7 @@ namespace LayoutMonitor
                     {
                         if (log.Terminated)
                         {
-                            alert.Deactivated = true;
-                            alert.DeactivatedTime = DateTime.Now;
+                            DeactivateAlert(alert, false);
                         }
                         else
                         {
@@ -2219,28 +2193,7 @@ namespace LayoutMonitor
 
                     if (!alertStillActive)
                     {
-                        alert.Acknowledged = false;
-                        alert.Deactivated = true;
-                        alert.DeactivatedTime = DateTime.Now;
-                        if (lblBlockWarning.Text == alert.BlockUserName)
-                        {
-                            lblBlockWarning.Text = "";
-                            lblBlockContainingDanger.Text = "";
-                            lblLikelyIssue.Text = "";
-                            lblTrainName.Text = "";
-                        }
-                        ListViewItem item = new ListViewItem();
-                        item.Name = alert.id.ToString();
-                        if (log.Terminated)
-                        {
-                            item.Text = "Terminated - " + alert.TrainName + " - " +  log.TerminatedReason;
-                        }
-                        else
-                            item.Text = "Cleared "+alert.TrainName+" - " + alert.BNL.BlockChecked + " - proceed";
-
-                        item.BackColor = Color.LimeGreen;
-                        lvUpdates.Items.Add(item);
-                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                        DeactivateAlert(alert,true); 
                         continue;
                     }
 
@@ -2322,6 +2275,40 @@ namespace LayoutMonitor
             }
 
             return true;
+        }
+
+        private async void AddAlert(Alert alert)
+        {
+            alerts.Add(alert);
+            var topic = CabSignalTopic + "/" + alert.TrainId;
+            lbOutput.Items.Add("MQtt " + topic + " - " + alert.Severity.ToString());
+            await MQTTClient.SendMQTTMessage(MQTTServer, topic, alert.Severity.ToString(), false);
+        }
+
+        private async void DeactivateAlert(Alert alert, bool displayListViewItem)
+        {
+            if (displayListViewItem)
+            {
+                ListViewItem item = new ListViewItem();
+                item.Text = "Proceed " + alert.TrainName + " - " + alert.BlockUserName + " cleared";
+                item.BackColor = Color.LimeGreen;
+                lvUpdates.Items.Add(item);
+                lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+            }
+
+            alert.Deactivated = true;
+            alert.DeactivatedTime = DateTime.Now;
+            if (lblBlockWarning.Text == alert.BlockUserName)
+            {
+                lblBlockWarning.Text = "";
+                lblBlockContainingDanger.Text = "";
+                lblLikelyIssue.Text = "";
+                lblTrainName.Text = "";
+            }
+            var topic = CabSignalTopic + "/" + alert.TrainId;
+            lbOutput.Items.Add("MQTT " + topic + " - Proceed");
+            await MQTTClient.SendMQTTMessage(MQTTServer,topic , "Proceed", false);
         }
 
         private void DisplayAlert(Alert alert)
@@ -2464,6 +2451,8 @@ namespace LayoutMonitor
         {
             var roster = new RosterReader(RosterPath);
             var r = roster.GetRoster();
+
+            var test = AlertSeverity.Caution.ToString();
         }
     }
 }
