@@ -334,7 +334,7 @@ namespace JMRIDebugOutput
                     //compare last allocated blocks to this assigned blocks
                     newActiveBlocks = await webClient.GetOccupiedBlocks();
 
-                    foreach (var nab in newActiveBlocks.Where(w => w.data.value != null && w.data.value.Length > 0))
+                    foreach (var nab in newActiveBlocks.Where(w => w.data.value != null && w.data.value.data != null))
                     {
 
                         var wasAlreadyOccupied = ActiveBlocks.Any(a => a.data.userName == nab.data.userName);

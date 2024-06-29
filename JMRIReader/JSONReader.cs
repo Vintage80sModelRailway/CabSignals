@@ -1,4 +1,5 @@
 ﻿using JMRIReader.Classes;
+using JMRIReader.Classes.DTO;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -32,8 +34,63 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                ICollection<BlockRootObject>  blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
-                blocks = blockRoot.ToList();
+                ICollection<BlockRootObjectInitial>  blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObjectInitial>>(jsonResponse);
+                foreach (var b in blockRoot)
+                {
+                    var pb = new APIBlock();
+                    var d = b.data;
+                    pb.name = d.name;
+                    pb.curvature = d.curvature;
+                    pb.properties = d.properties;
+                    pb.sensor = d.sensor;
+                    pb.state = d.state;
+                    pb.comment = d.comment;
+                    pb.denied = d.denied;
+                    pb.direction = d.direction;
+                    pb.length = d.length;
+                    pb.permissive = d.permissive;
+                    pb.reporter = d.reporter;
+                    pb.speed = d.speed;
+                    pb.speedLimit = d.speedLimit;
+                    pb.userName = d.userName;
+                    
+                    if (b.data.value != null)
+                    {
+                        var vType = b.data.value.GetType();
+                        
+                        if (vType == typeof(String))
+                        {
+                            var newVal = new BlockValue();
+                            newVal.data = new BlockValueData();
+                            newVal.data.userName = b.data.value.ToString();
+                            newVal.type = "Manual";
+                            pb.value = newVal;
+                        }
+                        else
+                        {
+                            var valString = b.data.value.ToString();
+                            var val = JsonConvert.DeserializeObject<BlockValue>(valString);
+                            if (val.type == "rosterEntry")
+                            {
+                                var newVal = new BlockValue();
+                                newVal.data = new BlockValueData();
+                                var re = JsonConvert.DeserializeObject<BlockRootValueRosterEntry>(valString);
+                                newVal.data.userName = re.data.address;
+                                newVal.data.comment = re.data.name;
+                                newVal.type = val.type;
+                                pb.value = newVal;
+                            }
+                            else
+                             pb.value = val;
+
+
+                        }
+                    }
+                    var bro = new BlockRootObject();
+                    bro.data = pb;
+                    blocks.Add(bro);
+                }
+               // blocks = blockRoot.ToList();
             }
             catch (Exception ex)
             {
@@ -42,7 +99,7 @@ namespace JMRIReader
             return blocks;
         }
 
-        public void AllocateBlock(string systemName, string allocatedValue)
+        public async Task AllocateBlock(string systemName, string allocatedValue)
         {
             APIAllocationBlock block = new APIAllocationBlock();
             block.value = allocatedValue;
@@ -53,16 +110,55 @@ namespace JMRIReader
 
             var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
-            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            try
             {
-                streamWriter.Write(blockString);
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(blockString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
             }
 
-            var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+
+
+        }
+
+        public void AllocateBlockOld(string systemName, string allocatedValue)
+        {
+            APIAllocationBlock block = new APIAllocationBlock();
+            block.value = allocatedValue;
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/block/" + systemName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+            // string blockString = new JavaScriptSerializer().Serialize(block);
+
+            var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
             {
-                var result = streamReader.ReadToEnd();
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    streamWriter.WriteAsync(blockString);
+                }
             }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
+
+            //var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+            //using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+            //{
+            //    var result = streamReader.ReadToEnd();
+            //}
 
 
         }

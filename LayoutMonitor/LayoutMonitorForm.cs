@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
@@ -44,6 +45,7 @@ namespace LayoutMonitor
         private int CautionNagFrequencySeconds;
         private int DangerNagFrequencySeconds;
         private List<DeOccupiedBlock> DeoccupiedBlocks;
+        private String DispatcherFolder;
         private string MQTTServer;
         private string BlockAllocateTopic;
         private string BlockReleaseTopic;
@@ -79,6 +81,12 @@ namespace LayoutMonitor
             if (rosterFilePath != null)
             {
                 RosterPath = rosterFilePath.ToString();
+            }
+
+            var cfgDispatchesFolder = ConfigurationManager.AppSettings["DispatchesFolder"];
+            if (cfgDispatchesFolder != null)
+            {
+                DispatcherFolder = cfgDispatchesFolder.ToString();
             }
 
             var cfgWebServerIP = ConfigurationManager.AppSettings["WebServerIP"];
@@ -177,6 +185,8 @@ namespace LayoutMonitor
             var rosterCfG = new RosterReader(RosterPath);
             Roster = rosterCfG.GetRoster();
 
+            await StartAutomationMonitoring();
+
             while (monitorRuning)
             {
                 await MonitorLayout();
@@ -186,7 +196,7 @@ namespace LayoutMonitor
             }
         }
 
-        private async Task<bool> MonitorAutomation()
+        private async Task<bool> StartAutomationMonitoring()
         {
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithClientId("AutomationMonitor")
@@ -202,28 +212,72 @@ namespace LayoutMonitor
                 await mqttClient.SubscribeAsync("layout/automation/#");
 
                 // Callback function when a message is received
-                mqttClient.ApplicationMessageReceivedAsync += async e =>
-                {
+                mqttClient.ApplicationMessageReceivedAsync += e => {
                     var topic = e.ApplicationMessage.Topic;
                     var message = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
+                    XDocument doc;
+                    try
+                    {
+                        var dPath = DispatcherFolder + message;
+                        doc = XDocument.Load(dPath);
+                        var test = doc.Element("traininfofile");
+                        var traininfo = doc.Element("traininfofile").Element("traininfo");
+                        var transitName = traininfo.Attribute("transitname").Value;
+                        var trainName = traininfo.Attribute("trainname").Value;
+                        var startBlockName = traininfo.Attribute("startblockname").Value;
+                        var startBlockSeq = traininfo.Attribute("startblockseq").Value;
+                        var endBlockName = traininfo.Attribute("endblockname").Value;
+                        var endBlockSeq = traininfo.Attribute("endblockseq").Value;
+                        var rEntry = Roster.First(f => f.Name == trainName);
+                        var newLog = new LiveTrainLog()
+                        {
+                            Name = trainName,
+                            DCCiD = rEntry.ID,
+                            IsAutomated = true,
+                            CurrentBlock = startBlockName                        
+                        };
+                        Log.Add(newLog);
+                        HandleNewAutoTrainNotification(rEntry.ID, transitName,startBlockName,startBlockSeq,endBlockName,endBlockSeq);
+                    }
+
+                    catch (Exception ex)
+                    {
+                        
+                    }
+
                     ActiveAutomatedTrains.Add(message);
                     ChangeUI($"Received message: {message} - {e.ApplicationMessage.Topic}");
-                    //clear retained message
-                    var applicationReturnMessage = new MqttApplicationMessageBuilder()
-                        .WithTopic(topic)
-                        .WithPayload("").WithRetainFlag(true)
-                        .Build();
-                    await mqttClient.PublishAsync(applicationReturnMessage);
-                    //return Task.CompletedTask;
+                    return Task.CompletedTask;
                 };
 
             }
 
             return true;
         }
-        private void HandleNewAutoTrainNotification(string trainFilename)
+        /// <summary>
+        /// just had notification that a new automated train will start in 30 seconds
+        /// </summary>
+        /// <param name="trainFilename"></param>
+        private void HandleNewAutoTrainNotification(string TrainId,string transitName, string startBlockName,string startBlockSeq, string endBlockName, string endBlockSeq)
         {
+            var transit = config.GetTransit(transitName);
+            int startBlockIndex = Int32.Parse(startBlockSeq);
+            int endBlockIndex = Int32.Parse(endBlockSeq);
+            var startBlock = transit.BlocksInOrder.ElementAt(startBlockIndex);
+            
+            for (int i = startBlockIndex+1; i < startBlockIndex +6 && i < endBlockIndex; i++)
+            {
+                AllocateBlock(transit.BlocksInOrder.ElementAt(i).BlockSystemname, transit.BlocksInOrder.ElementAt(i).BlockUserName, TrainId);
+            }
 
+        }
+
+        private async void AllocateBlock(string blockSystemName, string blockUserName, string allocateValue)
+        {
+            //await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + blockUserName, blockUserName, false);
+            
+            await webClient.AllocateBlock(blockSystemName, allocateValue);
+            await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + blockUserName, blockUserName, false);
         }
 
         public void ChangeUI(string text)
@@ -254,7 +308,6 @@ namespace LayoutMonitor
             return bytes;
         }
 
-
         private async Task<bool> MonitorLayout()
         {
             List<string> blocksProcessed = new List<string>();
@@ -262,28 +315,23 @@ namespace LayoutMonitor
             var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
             var oldActiveBlocks = allBlocks.Where(w => w.data.state == 2).ToList();
 
+            var allocatedBlocks = newBlockStates.Where(w => w.data.value != null && w.data.value.type == "rosterEntry");
+            foreach (var ab in allocatedBlocks)
+            {
+                await webClient.AllocateBlock(ab.data.name, ab.data.value.data.userName);
+            }
+            
+
             foreach (var nab in newActiveBlocks)
             {
                 try {
-                    var previousBlockState = allBlocks.FirstOrDefault(f => f.data.name == nab.data.name);
-
-
-                    
+                    var previousBlockState = allBlocks.FirstOrDefault(f => f.data.name == nab.data.name);                    
                     var alreadyExists = oldActiveBlocks.Any(a => a.data.name == nab.data.name);
                     var justDeactivated = DeoccupiedBlocks.Any(a => a.BlockName == nab.data.name);
                     var hasValue = nab.data != null && nab.data.value != null;
 
-
-                    //hasValue = true;
-
-
-
                     if (!alreadyExists && !justDeactivated && hasValue)
                     {
-                        ///Testing
-                        //nab.data.value = "35";
-                        ///Testing
-                        ///
                         if (nab.data.value != null)
                         {
                             var previousBlocks = allBlocks.Where(f =>f.data.value != null && f.data.value.data.userName == nab.data.value.data.userName).ToList();
@@ -389,10 +437,10 @@ namespace LayoutMonitor
                         {
                             var sysName = config.GetBlockByUserName(log.CurrentBlockBNL.BlockFound);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
-                            webClient.AllocateBlock(sysName.userName, "");
+                            await webClient.AllocateBlock(sysName.userName, "");
                             sysName = config.GetBlockByUserName(log.NextBlockBNL.BlockFound);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
-                            webClient.AllocateBlock(sysName.userName, "");
+                            await webClient.AllocateBlock(sysName.userName, "");
 
                             newLog.AllocatedBlocks.Remove(log.CurrentBlockBNL.BlockFound);
                             newLog.AllocatedBlocks.Remove(log.NextBlockBNL.BlockFound);
@@ -425,7 +473,7 @@ namespace LayoutMonitor
                         {
                             var sysName = config.GetBlockByUserName(log.NextBlockBNL.BlockFound);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
-                            webClient.AllocateBlock(sysName.userName, "");
+                            await webClient.AllocateBlock(sysName.userName, "");
                             log.AllocatedBlocks.Remove(log.NextBlockBNL.BlockFound);
                             newLog.AllocatedBlocks.Add(nextBlock.BlockFound);
                         }
@@ -549,7 +597,7 @@ namespace LayoutMonitor
                         {
                             var nbConfig = config.GetBlockByUserName(currentBlockRoute.BlockFound);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + nbConfig.userName, nbConfig.userName, false);
-                            webClient.AllocateBlock(nbConfig.userName, "");
+                            await webClient.AllocateBlock(nbConfig.userName, "");
                             if (!log.AllocatedBlocks.Contains(currentBlockRoute.BlockFound))
                                 log.AllocatedBlocks.Add(currentBlockRoute.BlockFound);
 
@@ -592,7 +640,7 @@ namespace LayoutMonitor
                         {
                             var tbConfig = config.GetBlockByUserName(nextBlock.BlockFound);
                             await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + tbConfig.userName, tbConfig.userName, false);
-                            webClient.AllocateBlock(tbConfig.systemName, newLog.Name);
+                            await webClient.AllocateBlock(tbConfig.systemName, newLog.Name);
                             if (!log.AllocatedBlocks.Contains(nextBlock.BlockFound))
                                 log.AllocatedBlocks.Add(nextBlock.BlockFound);
                         }
@@ -609,7 +657,7 @@ namespace LayoutMonitor
                                 if (liveBlock.data.value != null)
                                 {
                                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + liveBlock.data.userName, liveBlock.data.userName, false);
-                                    webClient.AllocateBlock(liveBlock.data.name, log.Name);
+                                    await webClient.AllocateBlock(liveBlock.data.name, log.Name);
                                 }
                             }
                         }
@@ -844,7 +892,7 @@ namespace LayoutMonitor
                 //don't process if newly active block is surrounded by active blocks - most likely a detection issue
                 var nextBlockLive = await webClient.GetBlock(likelyNextBlock);
                 var previousBlockLive = await webClient.GetBlock(previousBlock.data.userName);
-                if (nextBlockLive != null && previousBlockLive != null)
+                if (nextBlockLive != null && nextBlockLive.data != null && previousBlockLive != null)
                 {
                     if (nextBlockLive.data.state == 2 && previousBlockLive.data.state == 2) return false;
                 }
@@ -880,17 +928,20 @@ namespace LayoutMonitor
                         likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
                     }
                     var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
-                    BNLNextBlock.BlockCheckedSystemName = liveNextBlock.data.name;
-                    if (liveNextBlock.data.state == 2) //occupied
+                    if (liveNextBlock != null && liveNextBlock.data != null)
                     {
-                        issueFoundNextBlock = true;
-                        likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
-                    }
-                    if (liveNextBlock.data.value != null && TrackAllocation && liveNextBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation)
-                    {
-                        issueFoundNextBlock = true;
-                        BNLNextBlock.BlockCheckedAllocatedTo = liveNextBlock.data.value.data.userName;
-                        likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                        BNLNextBlock.BlockCheckedSystemName = liveNextBlock.data.name;
+                        if (liveNextBlock.data.state == 2) //occupied
+                        {
+                            issueFoundNextBlock = true;
+                            likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
+                        }
+                        if (liveNextBlock.data.value != null && TrackAllocation && liveNextBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation)
+                        {
+                            issueFoundNextBlock = true;
+                            BNLNextBlock.BlockCheckedAllocatedTo = liveNextBlock.data.value.data.userName;
+                            likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                        }
                     }
 
                     if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
@@ -906,18 +957,22 @@ namespace LayoutMonitor
                             likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
                         }
                         var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
-                        BNLTwoBlocks.BlockCheckedSystemName = twoBlocksLiveBlock.data.name;
-                        if (twoBlocksLiveBlock.data.state == 2)
+                        if (twoBlocksLiveBlock != null && twoBlocksLiveBlock.data != null)
                         {
-                            issueFoundTwoBlocks = true;
-                            likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                            BNLTwoBlocks.BlockCheckedSystemName = twoBlocksLiveBlock.data.name;
+                            if (twoBlocksLiveBlock.data.state == 2)
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                            }
+                            if (twoBlocksLiveBlock.data.value != null && TrackAllocation && twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation)
+                            {
+                                issueFoundTwoBlocks = true;
+                                likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
+                                BNLTwoBlocks.BlockCheckedAllocatedTo = twoBlocksLiveBlock.data.value.data.userName;
+                            }
                         }
-                        if (twoBlocksLiveBlock.data.value != null && TrackAllocation && twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation)
-                        {
-                            issueFoundTwoBlocks = true;
-                            likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
-                            BNLTwoBlocks.BlockCheckedAllocatedTo = twoBlocksLiveBlock.data.value.data.userName;
-                        }
+
                         if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
                             blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
                     }
@@ -1072,6 +1127,10 @@ namespace LayoutMonitor
                     lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
 
+                var topic = CabSignalTopic + blockLog.DCCiD;
+                lbOutput.Items.Add("MQtt " + topic + " - Proceed");
+                await MQTTClient.SendMQTTMessage(MQTTServer, topic, "Proceed", false);
+
                 var alertsForThisBlock = alerts.Where(w => w.BlockSystemName == block.data.name && !w.Deactivated);
                 foreach (var alert in alertsForThisBlock)
                 {
@@ -1105,12 +1164,12 @@ namespace LayoutMonitor
 
             if (!issueFoundNextBlock && !blockLog.IsAutomated && AllocateBlocks)
             {
-                webClient.AllocateBlock(BNLNextBlock.BlockCheckedSystemName, blockLog.Name);
+                await webClient.AllocateBlock(BNLNextBlock.BlockCheckedSystemName, blockLog.Name);
                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + BNLNextBlock.BlockCheckedSystemName, BNLNextBlock.BlockChecked, false);
             }
             if (!issueFoundTwoBlocks && !blockLog.IsAutomated && AllocateBlocks)
             {
-                webClient.AllocateBlock(BNLTwoBlocks.BlockCheckedSystemName, blockLog.Name);
+                await webClient.AllocateBlock(BNLTwoBlocks.BlockCheckedSystemName, blockLog.Name);
                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + BNLTwoBlocks.BlockCheckedSystemName, BNLTwoBlocks.BlockChecked, false);
             }
             blockLog.LastUpdated = DateTime.Now;
@@ -2280,7 +2339,7 @@ namespace LayoutMonitor
         private async void AddAlert(Alert alert)
         {
             alerts.Add(alert);
-            var topic = CabSignalTopic + "/" + alert.TrainId;
+            var topic = CabSignalTopic + alert.TrainId;
             lbOutput.Items.Add("MQtt " + topic + " - " + alert.Severity.ToString());
             await MQTTClient.SendMQTTMessage(MQTTServer, topic, alert.Severity.ToString(), false);
         }
@@ -2306,7 +2365,7 @@ namespace LayoutMonitor
                 lblLikelyIssue.Text = "";
                 lblTrainName.Text = "";
             }
-            var topic = CabSignalTopic + "/" + alert.TrainId;
+            var topic = CabSignalTopic + alert.TrainId;
             lbOutput.Items.Add("MQTT " + topic + " - Proceed");
             await MQTTClient.SendMQTTMessage(MQTTServer,topic , "Proceed", false);
         }
@@ -2412,7 +2471,7 @@ namespace LayoutMonitor
             {
                 foreach (var blockToUnallocate in log.AllocatedBlocks)
                 {
-                    webClient.AllocateBlock(blockToUnallocate, "");
+                    await webClient.AllocateBlock(blockToUnallocate, "");
                     var sysName = config.GetBlockByUserName(blockToUnallocate);
                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
                 }
@@ -2440,7 +2499,7 @@ namespace LayoutMonitor
             {
                 if (alloc.data.value != null)
                 {
-                    webClient.AllocateBlock(alloc.data.userName, "");
+                    await webClient.AllocateBlock(alloc.data.userName, "");
                     var sysName = config.GetBlockByUserName(alloc.data.userName);
                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
                 }
