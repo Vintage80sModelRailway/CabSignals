@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace LayoutMonitor.Classes
         public string DCCiD { get; set; }
         public string PreviousBlock { get; set; }
         public string CurrentBlock { get; set; }
+        public int AutomatedCurrentBlockIndex { get; set; }
+        public List<BlockJourneyLog> AutomatedBlockList { get; set; }
         public string NextBlock { get; set; }
         public string NextNextBlock { get; set; }
         public List<string> History { get; set; }

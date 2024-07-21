@@ -198,6 +198,8 @@ namespace LayoutMonitor
 
         private async Task<bool> StartAutomationMonitoring()
         {
+            if (mqttClient.IsConnected) return true;
+
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithClientId("AutomationMonitor")
                 .WithTcpServer(MQTTServer, 1883)
@@ -234,10 +236,16 @@ namespace LayoutMonitor
                             Name = trainName,
                             DCCiD = rEntry.ID,
                             IsAutomated = true,
-                            CurrentBlock = startBlockName                        
+                            CurrentBlock = startBlockName,
+                            History = new List<string>(),
+                            AllocatedBlocks = new List<string>()
                         };
+                        
+                        int updatedBlockIndex = HandleNewAutoTrainNotification(rEntry.ID, transitName,startBlockName,startBlockSeq,endBlockName,endBlockSeq);
+                        newLog.AutomatedCurrentBlockIndex = updatedBlockIndex;
+                        var transit = config.GetTransit(transitName);
+                        newLog.AutomatedBlockList = transit.BlocksInOrder;
                         Log.Add(newLog);
-                        HandleNewAutoTrainNotification(rEntry.ID, transitName,startBlockName,startBlockSeq,endBlockName,endBlockSeq);
                     }
 
                     catch (Exception ex)
@@ -258,8 +266,9 @@ namespace LayoutMonitor
         /// just had notification that a new automated train will start in 30 seconds
         /// </summary>
         /// <param name="trainFilename"></param>
-        private void HandleNewAutoTrainNotification(string TrainId,string transitName, string startBlockName,string startBlockSeq, string endBlockName, string endBlockSeq)
+        private int HandleNewAutoTrainNotification(string TrainId,string transitName, string startBlockName,string startBlockSeq, string endBlockName, string endBlockSeq)
         {
+            int blockIndex = -1;
             var transit = config.GetTransit(transitName);
             int startBlockIndex = Int32.Parse(startBlockSeq);
             int endBlockIndex = Int32.Parse(endBlockSeq);
@@ -268,8 +277,10 @@ namespace LayoutMonitor
             for (int i = startBlockIndex+1; i < startBlockIndex +6 && i < endBlockIndex; i++)
             {
                 AllocateBlock(transit.BlocksInOrder.ElementAt(i).BlockSystemname, transit.BlocksInOrder.ElementAt(i).BlockUserName, TrainId);
+                blockIndex = i;
             }
 
+            return blockIndex;
         }
 
         private async void AllocateBlock(string blockSystemName, string blockUserName, string allocateValue)
@@ -315,9 +326,11 @@ namespace LayoutMonitor
             var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
             var oldActiveBlocks = allBlocks.Where(w => w.data.state == 2).ToList();
 
+            //Pick up newly allocated blocks to automated trains and clean them up
             var allocatedBlocks = newBlockStates.Where(w => w.data.value != null && w.data.value.type == "rosterEntry");
             foreach (var ab in allocatedBlocks)
             {
+                lbOutput.Items.Add("New allocated block detected - cleaning up - " + ab.data.value.data.userName);
                 await webClient.AllocateBlock(ab.data.name, ab.data.value.data.userName);
             }
             
@@ -739,6 +752,16 @@ namespace LayoutMonitor
                 blockLog = existingLog;
             }
 
+            //if this is an automated train, extend the allocation to pre-allocation blocks
+            if (blockLog.IsAutomated)
+            {
+                if (blockLog.AutomatedCurrentBlockIndex < blockLog.AutomatedBlockList.Count-1)
+                {
+                    blockLog.AutomatedCurrentBlockIndex++;
+                    AllocateBlock(blockLog.AutomatedBlockList.ElementAt(blockLog.AutomatedCurrentBlockIndex).BlockSystemname, blockLog.AutomatedBlockList.ElementAt(blockLog.AutomatedCurrentBlockIndex).BlockUserName, blockLog.DCCiD);
+                }
+            }
+
             if (previousBlocks == null || previousBlocks.Count < 1)
             {
                 Log.Add(blockLog);
@@ -944,7 +967,7 @@ namespace LayoutMonitor
                         }
                     }
 
-                    if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.userName))
+                    if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.name))
                         blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
 
                     BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
