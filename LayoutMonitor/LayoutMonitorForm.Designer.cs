@@ -49,6 +49,9 @@
             this.btnCancelAllocations = new System.Windows.Forms.Button();
             this.btnRosterTest = new System.Windows.Forms.Button();
             this.lblTrainName = new System.Windows.Forms.Label();
+            this.btnClearOutputLog = new System.Windows.Forms.Button();
+            this.lbJourneyLog = new System.Windows.Forms.ListBox();
+            this.btnClearJourneyListBox = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -166,7 +169,7 @@
             this.lblLikelyIssue.BackColor = System.Drawing.SystemColors.ActiveCaption;
             this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
-            this.lblLikelyIssue.Location = new System.Drawing.Point(12, 157);
+            this.lblLikelyIssue.Location = new System.Drawing.Point(12, 225);
             this.lblLikelyIssue.Name = "lblLikelyIssue";
             this.lblLikelyIssue.Size = new System.Drawing.Size(0, 63);
             this.lblLikelyIssue.TabIndex = 11;
@@ -191,7 +194,7 @@
             this.lblBlockContainingDanger.BackColor = System.Drawing.SystemColors.ActiveCaption;
             this.lblBlockContainingDanger.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblBlockContainingDanger.ForeColor = System.Drawing.Color.Black;
-            this.lblBlockContainingDanger.Location = new System.Drawing.Point(12, 229);
+            this.lblBlockContainingDanger.Location = new System.Drawing.Point(12, 151);
             this.lblBlockContainingDanger.Name = "lblBlockContainingDanger";
             this.lblBlockContainingDanger.Size = new System.Drawing.Size(0, 63);
             this.lblBlockContainingDanger.TabIndex = 13;
@@ -204,6 +207,7 @@
             this.ddlTrainSelector.Name = "ddlTrainSelector";
             this.ddlTrainSelector.Size = new System.Drawing.Size(321, 33);
             this.ddlTrainSelector.TabIndex = 16;
+            this.ddlTrainSelector.SelectedIndexChanged += new System.EventHandler(this.ddlTrainSelector_SelectedIndexChanged);
             // 
             // btnTerminateTrain
             // 
@@ -243,12 +247,13 @@
             // 
             // btnRosterTest
             // 
-            this.btnRosterTest.Location = new System.Drawing.Point(1449, 191);
+            this.btnRosterTest.Location = new System.Drawing.Point(1806, 227);
             this.btnRosterTest.Name = "btnRosterTest";
             this.btnRosterTest.Size = new System.Drawing.Size(75, 23);
             this.btnRosterTest.TabIndex = 20;
             this.btnRosterTest.Text = "RosterTest";
             this.btnRosterTest.UseVisualStyleBackColor = true;
+            this.btnRosterTest.Visible = false;
             this.btnRosterTest.Click += new System.EventHandler(this.btnRosterTest_Click);
             // 
             // lblTrainName
@@ -261,12 +266,43 @@
             this.lblTrainName.Size = new System.Drawing.Size(0, 63);
             this.lblTrainName.TabIndex = 21;
             // 
+            // btnClearOutputLog
+            // 
+            this.btnClearOutputLog.Location = new System.Drawing.Point(1806, 742);
+            this.btnClearOutputLog.Name = "btnClearOutputLog";
+            this.btnClearOutputLog.Size = new System.Drawing.Size(75, 23);
+            this.btnClearOutputLog.TabIndex = 22;
+            this.btnClearOutputLog.Text = "Clear";
+            this.btnClearOutputLog.UseVisualStyleBackColor = true;
+            this.btnClearOutputLog.Click += new System.EventHandler(this.btnClearOutputLog_Click);
+            // 
+            // lbJourneyLog
+            // 
+            this.lbJourneyLog.FormattingEnabled = true;
+            this.lbJourneyLog.Location = new System.Drawing.Point(1893, 14);
+            this.lbJourneyLog.Name = "lbJourneyLog";
+            this.lbJourneyLog.Size = new System.Drawing.Size(174, 719);
+            this.lbJourneyLog.TabIndex = 23;
+            // 
+            // btnClearJourneyListBox
+            // 
+            this.btnClearJourneyListBox.Location = new System.Drawing.Point(1992, 739);
+            this.btnClearJourneyListBox.Name = "btnClearJourneyListBox";
+            this.btnClearJourneyListBox.Size = new System.Drawing.Size(75, 23);
+            this.btnClearJourneyListBox.TabIndex = 24;
+            this.btnClearJourneyListBox.Text = "Clear";
+            this.btnClearJourneyListBox.UseVisualStyleBackColor = true;
+            this.btnClearJourneyListBox.Click += new System.EventHandler(this.btnClearJourneyListBox_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(1904, 771);
+            this.ClientSize = new System.Drawing.Size(2079, 771);
+            this.Controls.Add(this.btnClearJourneyListBox);
+            this.Controls.Add(this.lbJourneyLog);
+            this.Controls.Add(this.btnClearOutputLog);
             this.Controls.Add(this.lblTrainName);
             this.Controls.Add(this.btnRosterTest);
             this.Controls.Add(this.btnCancelAllocations);
@@ -317,6 +353,9 @@
         private System.Windows.Forms.Button btnCancelAllocations;
         private System.Windows.Forms.Button btnRosterTest;
         private System.Windows.Forms.Label lblTrainName;
+        private System.Windows.Forms.Button btnClearOutputLog;
+        private System.Windows.Forms.ListBox lbJourneyLog;
+        private System.Windows.Forms.Button btnClearJourneyListBox;
     }
 }
 
