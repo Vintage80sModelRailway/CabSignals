@@ -28,8 +28,7 @@ namespace LayoutMonitor.Classes
 
         public bool Terminated { get; set; }
         public string TerminatedReason { get; set; }
-        public int ShortBlockRetries { get; set; }
-        public DateTime ShortBlockLastQuery { get; set; }
+
         public bool ProcessingNewBlock { get; set; }
 
     }
