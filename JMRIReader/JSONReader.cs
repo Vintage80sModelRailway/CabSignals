@@ -1,4 +1,5 @@
 ﻿using JMRIReader.Classes;
+using JMRIReader.Classes.DTO;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -32,8 +34,13 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                ICollection<BlockRootObject>  blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
-                blocks = blockRoot.ToList();
+                ICollection<BlockRootObjectInitial>  blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObjectInitial>>(jsonResponse);
+                foreach (var b in blockRoot)
+                {
+                    var pb = InitialBlockToAPIBlock(b);
+                    blocks.Add(pb);
+                }
+               // blocks = blockRoot.ToList();
             }
             catch (Exception ex)
             {
@@ -42,7 +49,63 @@ namespace JMRIReader
             return blocks;
         }
 
-        public void AllocateBlock(string systemName, string allocatedValue)
+        public BlockRootObject InitialBlockToAPIBlock(BlockRootObjectInitial b)
+        {
+            var pb = new APIBlock();
+            var d = b.data;
+            pb.name = d.name;
+            pb.curvature = d.curvature;
+            pb.properties = d.properties;
+            pb.sensor = d.sensor;
+            pb.state = d.state;
+            pb.comment = d.comment;
+            pb.denied = d.denied;
+            pb.direction = d.direction;
+            pb.length = d.length;
+            pb.permissive = d.permissive;
+            pb.reporter = d.reporter;
+            pb.speed = d.speed;
+            pb.speedLimit = d.speedLimit;
+            pb.userName = d.userName;
+
+            if (b.data.value != null)
+            {
+                var vType = b.data.value.GetType();
+
+                if (vType == typeof(String))
+                {
+                    var newVal = new BlockValue();
+                    newVal.data = new BlockValueData();
+                    newVal.data.userName = b.data.value.ToString();
+                    newVal.type = "Manual";
+                    pb.value = newVal;
+                }
+                else
+                {
+                    var valString = b.data.value.ToString();
+                    var val = JsonConvert.DeserializeObject<BlockValue>(valString);
+                    if (val.type == "rosterEntry")
+                    {
+                        var newVal = new BlockValue();
+                        newVal.data = new BlockValueData();
+                        var re = JsonConvert.DeserializeObject<BlockRootValueRosterEntry>(valString);
+                        newVal.data.userName = re.data.address;
+                        newVal.data.comment = re.data.name;
+                        newVal.type = val.type;
+                        pb.value = newVal;
+                    }
+                    else
+                        pb.value = val;
+
+
+                }
+            }
+            var bro = new BlockRootObject();
+            bro.data = pb;
+            return bro;
+        }
+
+        public async Task AllocateBlock(string systemName, string allocatedValue)
         {
             APIAllocationBlock block = new APIAllocationBlock();
             block.value = allocatedValue;
@@ -53,16 +116,55 @@ namespace JMRIReader
 
             var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
-            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            try
             {
-                streamWriter.Write(blockString);
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(blockString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
             }
 
-            var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+
+
+        }
+
+        public void AllocateBlockOld(string systemName, string allocatedValue)
+        {
+            APIAllocationBlock block = new APIAllocationBlock();
+            block.value = allocatedValue;
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/block/" + systemName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+            // string blockString = new JavaScriptSerializer().Serialize(block);
+
+            var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
             {
-                var result = streamReader.ReadToEnd();
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    streamWriter.WriteAsync(blockString);
+                }
             }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
+
+            //var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+            //using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+            //{
+            //    var result = streamReader.ReadToEnd();
+            //}
 
 
         }
@@ -70,15 +172,13 @@ namespace JMRIReader
         public async Task<BlockRootObject> GetBlock(string UserName)
         {
             BlockRootObject block = new BlockRootObject();
-            if (block == null)
-            {
-                return null;
-            }
+
             var response = await client.GetAsync("/json/block/"+UserName);
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                block = Newtonsoft.Json.JsonConvert.DeserializeObject<BlockRootObject>(jsonResponse);
+                var initBlock = JsonConvert.DeserializeObject<BlockRootObjectInitial>(jsonResponse);
+                block = InitialBlockToAPIBlock(initBlock);
             }
             catch (Exception ex)
             {
@@ -89,6 +189,7 @@ namespace JMRIReader
 
         public async Task<List<BlockRootObject>> GetAssignedBlocks(string TrainName, bool includeOccupied = false)
         {
+            List<BlockRootObjectInitial> initBlocks = new List<BlockRootObjectInitial>();
             List<BlockRootObject> blocks = new List<BlockRootObject>();
             var response = await client.GetAsync("/json/block");
             var success = response.EnsureSuccessStatusCode();
@@ -96,15 +197,21 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                ICollection<BlockRootObject> blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
+                ICollection<BlockRootObjectInitial> blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObjectInitial>>(jsonResponse);
+                foreach (var b in blockRoot)
+                {
+                    var pb = InitialBlockToAPIBlock(b);
+                    blocks.Add(pb);
+                }
                 if (includeOccupied)
                 {
-                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName).ToList();
+                    blocks = blocks.Where(w => w.data.value != null && w.data.value.data.userName == TrainName).ToList();
                 }
                 else
                 {
-                    blocks = blockRoot.Where(w => w.data.value != null && w.data.value == TrainName && w.data.state == 4).ToList();
+                    blocks = blocks.Where(w => w.data.value != null && w.data.value.data.userName == TrainName && w.data.state == 4).ToList();
                 }
+
             }
             catch (Exception ex)
             {
@@ -115,6 +222,7 @@ namespace JMRIReader
 
         public async Task<List<BlockRootObject>> GetOccupiedBlocks()
         {
+            List<BlockRootObjectInitial> initBlocks = new List<BlockRootObjectInitial>();
             List<BlockRootObject> blocks = new List<BlockRootObject>();
             var response = await client.GetAsync("/json/block");
             var success = response.EnsureSuccessStatusCode();
@@ -122,8 +230,13 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                ICollection<BlockRootObject> blockRoot = Newtonsoft.Json.JsonConvert.DeserializeObject<ICollection<BlockRootObject>>(jsonResponse);
-                blocks = blockRoot.Where(w => w.data.state == 2).ToList();
+                ICollection<BlockRootObjectInitial> blockRoot = JsonConvert.DeserializeObject<ICollection<BlockRootObjectInitial>>(jsonResponse);
+                foreach (var b in blockRoot)
+                {
+                    var pb = InitialBlockToAPIBlock(b);
+                    blocks.Add(pb);
+                }
+                blocks = blocks.Where(w => w.data.state == 2).ToList();
             }
             catch (Exception ex)
             {
@@ -141,7 +254,7 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                turnout = Newtonsoft.Json.JsonConvert.DeserializeObject<TurnoutRootobject>(jsonResponse);
+                turnout = JsonConvert.DeserializeObject<TurnoutRootobject>(jsonResponse);
 
             }
             catch (Exception ex)
@@ -161,7 +274,7 @@ namespace JMRIReader
             var jsonResponse = await response.Content.ReadAsStringAsync();
             try
             {
-                sm = Newtonsoft.Json.JsonConvert.DeserializeObject<SMRootobject>(jsonResponse);
+                sm = JsonConvert.DeserializeObject<SMRootobject>(jsonResponse);
 
             }
             catch (Exception ex)

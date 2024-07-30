@@ -10,5 +10,20 @@ namespace JMRIReader.Classes
     {
         public string type { get; set; }
         public APIBlock data { get; set; }
+        public int MultiBlockLogIndex { get; set; }
+        public int MultiBlockPriority { get; set; }
+        public bool HasMultiBlockSuccessor { get; set; }
+    }
+
+    public class BlockRootObjectInitial
+    {
+        public string type { get; set; }
+        public APIBlockInitial data { get; set; }
+    }
+
+    public class BlockRootValueRosterEntry
+    {
+        public string type { get; set; }
+        public BlockValueRosterData data { get; set; }
     }
 }
