@@ -97,10 +97,22 @@ namespace JMRIReader
 
         public block GetBlockByUserName(string userName)
         {
-            var configBlock = config.Elements("layout-config").Elements("blocks").Elements("block").FirstOrDefault(f => f.Element("userName").Value.Equals(userName));
-            var blockSerializer = new XmlSerializer(typeof(block));
-            block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
-            return b;
+            var configBlocks = config.Elements("layout-config").Elements("blocks").Elements("block").Where(f => f.Element("userName").Value.Equals(userName));
+            if (configBlocks.Count() == 1)
+            {
+                var configBlock = configBlocks.First();
+                var blockSerializer = new XmlSerializer(typeof(block));
+                block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
+                return b;
+            }
+            else if (configBlocks.Count() == 2)
+            {
+                var configBlock = configBlocks.Last();
+                var blockSerializer = new XmlSerializer(typeof(block));
+                block b = (block)blockSerializer.Deserialize(configBlock.CreateReader());
+                return b;
+            }
+            return null;
         }
 
         public section GetSectionBySystemName(string SystemName)

@@ -27,6 +27,7 @@ namespace LayoutMonitor.Classes
         public bool Deactivated { get; set; }
         public DateTime DeactivatedTime { get; set; }
         public string TrainName { get; set; }
+        public string TrainId { get; set; }
 
     }
 }
