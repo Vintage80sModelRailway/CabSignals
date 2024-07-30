@@ -466,10 +466,10 @@ namespace LayoutMonitor
                         //If a train has stopped, remove its log. A new one will be created when it restarts
                         //Stops erroneous alerts when next block of a stopped train becomes active
                         var secondsSinceLastUpdate = DateTime.Now - log.LastUpdated;
-                        if (secondsSinceLastUpdate.Seconds > 35 && !log.IsAutomated)
+                        if (secondsSinceLastUpdate.Seconds > 45 && !log.IsAutomated)
                         {
-                            log.TerminatedReason = "Dormant for 60 seconds";
-                            //log.Terminated = true;
+                            log.TerminatedReason = "Dormant for 45 seconds";
+                            log.Terminated = true;
 
                         }
 
@@ -1144,14 +1144,14 @@ namespace LayoutMonitor
                 BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
                 if (BNLNextBlock != null && !noMoreBlocks)
                 {
-                    blockLog.NextNextBlock = BNLNextBlock.BlockFound;
-                    blockLog.NextBlockBNL = BNLNextBlock;
+                    blockLog.NextNextBlock = BNLNextBlock.BlockFound;                    
 
                     if (!String.IsNullOrEmpty(BNLNextBlock.LikelyIssue))
                     {
                         issueFoundNextBlock = true;
                         likelyIssueNextBlock = BNLNextBlock.LikelyIssue + " ";
                     }
+
                     var liveNextBlock = await webClient.GetBlock(likelyNextBlock);
                     if (liveNextBlock != null && liveNextBlock.data != null)
                     {
@@ -1160,14 +1160,18 @@ namespace LayoutMonitor
                         {
                             issueFoundNextBlock = true;
                             likelyIssueNextBlock += "Collision ";// in " + liveNextBlock.data.userName;
+                            BNLNextBlock.LikelyIssue = likelyIssueNextBlock;
                         }
                         if (liveNextBlock.data.value != null && TrackAllocation && liveNextBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation && liveNextBlock.data.state == 4)
                         {
                             issueFoundNextBlock = true;
                             BNLNextBlock.BlockCheckedAllocatedTo = liveNextBlock.data.value.data.userName;
                             likelyIssueNextBlock += "Allocated to " + liveNextBlock.data.value + " ";
+                            BNLNextBlock.LikelyIssue = likelyIssueNextBlock;
                         }
                     }
+
+                    blockLog.NextBlockBNL = BNLNextBlock;
 
                     if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.name))
                         blockLog.AllocatedBlocks.Add(liveNextBlock.data.userName);
@@ -1179,7 +1183,7 @@ namespace LayoutMonitor
                         if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
                         {
                             issueFoundTwoBlocks = true;
-                            likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";
+                            likelyIssueTwoBlocks = BNLTwoBlocks.LikelyIssue + " ";                            
                         }
                         var twoBlocksLiveBlock = await (webClient.GetBlock(BNLNextBlock.BlockFound));
                         if (twoBlocksLiveBlock != null && twoBlocksLiveBlock.data != null)
@@ -1188,15 +1192,19 @@ namespace LayoutMonitor
                             if ((twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD) && twoBlocksLiveBlock.data.state == 2)//occupied
                             {
                                 issueFoundTwoBlocks = true;
-                                likelyIssueTwoBlocks = "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                                likelyIssueTwoBlocks += "Collision ";// in "+twoBlocksLiveBlock.data.userName;
+                                BNLTwoBlocks.LikelyIssue = likelyIssueTwoBlocks;
                             }
                             if (twoBlocksLiveBlock.data.value != null && TrackAllocation && twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD && TrackAllocation && twoBlocksLiveBlock.data.state == 4)
                             {
                                 issueFoundTwoBlocks = true;
                                 likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
                                 BNLTwoBlocks.BlockCheckedAllocatedTo = twoBlocksLiveBlock.data.value.data.userName;
+                                BNLTwoBlocks.LikelyIssue = likelyIssueTwoBlocks;
                             }
                         }
+                        
+                        blockLog.NextBlockBNL = BNLTwoBlocks;
 
                         if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
                             blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
@@ -1995,15 +2003,16 @@ namespace LayoutMonitor
                         }
                     }
                     if (!alertWasFromADifferentPath)
-                    { }
+                    {
                         alert.BNL = checkAlert;
+                    }
                     
                     var checkAlertLiveBlock = await webClient.GetBlock(alert.BNL.BlockChecked);
                     var alertStillActive = false;
                     if (!string.IsNullOrEmpty(checkAlert.LikelyIssue)) alertStillActive = true;
                     if (checkAlertLiveBlock.data.state == 2) alertStillActive = true;
                     if (TrackAllocation && checkAlertLiveBlock.data.value != null && log != null && checkAlertLiveBlock.data.value.data.userName != log.Name) alertStillActive = true;
-                    if (log.CurrentBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null)
+                    if (log.CurrentBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null && log.TwoBlocksBNL.LikelyIssue == null)
                     {
                         alertStillActive = false;
                     }
