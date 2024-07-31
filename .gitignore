@@ -49,3 +49,8 @@ JMRIReader/obj/Debug/JMRIReader.pdb
 /JMRIReader/obj/Release/DesignTimeResolveAssemblyReferencesInput.cache
 /JMRIReader/obj/Release/JMRIReader.csproj.AssemblyReference.cache
 /.vs/JMRIReader/FileContentIndex
+/JMRIReader/bin/Release
+/JMRIReader/obj/Release
+/LayoutMonitor/bin/Debug
+/LayoutMonitor/bin/Release
+/LayoutMonitor/obj
