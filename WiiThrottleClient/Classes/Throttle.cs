@@ -10,5 +10,10 @@ namespace WiThrottleClient.Classes
     {
         public string mtIndex { get; set; }
         public string Name { get; set; }
+        public string ID { get; set; }
+        public int Speed { get; set; }
+        public string Direction { get; set; }
+
+        public int RosterIndex { get; set; }
     }
 }

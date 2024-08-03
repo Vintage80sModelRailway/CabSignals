@@ -1,27 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
+using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WiThrottleClient;
+using WiThrottleClient.Classes;
 
 namespace Shuttler
 {
     public partial class Shuttler : Form
     {
-        public string _JMRIServerIP;
-        public string _MQTTServerIP;
-        public int _JMRIServerPort;
-        public int _MQTTServerPort;
-        public int _WiThrottlePort;
+        private string _JMRIServerIP;
+        private string _MQTTServerIP;
+        private int _JMRIServerPort;
+        private int _MQTTServerPort;
+        private int _WiThrottlePort;
+        private List<Throttle> _throttles;
+        WiThrottle c;
+
+        private bool _isRunning;
         public Shuttler()
         {
             InitializeComponent();
@@ -41,33 +39,46 @@ namespace Shuttler
 
         private async void btnTest_Click(object sender, EventArgs e)
         {
-            WiThrottle c = new WiThrottle(_JMRIServerIP, _WiThrottlePort,"Shuttler");
-
-            /*
-            TcpClient wi = new TcpClient();
-            await wi.ConnectAsync(_JMRIServerIP, _WiThrottlePort);
-            NetworkStream stream =  wi.GetStream();
-
-            var message = "NShuttler\n";
-            var messageBytes = Encoding.UTF8.GetBytes(message);
-
-            await stream.WriteAsync(messageBytes, 0, messageBytes.Count());
-            // Buffer to store the response bytes.
-
-
-            // String to store the response ASCII representation.
-            String responseData = String.Empty;
-
-            // Read the first batch of the TcpServer response bytes.
-            if (wi.Available > 0)
-            {
-                var data = new Byte[wi.Available];
-                Int32 bytes = await stream.ReadAsync(data, 0, data.Length); //(**This receives the data using the byte method**)
-                responseData = System.Text.Encoding.ASCII.GetString(data, 0, bytes); //(**This converts it to string**)
-            }
-            */
+            
         }
 
+        private async void RunShuttles()
+        {
+            c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
+            lbRoster.Items.Clear();
 
+            while (_isRunning)
+            {
+                if (lbRoster.Items.Count == 0 && c.Roster.Count > 0)
+                {
+                    foreach (var t in c.Roster)
+                    {
+                        lbRoster.Items.Add(t.Name + " (" + t.ID + ")");
+                    }
+                }
+                await c.CheckForMessages();
+                await Task.Delay(500);
+            }
+
+        }
+
+        private void btnStart_Click(object sender, EventArgs e)
+        {
+            _isRunning = true;
+            RunShuttles();
+        }
+
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            _isRunning = false;
+        }
+
+        private void lbRoster_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (c == null) return;
+
+            var index = lbRoster.SelectedIndex;
+            c.GetThrottle(index);
+        }
     }
 }

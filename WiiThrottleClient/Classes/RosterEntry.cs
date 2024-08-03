@@ -10,6 +10,7 @@ namespace WiThrottleClient.Classes
     {
         public string ID { get; set; }
         public string Name { get; set; }
+        public string IDType { get; set; }
         public string FullID { get; set; }
     }
 }
