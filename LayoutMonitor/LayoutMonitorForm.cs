@@ -223,7 +223,11 @@ namespace LayoutMonitor
                 // Callback function when a message is received
                 mqttClient.ApplicationMessageReceivedAsync += e => {
                     var topic = e.ApplicationMessage.Topic;
-                    var message = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
+                    var pl = e.ApplicationMessage.PayloadSegment;
+
+                    //var message = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
+                    var message = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.Array);
+
                     XDocument doc;
                     try
                     {
@@ -1139,6 +1143,8 @@ namespace LayoutMonitor
                 if (BNLThisBlock.NoMoreBlocksFound)
                 {
                     noMoreBlocks = true;
+                    BNLThisBlock.LikelyIssue = "End of line";
+                    issueFoundThisBlock = true;
                 }
 
                 BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
@@ -1171,6 +1177,13 @@ namespace LayoutMonitor
                         }
                     }
 
+                    if (BNLNextBlock.NoMoreBlocksFound)
+                    {
+                        noMoreBlocks = true;
+                        BNLNextBlock.LikelyIssue = "End of line";
+                        issueFoundNextBlock = true;
+                    }
+
                     blockLog.NextBlockBNL = BNLNextBlock;
 
                     if (!blockLog.AllocatedBlocks.Contains(liveNextBlock.data.name))
@@ -1179,7 +1192,7 @@ namespace LayoutMonitor
                     BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
                     if (BNLTwoBlocks != null)
                     {
-                        blockLog.TwoBlocksBNL = BNLTwoBlocks;
+
                         if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
                         {
                             issueFoundTwoBlocks = true;
@@ -1203,8 +1216,15 @@ namespace LayoutMonitor
                                 BNLTwoBlocks.LikelyIssue = likelyIssueTwoBlocks;
                             }
                         }
-                        
-                        blockLog.NextBlockBNL = BNLTwoBlocks;
+
+                        if (BNLTwoBlocks.NoMoreBlocksFound)
+                        {
+                            noMoreBlocks = true;
+                            BNLTwoBlocks.LikelyIssue = "End of line";
+                            issueFoundTwoBlocks = true;
+                        }
+
+                        blockLog.TwoBlocksBNL = BNLTwoBlocks;
 
                         if (!blockLog.AllocatedBlocks.Contains(twoBlocksLiveBlock.data.userName))
                             blockLog.AllocatedBlocks.Add(twoBlocksLiveBlock.data.userName);
@@ -1332,11 +1352,11 @@ namespace LayoutMonitor
 
             if (noMoreBlocks)
             {
-                blockLog.Terminated = true;
-                blockLog.TerminatedReason = "No more blocks";
-                blockLog.LastUpdated = DateTime.Now;
+                //blockLog.Terminated = true;
+                //blockLog.TerminatedReason = "No more blocks";
+                //blockLog.LastUpdated = DateTime.Now;
                 //TerminateTrain(blockLog.Name);
-                return (false, "No more blocks");
+                //return (false, "No more blocks");
             }
 
             if (!issueFoundThisBlock && !issueFoundNextBlock && !issueFoundTwoBlocks)
@@ -1356,18 +1376,14 @@ namespace LayoutMonitor
                     }
                     item.BackColor = Color.LimeGreen;
 
-                        lvUpdates.Items.Add(item);
-                        lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                        lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-
-                    
+                    lvUpdates.Items.Add(item);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);                   
 
                 }
 
                 var topic = CabSignalTopic + blockLog.DCCiD;
-
                     //lbOutput.Items.Add("MQtt " + topic + " - Proceed");
-
                 
                 await MQTTClient.SendMQTTMessage(MQTTServer, topic, "Proceed", false);
 
@@ -2019,7 +2035,7 @@ namespace LayoutMonitor
 
                     if (!alertStillActive)
                     {
-                        lbOutput.Items.Add("2282 deactivate alert");
+                        lbOutput.Items.Add("2282 deactivate alert - no longer active");
                         DeactivateAlert(alert,true); 
                         continue;
                     }
