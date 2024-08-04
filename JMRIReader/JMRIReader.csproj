@@ -56,11 +56,13 @@
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\BlockNavigationLog.cs" />
+    <Compile Include="Classes\BNLTurnout.cs" />
     <Compile Include="Classes\DeOccupiedBlock.cs" />
     <Compile Include="Classes\DTO\RosterEntry.cs" />
     <Compile Include="Classes\DTO\SignalMastSearchResult.cs" />
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
+    <Compile Include="Classes\LiveJourneyLog.cs" />
     <Compile Include="Classes\OtherTransit.cs" />
     <Compile Include="Classes\Roster.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,5 +18,7 @@ namespace JMRIReader.Classes
         public List<block> Blocks { get; set; }
         public section Section { get; set; }
         public transitTransitsection TransitSection { get; set; }
+        public bool IsAllocated { get; set; }
+        public bool AwaitingAllocateion { get; set; }
     }
 }

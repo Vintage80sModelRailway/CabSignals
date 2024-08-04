@@ -10,6 +10,8 @@ namespace JMRIReader.Classes
     {
         public string BlockFound { get; set; }
         public string BlockChecked { get; set; }
+        public bool BlockCheckedIsOccupied { get; set; }
+        public bool BlockCheckedIsAllocated { get; set; }
         public string BlockCheckedSystemName { get; set; }
         public string PreviousBlock { get; set; }
         public string StartItem { get; set; }
@@ -22,6 +24,10 @@ namespace JMRIReader.Classes
         public string OriginalAlertBlock { get; set; }
         public bool NoMoreBlocksFound { get; set; }
         public string BlockCheckedAllocatedTo { get; set; }
+        public List<BNLTurnout> BNLTurnouts { get; set; }
+
+        public string UsedEdgeConnector { get; set; }
+        public string UsedEdgeConnectorDirectionConnector { get; set; }
 
     }
 }

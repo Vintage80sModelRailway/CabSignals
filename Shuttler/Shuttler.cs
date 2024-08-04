@@ -23,7 +23,8 @@ namespace Shuttler
         private List<BlockRootObject> _startBlocks;
         private List<transit> _transits;
         private int _sectionsAhead = 3;
-        private List<BlockRootObject> _currentLiveBlocks;
+        private List<BlockRootObject> _allBlocks;
+        private List<LiveJourneyLog> _logs;
 
         WiThrottle c;
 
@@ -80,11 +81,103 @@ namespace Shuttler
                     var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
                     webClient = new JSONReader(serverAddress);
                     LoadStartBlocks();
+                    _allBlocks = await webClient.GetBlocks();
                 }
+
+                if (webClient != null && c != null && _allBlocks != null)
+                {
+                    var newBlockStates = await webClient.GetBlocks();
+                    var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
+                    var oldActiveBlocks = _allBlocks.Where(w => w.data.state == 2).ToList();
+
+                    var activeBlocks = oldActiveBlocks.Union(newActiveBlocks).ToList();
+                    var newActiveThisTimeBlocks = newActiveBlocks.Where(p => !oldActiveBlocks.Any(p2 => p2.data.name == p.data.name) && p.data.value != null).ToList();
+
+                    foreach (var nab in newActiveThisTimeBlocks)
+                    {
+                        var ewxistingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName);
+                    }
+                    CheckRunningTrains();
+                }
+
                 await c.CheckForMessages();
                 await Task.Delay(500);
             }
 
+        }
+
+        private void CheckRunningTrains()
+        {
+            foreach (var log in _logs)
+            {
+                var lastBlock = "";
+                var lastBlockNextBlock = "";
+                var lastBlockEdgeConnector = "";
+                var lastBlockEdgeDirectionConnector = "";
+
+                for (int i = log.AutomatedCurrentSectionIndex;i <  log.AutomatedCurrentSectionIndex+ _sectionsAhead;i++)
+                {
+                    var section = log.AutomatedSectionList.ElementAt(i);
+                    if (section == null) continue;
+
+
+                    foreach (var block in section.Blocks)
+                    {
+                        if (block.BNL != null)
+                        {
+                            var newBNL = NavigateThroughBlockItems(block.BNL.BlockChecked, block.BNL.BlockFound, block.BNL.UsedEdgeConnector, block.BNL.UsedEdgeConnectorDirectionConnector, "");
+                            block.BNL = newBNL;
+                            lastBlock = newBNL.BlockFound;
+                            lastBlockNextBlock = newBNL.BlockFound;
+                            lastBlockEdgeConnector = newBNL.EdgeConnector;
+                            lastBlockEdgeDirectionConnector = newBNL.EdgeConnectorDirectionConnector;
+                        }
+                        else
+                        {
+                            var nextBlockName = "";
+                            var blockIndex = section.Blocks.IndexOf(block);
+                            if (blockIndex > -1)
+                            {
+                                if (blockIndex+1 < section.Blocks.Count)
+                                {
+                                    var nextBlock = section.Blocks[blockIndex+1];
+                                    if (nextBlock != null)
+                                        nextBlockName = nextBlock.userName;
+                                }
+                                else
+                                {
+                                    //first block of next section for next block name
+                                    if (i+1 < log.AutomatedSectionList.Count)
+                                    {
+                                        var nextSection = log.AutomatedSectionList.ElementAt(i + 1);
+                                        if (nextSection != null)
+                                        {
+                                            var nextBlock = nextSection.Blocks.FirstOrDefault();
+                                            if (nextBlock != null)
+                                                nextBlockName = nextBlock.userName;
+                                        }
+                                        
+                                    }
+                                    
+                                }
+                            }
+                            if (nextBlockName != "")
+                            {
+                                var bnl = NavigateThroughBlockItems(block.userName, nextBlockName, lastBlockEdgeConnector, lastBlockEdgeDirectionConnector, "");
+                                if (bnl != null)
+                                {
+                                    block.BNL = bnl;
+                                    lastBlock = bnl.BlockFound;
+                                    lastBlockNextBlock = bnl.BlockFound;
+                                    lastBlockEdgeConnector = bnl.EdgeConnector;
+                                    lastBlockEdgeDirectionConnector = bnl.EdgeConnectorDirectionConnector;
+                                }
+                            }
+                            
+                        }
+                    }
+                }
+            }
         }
 
         private void LoadConfig()
@@ -150,6 +243,8 @@ namespace Shuttler
         private void btnStart_Click(object sender, EventArgs e)
         {
             _isRunning = true;
+            _logs = new List<LiveJourneyLog>();
+
             RunShuttles();
             LoadConfig();
         }
@@ -260,9 +355,8 @@ namespace Shuttler
 
 
             var startBlock = transit.StartBlock;
-            _currentLiveBlocks = await webClient.GetBlocks();
 
-            var thisLiveStartBlock = _currentLiveBlocks.FirstOrDefault(f => f.data.userName == startBlock);
+            var thisLiveStartBlock = _allBlocks.FirstOrDefault(f => f.data.userName == startBlock);
             if (thisLiveStartBlock == null || thisLiveStartBlock.data.value == null) return;
 
             trainLog.DCCiD = thisLiveStartBlock.data.value.data.userName;
@@ -283,7 +377,26 @@ namespace Shuttler
 
             var secondBlockBNL = NavigateThroughBlockItems(firstBlockBNL.BlockFound, transit.BlocksInOrder[2].BlockUserName, firstBlockBNL.EdgeConnector, firstBlockBNL.EdgeConnectorDirectionConnector, firstBlockBNL.EdgeConnector);
 
+            var firstSection = transit.Sections.FirstOrDefault();
+            if (firstSection == null) return;
 
+            firstSection.Blocks.First().BNL = firstBlockBNL;
+
+            foreach (var block in firstSection.Blocks)
+            {
+                if (block.BNL != null)
+                {
+                    var newBNL = NavigateThroughBlockItems(block.BNL.BlockChecked,block.BNL.BlockFound,block.BNL.UsedEdgeConnector,block.BNL.UsedEdgeConnectorDirectionConnector, "");
+                }
+            }
+
+            trainLog.AutomatedTrainActive = true;
+            trainLog.LastUpdated = DateTime.Now;
+            trainLog.AutomatedCurrentSectionIndex = 0;
+            _logs.Add(trainLog);
+
+            //now check occupied / allocated
+            //carry on from here, pizza numpty
 
             List<SectionJourneyLog> thisSafeSection = new List<SectionJourneyLog>();
             List<List<SectionJourneyLog>> allSafeSections = new List<List<SectionJourneyLog>>();
@@ -626,6 +739,8 @@ namespace Shuttler
             bnl.BlockChecked = currentBlock;
             bnl.StartItem = LayoutItem;
             bnl.StartPreviousItem = previousLayoutItem;
+            bnl.UsedEdgeConnector = LayoutItem;
+            bnl.UsedEdgeConnectorDirectionConnector = previousLayoutItem;
             //bnl.PreviousBlock = previousBlock;
             if (breadcrumbStart != "") bnl.Breadcrumb += breadcrumbStart + ";";
             if (LayoutItem.Substring(0, 2) == "TO")
@@ -688,6 +803,9 @@ namespace Shuttler
                     {
                         if (to.Connectaname == previousLayoutItem)
                         {
+                            var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
+                            var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
+
                             if (liveTurnout.State == "2")
                             {
                                 //closed
@@ -735,6 +853,8 @@ namespace Shuttler
                         }
                         else if (to.Connectcname == previousLayoutItem)
                         {
+                            var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectaname, "");
+                            var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectdname, "");
                             if (liveTurnout.State == "2")
                             {
                                 //closed
@@ -828,6 +948,7 @@ namespace Shuttler
                             }
                             else
                             {
+                                //so to.connectaname == previouslayoutitem
                                 var thrownConnector = to.Connectcname;
                                 if (thrownConnector != previousLayoutItem)
                                 {
@@ -836,7 +957,11 @@ namespace Shuttler
                                 else
                                 {
                                     nextItemIdent = to.Connectaname;
+                                    //so next item is the a connector of the TO
+                                    var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
+                                    var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
                                 }
+                                //var testbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItemIdent, to.Ident, "");
                             }
                         }
                         else
@@ -860,6 +985,8 @@ namespace Shuttler
                                 else
                                 {
                                     nextItemIdent = to.Connectaname;
+                                    var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
+                                    var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
                                 }
                             }
                         }

@@ -53,7 +53,7 @@ namespace LayoutMonitor
         private string RosterPath;
         private string CabSignalTopic;
         private List<string> AllocatedBlocks;
-        private List<LiveTrainLog> Log;
+        private List<LiveJourneyLog> Log;
         private int TrainCounter;
         private bool AllocateBlocks;
         private List<string> ActiveAutomatedTrains;
@@ -170,7 +170,7 @@ namespace LayoutMonitor
         {
             monitorRuning = true;
             DeoccupiedBlocks = new List<DeOccupiedBlock>();
-            Log = new List<LiveTrainLog>();
+            Log = new List<LiveJourneyLog>();
             TrainCounter = 1;
             config = new ConfigReader(tbConfigLocation.Text);
             webClient = new JSONReader("http://" + tbServerIP.Text + ":" + tbServerPort.Text);
@@ -242,7 +242,7 @@ namespace LayoutMonitor
                         var endBlockName = traininfo.Attribute("endblockname").Value;
                         var endBlockSeq = traininfo.Attribute("endblockseq").Value;
                         var rEntry = Roster.First(f => f.Name == trainName);
-                        var newLog = new LiveTrainLog()
+                        var newLog = new LiveJourneyLog()
                         {
                             Name = trainName,
                             DCCiD = rEntry.ID,
@@ -464,7 +464,7 @@ namespace LayoutMonitor
             {
                 try
                 {
-                    var newLogs = new List<LiveTrainLog>();
+                    var newLogs = new List<LiveJourneyLog>();
                     foreach (var log in Log)
                     {
                         //If a train has stopped, remove its log. A new one will be created when it restarts
@@ -842,12 +842,12 @@ namespace LayoutMonitor
             BlockNavigationLog BNLNextBlock = new BlockNavigationLog();
             BlockNavigationLog BNLTwoBlocks = new BlockNavigationLog();
             List<BlockRootObject> nextBlocks = new List<BlockRootObject>();
-            var blockLog = new LiveTrainLog();
+            var blockLog = new LiveJourneyLog();
             blockLog.History = new List<string>();
             blockLog.AllocatedBlocks = new List<string>();
             BlockRootObject previousBlock = new BlockRootObject();
 
-            LiveTrainLog existingLog = null;
+            LiveJourneyLog existingLog = null;
 
             if (block.data.value != null)
             {
