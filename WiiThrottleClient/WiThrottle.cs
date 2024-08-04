@@ -31,6 +31,7 @@ namespace WiThrottleClient
             _port = ServerPort;
             _name = ThrottleName;
             _throttleIndex = 0;
+            _webServerPort = -1;
             Connect();
         }
 
@@ -130,7 +131,6 @@ namespace WiThrottleClient
             var trimmed = line.Remove(excess);
             var port = trimmed.Substring(2);
             _webServerPort = int.Parse(port);
-
         }
 
         private void ProcessThrottleChange(string line)
@@ -160,8 +160,7 @@ namespace WiThrottleClient
                     {
                         if (speed < 0) speed = 0;
                         throttle.Speed = speed;
-                    }
-                        
+                    }                        
                     break;
             }
         }
@@ -193,9 +192,6 @@ namespace WiThrottleClient
 
                 if (update.Substring(0, 3) == "PTA")
                 {
-                    //turnout state update
-                    //PTA4MT1015\r\n\r\n
-
                     string state = update.Substring(3, 1);
 
                     var turnoutName = update.Substring(4);
@@ -204,15 +200,12 @@ namespace WiThrottleClient
                     {
                         existingTurnout.State = state;
                     }
-
                 }
                 if (update.Substring(0, 1) == "M")
                 {
                     ProcessThrottleChange(update);
                 }
             }
-
-
         }
 
         public List<RosterEntry> Roster
@@ -238,8 +231,7 @@ namespace WiThrottleClient
                 return _webServerPort;
             }
         }
-
-
+        
         public string GetThrottle(int rosterIndex)
         {
             var alreadyExists = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
@@ -319,7 +311,6 @@ namespace WiThrottleClient
 
         public bool SetTurnout(string TurnoutID, int state)
         {
-            //PTACLT92
             string sendState = "C";
             if (state == 4) sendState = "T";
 

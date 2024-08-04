@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -75,6 +76,62 @@ namespace JMRIReader
             return tr;
         }
 
+        public List<transit> GetTransits()
+        {
+            List<transit> trs = new List<transit>();
+            var transits = config.Descendants("transit");
+            var serializer = new XmlSerializer(typeof(transit));
+            foreach (var transit in transits)
+            {
+                var tr = (transit)serializer.Deserialize(transit.CreateReader());
+                int sectionCounter = -1;
+                int blockCounter = -1;
+
+                foreach (var transitsection in tr.transitsection)
+                {
+                    var newSection = new SectionJourneyLog();
+                    sectionCounter++;
+                    var hasAlternate = false;
+                    var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
+                    if (nextSection != null && nextSection.alternate == "yes")
+                    {
+                        hasAlternate = true;
+                    }
+                    section s = GetSectionBySystemName(transitsection.sectionname);
+                    newSection.Section = s;
+                    newSection.TransitSection = transitsection;
+                    newSection.Blocks = new List<block>();
+
+                    foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
+                    {
+                        blockCounter++;
+                        block b = GetBlockBySystemName(blockEntry.sName);
+                        newSection.Blocks.Add(b);
+                        var logEntry = new BlockJourneyLog();
+                        logEntry.BlockSystemname = b.systemName;
+                        logEntry.BlockUserName = b.userName;
+                        logEntry.Traversed = false;
+                        logEntry.Sequence = blockCounter;
+                        logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                        logEntry.HasAlternate = hasAlternate;
+                        logEntry.SectionSequenceId = sectionCounter;
+                        tr.BlocksInOrder.Add(logEntry);
+                    }
+
+                    newSection.SectionkUserName = s.userName;
+                    newSection.SectionSystemname = s.systemName;
+                    newSection.HasAlternate = hasAlternate;
+                    newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                    newSection.Sequence = sectionCounter;
+                    newSection.Traversed = false;
+                    tr.Sections.Add(newSection);
+                }
+                trs.Add(tr);
+            }
+
+            return trs;
+        }
+
         public block GetBlockBySystemName(string systemName)
         {            
             var configBlocks = config.Elements("layout-config").Elements("blocks").Elements("block").Where(f => f.Attribute("systemName").Value.Equals(systemName));
@@ -113,6 +170,21 @@ namespace JMRIReader
                 return b;
             }
             return null;
+        }
+
+        public List<block> GetPreferredDestinationBlocks()
+        {
+            //PreferredDestination
+            List<block> blocks = new List<block>();
+
+            var configBlocks = config.Elements("layout-config").Elements("blocks").Elements("block").Where(f => f.Element("comment") != null && f.Element("comment").Value.Contains("PreferredDestination"));
+            var cbSerializer = new XmlSerializer(typeof(block));
+            foreach(var b in configBlocks)
+            {
+                var cb = (block)cbSerializer.Deserialize(b.CreateReader());
+                blocks.Add(cb);
+            }
+            return blocks;
         }
 
         public section GetSectionBySystemName(string SystemName)
