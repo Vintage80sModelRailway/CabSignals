@@ -12,9 +12,7 @@ namespace Shuttler
     public partial class Shuttler : Form
     {
         private string _JMRIServerIP;
-        private string _MQTTServerIP;
         private int _JMRIServerPort;
-        private int _MQTTServerPort;
         private int _WiThrottlePort;
         private List<Throttle> _throttles;
         WiThrottle c;

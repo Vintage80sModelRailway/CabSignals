@@ -19,6 +19,7 @@ namespace WiThrottleClient
         private Roster _roster;
         private List<Throttle> _throttles;
         private int _throttleIndex;
+        private int _webServerPort;
         public WiThrottle(string ServerAddress, int ServerPort, string ThrottleName)
         {
             _roster = new Roster();
@@ -60,8 +61,6 @@ namespace WiThrottleClient
 
         private void ProcessRoster(string rosterData)
         {            
-            string receivedLine = "";
-            string delimeter = "";
             var lines = rosterData.Split('\n');
             foreach (var line in lines)
             {
@@ -81,12 +80,13 @@ namespace WiThrottleClient
                         ProcessTurnouts(line);
                         break;
                     }
-
+                    if (prefix == "PW")
+                    {
+                        ProcessWebServerPort(line);
+                    }
                 }
-
                 var delSplit = line.Split(' ');
             }
-
         }
 
         private void ProcessRosterEntries(string line)
@@ -122,6 +122,15 @@ namespace WiThrottleClient
                     _roster.Turnouts.Add(t);
                 }
             }
+        }
+
+        private void ProcessWebServerPort(string line)
+        {
+            var excess = line.IndexOf("\r");
+            var trimmed = line.Remove(excess);
+            var port = trimmed.Substring(2);
+            _webServerPort = int.Parse(port);
+
         }
 
         private void ProcessThrottleChange(string line)
@@ -214,6 +223,22 @@ namespace WiThrottleClient
             }
         }
 
+        public List<Turnout> Turnouts
+        {
+            get
+            {
+                return _roster.Turnouts;
+            }
+        }
+
+        public int WebServerPort
+        {
+            get
+            {
+                return _webServerPort;
+            }
+        }
+
 
         public string GetThrottle(int rosterIndex)
         {
@@ -241,9 +266,66 @@ namespace WiThrottleClient
             string assign = "M" + nt.mtIndex + "+" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "<;>" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "\n";
             WriteToStream(assign);
 
-            return "";
+            return nt.mtIndex;
         }
 
+        public bool ReleaseThrottle(int rosterIndex)
+        {
+            var throttle = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
+            if (throttle == null)
+            {
+                return false;
+            }
 
+            var rosterEntry = _roster.RosterList.ElementAtOrDefault(rosterIndex);
+            if (rosterEntry == null || throttle.ID != rosterEntry.ID)
+            {
+                return false;
+            }
+
+            string rel = "M" + throttle.mtIndex + "-" + rosterEntry.IDType + rosterEntry.IDType + "<;>r\n";
+            WriteToStream(rel);
+
+            return true;
+        }
+
+        public bool SetThrottleSpeedStep(int rosterIndex, int speed)
+        {
+            var throttle = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
+            if (throttle == null) return false;
+
+            var rosterEntry = _roster.RosterList.ElementAt(rosterIndex);
+            if (rosterEntry == null || throttle.ID != rosterEntry.ID) return false;
+
+            string spd = "M" + throttle.mtIndex + "A" + rosterEntry.IDType + rosterEntry.ID + "<;>V" + speed.ToString() + "\n";
+            WriteToStream(spd);
+            throttle.Speed = speed;
+            return true;
+        }
+
+        public bool SetThrottleDirection(int rosterIndex, string direction)
+        {
+            var throttle = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
+            if (throttle == null) return false;
+
+            var rosterEntry = _roster.RosterList.ElementAt(rosterIndex);
+            if (rosterEntry == null || throttle.ID != rosterEntry.ID) return false;
+
+            string dir = "M" + throttle.mtIndex + "A" + rosterEntry.IDType + rosterEntry.ID + "<;>R" + direction + "\n";
+            WriteToStream(dir);
+            throttle.Direction = direction;
+            return true;
+        }
+
+        public bool SetTurnout(string TurnoutID, int state)
+        {
+            //PTACLT92
+            string sendState = "C";
+            if (state == 4) sendState = "T";
+
+            string to = "PTA" + sendState + TurnoutID;
+            WriteToStream(to);
+            return true;
+        }
     }
 }
