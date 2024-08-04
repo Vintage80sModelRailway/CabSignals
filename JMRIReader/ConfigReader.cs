@@ -126,9 +126,15 @@ namespace JMRIReader
                     newSection.Traversed = false;
                     tr.Sections.Add(newSection);
                 }
+                var sb = tr.BlocksInOrder.FirstOrDefault();
+                if (sb != null)
+                    tr.StartBlock = sb.BlockUserName;
+                var eb = tr.BlocksInOrder.LastOrDefault();
+                if (eb != null)
+                    tr.EndBlock = eb.BlockUserName;
                 trs.Add(tr);
             }
-
+            
             return trs;
         }
 

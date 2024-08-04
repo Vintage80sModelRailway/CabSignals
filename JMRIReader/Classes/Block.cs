@@ -1,5 +1,6 @@
 ﻿
 // NOTE: Generated code may require at least .NET Framework 4.5 or .NET Core/Standard 2.0.
+using JMRIReader.Classes;
 using System.Collections.Generic;
 /// <remarks/>
 [System.SerializableAttribute()]
@@ -27,6 +28,8 @@ public partial class block
     private decimal lengthField;
 
     private byte curveField;
+
+    public BlockNavigationLog BNL;
 
     /// <remarks/>
     public string systemName
