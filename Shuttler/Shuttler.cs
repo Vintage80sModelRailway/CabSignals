@@ -95,9 +95,56 @@ namespace Shuttler
 
                     foreach (var nab in newActiveThisTimeBlocks)
                     {
-                        var ewxistingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName);
+                        var nextBlockName = "";
+                        var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName);
+                        var activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex);
+                        var activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
+                        if (activeBlock == null)
+                        {
+                            //entered new active section
+                            activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex + 1);
+                            existingLog.AutomatedCurrentSectionIndex++;
+                            activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
+                        }
+                        if (activeBlock != null)
+                        {
+                            //should be 0 but hey ho
+                            var abIndex = activeSection.Blocks.IndexOf(activeBlock);
+                            if (abIndex > -1)
+                            {
+                                if (abIndex + 1 < activeSection.Blocks.Count)
+                                {
+                                    var nextBlock = activeSection.Blocks.ElementAtOrDefault(abIndex+1);
+                                    if (nextBlock != null)
+                                    {
+                                        nextBlockName = nextBlock.userName;
+                                    }
+                                }
+                                else
+                                {
+                                    //get from next section
+                                    var nextSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex + 1);
+                                    if (nextSection != null)
+                                    {
+                                        var nextBlock = nextSection.Blocks.FirstOrDefault();
+                                        if (nextBlock != null)
+                                        {
+                                            nextBlockName = nextBlock.userName;
+                                        }
+                                    }
+                                }
+                            }
+                                
+                        }
+
+                        var newBlockBNL = NavigateThroughBlockItems(nab.data.userName, nextBlockName, existingLog.CurrentBlockBNL.EdgeConnector, existingLog.CurrentBlockBNL.EdgeConnectorDirectionConnector, "");
+                        existingLog.CurrentBlock = nab.data.userName;
+                        existingLog.NextBlock = newBlockBNL.BlockFound;
+                        existingLog.CurrentBlockBNL = newBlockBNL;
+                        WriteToLog("New block " + nab.data.userName + " for train " + existingLog.Name + " next block " + existingLog.NextBlock);
                     }
                     CheckRunningTrains();
+                    _allBlocks = newBlockStates;
                 }
 
                 await c.CheckForMessages();
@@ -130,7 +177,7 @@ namespace Shuttler
                             lastBlock = newBNL.BlockFound;
                             lastBlockNextBlock = newBNL.BlockFound;
                             lastBlockEdgeConnector = newBNL.EdgeConnector;
-                            lastBlockEdgeDirectionConnector = newBNL.EdgeConnectorDirectionConnector;
+                            lastBlockEdgeDirectionConnector = newBNL.EdgeConnectorDirectionConnector;                            
                         }
                         else
                         {
@@ -172,8 +219,8 @@ namespace Shuttler
                                     lastBlockEdgeConnector = bnl.EdgeConnector;
                                     lastBlockEdgeDirectionConnector = bnl.EdgeConnectorDirectionConnector;
                                 }
-                            }
-                            
+                                
+                            }                            
                         }
                     }
                 }
@@ -393,45 +440,10 @@ namespace Shuttler
             trainLog.AutomatedTrainActive = true;
             trainLog.LastUpdated = DateTime.Now;
             trainLog.AutomatedCurrentSectionIndex = 0;
+            trainLog.CurrentBlockBNL = firstBlockBNL;
             _logs.Add(trainLog);
 
-            //now check occupied / allocated
-            //carry on from here, pizza numpty
-
-            List<SectionJourneyLog> thisSafeSection = new List<SectionJourneyLog>();
-            List<List<SectionJourneyLog>> allSafeSections = new List<List<SectionJourneyLog>>();
-            List<SectionJourneyLog> currentSections = new List<SectionJourneyLog>();
-
-            int safeSectionIndex = 0;
-
-            for (int i =0; i < _sectionsAhead; i++)
-            {
-                if (i < transit.Sections.Count)
-                    currentSections.Add(transit.Sections[i]);
-            }
-
-            foreach (var section in transit.Sections)
-            {
-                thisSafeSection.Add(section);
-                if (section.TransitSection.safe == "yes")
-                {
-                    allSafeSections.Add(thisSafeSection);
-                    thisSafeSection = new List<SectionJourneyLog>();
-                }
-            }
-
-            foreach (var section in transit.Sections)
-            {
-                foreach (var block in transit.BlocksInOrder)
-                {
-
-                }
-            }
-
-            foreach (var block in transit.BlocksInOrder)
-            {
-
-            }
+            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name); 
         }
 
         private BlockNavigationLog GetFirstBNL(string firstBlock, string secondBlock)
@@ -803,9 +815,23 @@ namespace Shuttler
                     {
                         if (to.Connectaname == previousLayoutItem)
                         {
-                            var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
-                            var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
+                            var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectbname, to.Connectaname, "");
+                            var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectaname, "");
 
+                            if (testbnlB != null && testbnlB.BlockFound == nextBlock)
+                            {
+                                //a -> B requires closed
+                                bnlto.RequiredState = "2";
+                                nextItemIdent = to.Connectbname;
+                            }
+                            else if (testbnlC != null && testbnlC.BlockFound == nextBlock)
+                            {
+                                //a -> c requires thrown
+                                bnlto.RequiredState = "4";
+                                nextItemIdent = to.Connectcname;
+                            }
+
+                            /*
                             if (liveTurnout.State == "2")
                             {
                                 //closed
@@ -827,6 +853,7 @@ namespace Shuttler
                                     bnlto.RequiredState = "2";
                                 }
                             }
+                            */
                         }
                         else if (to.Connectbname == previousLayoutItem)
                         {                            
@@ -853,13 +880,27 @@ namespace Shuttler
                         }
                         else if (to.Connectcname == previousLayoutItem)
                         {
-                            var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectaname, "");
-                            var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectdname, "");
-                            if (liveTurnout.State == "2")
+                            var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Ident, "");
+                            var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectdname, to.Ident, "");
+
+                            if (testbnlA != null && testbnlA.BlockFound == nextBlock)
                             {
-                                //closed
+                                //C to A == thrown required
+                                nextItemIdent = to.Connectaname;
+                                bnlto.RequiredState = "4";
+                            }
+                            else if (testbnlD != null && testbnlD.BlockFound == nextBlock)
+                            {
+                                //C to D == closed required
                                 nextItemIdent = to.Connectdname;
                                 bnlto.RequiredState = "2";
+                            }
+
+                            /*
+                            if (liveTurnout.State == "2")
+                            {
+                                //closed                              
+                                
                             }
                             else
                             {
@@ -876,6 +917,7 @@ namespace Shuttler
                                     bnlto.RequiredState = "4";
                                 }
                             }
+                            */
                         }
                         else if (to.Connectdname == previousLayoutItem)
                         {                            
@@ -1293,6 +1335,12 @@ namespace Shuttler
                 }
             }
             return bnl;
+        }
+        private void WriteToLog(string message)
+        {
+            var fullMess = DateTime.Now + " - " + message;
+            lbOutput.Items.Add(fullMess);
+            lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
         }
     }
 }

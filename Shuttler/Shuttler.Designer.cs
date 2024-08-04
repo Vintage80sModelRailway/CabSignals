@@ -45,6 +45,7 @@
             this.btnStartTransit = new System.Windows.Forms.Button();
             this.cbTransitTrainDirection = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
+            this.lbOutput = new System.Windows.Forms.ListBox();
             this.SuspendLayout();
             // 
             // btnTest
@@ -206,11 +207,20 @@
             this.label5.TabIndex = 16;
             this.label5.Text = "Train Direction";
             // 
+            // lbOutput
+            // 
+            this.lbOutput.FormattingEnabled = true;
+            this.lbOutput.Location = new System.Drawing.Point(630, 231);
+            this.lbOutput.Name = "lbOutput";
+            this.lbOutput.Size = new System.Drawing.Size(664, 199);
+            this.lbOutput.TabIndex = 17;
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.lbOutput);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.cbTransitTrainDirection);
             this.Controls.Add(this.btnStartTransit);
@@ -254,5 +264,6 @@
         private System.Windows.Forms.Button btnStartTransit;
         private System.Windows.Forms.ComboBox cbTransitTrainDirection;
         private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.ListBox lbOutput;
     }
 }
