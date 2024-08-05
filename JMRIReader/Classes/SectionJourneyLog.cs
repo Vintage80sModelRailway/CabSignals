@@ -20,5 +20,10 @@ namespace JMRIReader.Classes
         public transitTransitsection TransitSection { get; set; }
         public bool IsAllocated { get; set; }
         public bool AwaitingAllocateion { get; set; }
+        public string SignalAspect { get; set; }
+        public string SignalAspectReason { get; set; }
+        public List<BlockNavigationLog> BlockBNLs { get; set; }
+        public bool IsTraversed { get; set; }
+
     }
 }

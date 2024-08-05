@@ -58,6 +58,7 @@ namespace WiThrottleClient
             var messageBytes = Encoding.UTF8.GetBytes(message);
             if (_stream == null) _stream = _wi.GetStream();
             await _stream.WriteAsync(messageBytes, 0, messageBytes.Count());
+            
         }
 
         private void ProcessRoster(string rosterData)
@@ -314,7 +315,7 @@ namespace WiThrottleClient
             string sendState = "C";
             if (state == 4) sendState = "T";
 
-            string to = "PTA" + sendState + TurnoutID;
+            string to = "PTA" + sendState + TurnoutID+"\n";
             WriteToStream(to);
             return true;
         }
