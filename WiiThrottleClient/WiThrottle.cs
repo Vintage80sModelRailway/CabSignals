@@ -147,14 +147,11 @@ namespace WiThrottleClient
             switch (valueHeader)
             {
                 case "s":
-                    var testSS = "";
                     break;
                 case "R":
-                    var testDir = "";
                     throttle.Direction = suffix;
                     break;
                 case "V":
-                    var testSpeed = "";
                     int speed = -1;
                     var success = int.TryParse(suffix, out speed);
                     if (success)

@@ -6,10 +6,12 @@ using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Policy;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WiThrottleClient;
 using WiThrottleClient.Classes;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Shuttler
 {
@@ -118,6 +120,10 @@ namespace Shuttler
                     {
                         var nextBlockName = "";
                         var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName);
+                        if (existingLog == null)
+                        {
+                            continue;
+                        }
                         var activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex);
                         var activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
                         if (activeBlock == null)
@@ -127,6 +133,7 @@ namespace Shuttler
                             existingLog.AutomatedCurrentSectionIndex++;
                             activeSection.IsTraversed = true;
                             activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
+                            WriteToLog("New active section " + activeSection.SectionkUserName + " - block " + activeBlock.userName + " section index now at " + existingLog.AutomatedCurrentSectionIndex.ToString());
                         }
                         if (activeBlock != null)
                         {
@@ -189,7 +196,7 @@ namespace Shuttler
                 for (int i = log.AutomatedCurrentSectionIndex;i <  log.AutomatedCurrentSectionIndex+ _sectionsAhead;i++)
                 {
                     sectionCounter++;
-                    var section = log.AutomatedSectionList.ElementAt(i);
+                    var section = log.AutomatedSectionList.ElementAtOrDefault(i);
                     if (section == null) continue;
                     if (section.BlockBNLs == null) section.BlockBNLs = new List<BlockNavigationLog>();
                     bool issueInAnySectionBlock = false;
@@ -229,10 +236,8 @@ namespace Shuttler
                                             var nextBlock = nextSection.Blocks.FirstOrDefault();
                                             if (nextBlock != null)
                                                 nextBlockName = nextBlock.userName;
-                                        }
-                                        
-                                    }
-                                    
+                                        }                                        
+                                    }                                    
                                 }
                             }
                             if (nextBlockName != "")
@@ -247,7 +252,20 @@ namespace Shuttler
                                     lastBlockEdgeDirectionConnector = bnl.EdgeConnectorDirectionConnector;
                                 }
                                 
-                            }                            
+                            }
+                            else
+                            {
+                                //End of transit
+                                var bnl = NavigateThroughBlockItems(block.userName, "", lastBlockEdgeConnector, lastBlockEdgeDirectionConnector, "");
+                                if (bnl != null)
+                                {
+                                    block.BNL = bnl;
+                                    lastBlock = bnl.BlockFound;
+                                    lastBlockNextBlock = bnl.BlockFound;
+                                    lastBlockEdgeConnector = bnl.EdgeConnector;
+                                    lastBlockEdgeDirectionConnector = bnl.EdgeConnectorDirectionConnector;
+                                }
+                            }
                         }
 
                         string issue = "";
@@ -287,9 +305,9 @@ namespace Shuttler
                             sectionIssueLog += "; " + block.BNL.LikelyIssue;
                         }
 
-                        if (string.IsNullOrEmpty(block.BNL.OccupiedBy) && string.IsNullOrEmpty(block.BNL.AllocatedTo))
+                        if ((string.IsNullOrEmpty(block.BNL.OccupiedBy) && string.IsNullOrEmpty(block.BNL.AllocatedTo)) || block.BNL.AllocatedTo == log.DCCiD)
                         {
-                            if (sectionCounter > 1 && !section.IsAllocated)
+                            if (sectionCounter > 1 && liveStateBlock.data.value == null)
                             {
                                 await webClient.AllocateBlock(block.systemName, log.DCCiD);
                                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + block.userName, block.userName, false);
@@ -307,8 +325,16 @@ namespace Shuttler
                             section.IsAllocated = true;
                         }
 
-                        section.BlockBNLs.Add(block.BNL);
+                        //section.BlockBNLs.Add(block.BNL);
                     }
+
+                    var position = log.AutomatedSectionList.IndexOf(section);
+                    if (position == (log.AutomatedSectionList.Count-1))
+                    {
+                        issueInAnySectionBlock = true;
+                        sectionIssueLog += "; End of journey";
+                    }
+
                     if (issueInAnySectionBlock || sectionIssueLog.Length > 0) 
                     {
                         section.SignalAspectReason = sectionIssueLog;
@@ -711,134 +737,119 @@ namespace Shuttler
                     string nextItemIdent = "";
                     if (to.Type.Contains("XOVER"))
                     {
-                        if (to.Connectaname == previousLayoutItem)
+
+
+
+                        string blockFoundOnTurnoutSearch = "";
+                        if (to.Type.StartsWith("LH"))
                         {
-                            var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectbname, to.Connectaname, "");
-                            var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Connectaname, "");
+                            //On a LH - connections B and D approach at turnout start - A and C approach at V
+                            //if approaching on B, test A and D
+                            //if approaching on D, test B and C
+                            //if approaching from A or C, need closed
 
-                            if (testbnlB != null && testbnlB.BlockFound == nextBlock)
+                            if (to.Connectaname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                             {
-                                //a -> B requires closed
                                 bnlto.RequiredState = "2";
-                                nextItemIdent = to.Connectbname;
+                                nextItemIdent = to.Connectaname == previousLayoutItem ? to.Connectbname : to.Connectdname;
                             }
-                            else if (testbnlC != null && testbnlC.BlockFound == nextBlock)
+                            else if (to.Connectbname == previousLayoutItem)
                             {
-                                //a -> c requires thrown
-                                bnlto.RequiredState = "4";
-                                nextItemIdent = to.Connectcname;
-                            }
+                                var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Ident, "");
+                                var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectdname, to.Ident, "");
 
-                            /*
-                            if (liveTurnout.State == "2")
-                            {
-                                //closed
-                                nextItemIdent = to.Connectbname;
-                                bnlto.RequiredState = "2";
-                            }
-                            else
-                            {
-                                if (to.Type.StartsWith("LH"))
+                                if (testbnlA.BlockFound == nextBlock)
                                 {
-                                    //approaching A on a thrown LH XOver - short imminent
-                                    bnl.LikelyIssue = liveTurnout.Name + " CLOSED AGAINST";
+                                    nextItemIdent = to.Connectaname;
+                                    bnlto.RequiredState = "2";
+
+                                }
+                                else if (testbnlD.BlockFound == nextBlock)
+                                {
+                                    nextItemIdent = to.Connectdname;
+                                    bnlto.RequiredState = "4";
+                                }
+                                else
+                                {
+                                    blockFoundOnTurnoutSearch = testbnlA.BlockFound;
+                                }
+                            }
+                            else if (to.Connectdname == previousLayoutItem)
+                            {
+                                var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectbname, to.Ident, "");
+                                var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Ident, "");
+                                if (testbnlB.BlockFound == nextBlock)
+                                {
                                     nextItemIdent = to.Connectbname;
                                     bnlto.RequiredState = "4";
-                                }
-                                else
-                                {
-                                    nextItemIdent = to.Connectcname;
-                                    bnlto.RequiredState = "2";
-                                }
-                            }
-                            */
-                        }
-                        else if (to.Connectbname == previousLayoutItem)
-                        {                            
-                            if (liveTurnout.State == "2")
-                            {
-                                nextItemIdent = to.Connectaname;
-                                bnlto.RequiredState = "2";
-                            }
-                            else
-                            {
-                                if (to.Type.StartsWith("RH"))
-                                {
-                                    //approaching B on a RH Xover when it's open - short imminent - assign a SM that should be red
-                                    bnl.LikelyIssue = liveTurnout.Name + " THROWN AGAINST";
-                                    nextItemIdent = to.Connectaname;
-                                    bnlto.RequiredState = "2";
-                                }
-                                else
-                                {
-                                    nextItemIdent = to.Connectdname;
-                                    bnlto.RequiredState = "4";
-                                }
-                            }
-                        }
-                        else if (to.Connectcname == previousLayoutItem)
-                        {
-                            var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Ident, "");
-                            var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectdname, to.Ident, "");
 
-                            if (testbnlA != null && testbnlA.BlockFound == nextBlock)
-                            {
-                                //C to A == thrown required
-                                nextItemIdent = to.Connectaname;
-                                bnlto.RequiredState = "4";
-                            }
-                            else if (testbnlD != null && testbnlD.BlockFound == nextBlock)
-                            {
-                                //C to D == closed required
-                                nextItemIdent = to.Connectdname;
-                                bnlto.RequiredState = "2";
-                            }
-
-                            /*
-                            if (liveTurnout.State == "2")
-                            {
-                                //closed                              
-                                
-                            }
-                            else
-                            {
-                                if (to.Type.StartsWith("LH"))
-                                {
-                                    //approaching C on a LH Xover when it's thrown - short imminent
-                                    bnl.LikelyIssue = liveTurnout.Name + " THROWN AGAINST";
-                                    nextItemIdent = to.Connectdname;
-                                    bnlto.RequiredState = "2";
                                 }
-                                else
+                                else if (testbnlC.BlockFound == nextBlock)
                                 {
-                                    nextItemIdent = to.Connectaname;
-                                    bnlto.RequiredState = "4";
-                                }
-                            }
-                            */
-                        }
-                        else if (to.Connectdname == previousLayoutItem)
-                        {                            
-                            if (liveTurnout.State == "2")
-                            {
-                                nextItemIdent = to.Connectcname;
-                                bnlto.RequiredState = "2";
-                            }
-                            else
-                            {
-                                if (to.Type.StartsWith("RH"))
-                                {
-                                    bnl.LikelyIssue = liveTurnout.Name + " THROWN AGAINST";
                                     nextItemIdent = to.Connectcname;
                                     bnlto.RequiredState = "2";
                                 }
                                 else
                                 {
-                                    nextItemIdent = to.Connectbname;
-                                    bnlto.RequiredState = "4";
+                                    blockFoundOnTurnoutSearch = testbnlB.BlockFound;
                                 }
                             }
                         }
+                        else if (to.Type.StartsWith("RH"))
+                        {
+                            //on a RH - connections A and C approach at turnout start - B and D approach at V
+                            //if approaching from A, test B and C
+                            //if approaching from C, test D and A
+
+                            //if approaching from D or B, need closed
+                            if (to.Connectbname == previousLayoutItem || to.Connectdname == previousLayoutItem)
+                            {
+                                bnlto.RequiredState = "2";
+                                nextItemIdent = to.Connectbname == previousLayoutItem ? to.Connectaname : to.Connectcname;
+                            }
+                            else if (to.Connectaname == previousLayoutItem)
+                            {
+                                var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectbname, to.Ident, "");
+                                var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Ident, "");
+                                if (testbnlB.BlockFound == nextBlock)
+                                {
+                                    nextItemIdent = to.Connectbname;
+                                    bnlto.RequiredState = "4";
+
+                                }
+                                else if (testbnlC.BlockFound == nextBlock)
+                                {
+                                    nextItemIdent = to.Connectcname;
+                                    bnlto.RequiredState = "2";
+                                }
+                                else
+                                {
+                                    blockFoundOnTurnoutSearch = testbnlB.BlockFound;
+                                }
+                            }
+                            else if (to.Connectcname == previousLayoutItem)
+                            {
+                                var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Ident, "");
+                                var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectdname, to.Ident, "");
+
+                                if (testbnlA.BlockFound == nextBlock)
+                                {
+                                    nextItemIdent = to.Connectaname;
+                                    bnlto.RequiredState = "4";
+
+                                }
+                                else if (testbnlD.BlockFound == nextBlock)
+                                {
+                                    nextItemIdent = to.Connectdname;
+                                    bnlto.RequiredState = "2";
+                                }
+                                else
+                                {
+                                    blockFoundOnTurnoutSearch = testbnlA.BlockFound;
+                                }
+                            }
+                        }
+
                         bnl.BNLTurnouts.Add(bnlto);
                         bnl.Breadcrumb += nextItemIdent + ";";
                         var newbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItemIdent, to.Ident, "");
@@ -873,90 +884,93 @@ namespace Shuttler
                     else
                     {
                         //turnout
-                        if (liveTurnout.State == "4")
+                        string blockFoundOnTurnoutSearch = "";
+                        if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                         {
-                            //thrown                        
-                            //need to determine direction of travel. If one of the C or B connectors matches the previousLayout Item, we're traversing head on.
-                            if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
+                            nextItemIdent = to.Connectaname;
+                            //Arriving at V of turnout
+                            if (liveTurnout.State == "4")
                             {
-                                nextItemIdent = to.Connectaname;
+                                //thrown
                                 if (to.Connectbname == previousLayoutItem)
                                 {
                                     bnl.LikelyIssue = liveTurnout.Name + " THROWN AGAINST";
                                     bnlto.RequiredState = "2";
                                 }
+                                else bnlto.RequiredState = "4";
                             }
-                            else
+                            else if (liveTurnout.State == "2")
                             {
-                                //so to.connectaname == previouslayoutitem
-                                var thrownConnector = to.Connectcname;
-                                if (thrownConnector != previousLayoutItem)
-                                {
-                                    nextItemIdent = thrownConnector;
-                                }
-                                else
-                                {
-                                    nextItemIdent = to.Connectaname;
-                                    //so next item is the a connector of the TO
-                                    var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
-                                    var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
-                                }
-                                //var testbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItemIdent, to.Ident, "");
-                            }
-                        }
-                        else
-                        {
-                            if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
-                            {
-                                nextItemIdent = to.Connectaname;
+                                //closed
                                 if (to.Connectcname == previousLayoutItem)
                                 {
                                     bnl.LikelyIssue = liveTurnout.Name + " CLOSED AGAINST";
                                     bnlto.RequiredState = "4";
                                 }
+                                else bnlto.RequiredState = "2";
                             }
-                            else
-                            {
-                                var closedConnector = to.Connectbname;
-                                if (closedConnector != previousLayoutItem)
-                                {
-                                    nextItemIdent = closedConnector;
-                                }
-                                else
-                                {
-                                    nextItemIdent = to.Connectaname;
-                                    var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectbname, "");
-                                    var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectaname, to.Connectcname, "");
-                                }
-                            }
-                        }
-                        bnl.Breadcrumb += nextItemIdent + ";";
-                        bnl.BNLTurnouts.Add(bnlto);
-                        var newbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItemIdent, to.Ident, "");
-                        bnl.Breadcrumb += newbnl.Breadcrumb;
-                        bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
-                        if (newbnl.BlockFound == null)
-                        {
-                            bnl.NoMoreBlocksFound = true;
                         }
                         else
                         {
-                            bnl.BlockFound = newbnl.BlockFound;
-                        }
-                        bnl.EdgeConnector = newbnl.EdgeConnector;
-                        bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
-                        bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
-                        bnl.BNLTurnouts.AddRange(newbnl.BNLTurnouts);
-                        if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
-                        {
-                            if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                            //arriving at front
+                            var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectbname, to.Ident, "");
+                            var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, to.Connectcname, to.Ident, "");
+
+                            if (testbnlB.BlockFound == nextBlock)
                             {
-                                bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                                nextItemIdent = to.Connectbname;
+                                bnlto.RequiredState = "2";
+                                
+                            }
+                            else if (testbnlC.BlockFound == nextBlock)
+                            {
+                                nextItemIdent = to.Connectcname;
+                                bnlto.RequiredState = "4";
                             }
                             else
                             {
-                                bnl.LikelyIssue = newbnl.LikelyIssue;
+                                blockFoundOnTurnoutSearch = testbnlB.BlockFound;
                             }
+                        }
+
+                        //it's possible that neither BNL check above returned a matching block if we're already in a block search branch - the wrong one
+                        //Need to be able to go back down the chain so an alternative branch can be searched
+                        //We don't really need to return anything from here but adding one of the incorrectly found blocks would probably help
+                        bnl.Breadcrumb += nextItemIdent + ";";
+                        bnl.BNLTurnouts.Add(bnlto);
+
+                        if (!string.IsNullOrEmpty(nextItemIdent))
+                        {
+                            var newbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItemIdent, to.Ident, "");
+                            bnl.Breadcrumb += newbnl.Breadcrumb;
+                            bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                            if (newbnl.BlockFound == null)
+                            {
+                                bnl.NoMoreBlocksFound = true;
+                            }
+                            else
+                            {
+                                bnl.BlockFound = newbnl.BlockFound;
+                            }
+                            bnl.EdgeConnector = newbnl.EdgeConnector;
+                            bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                            bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                            bnl.BNLTurnouts.AddRange(newbnl.BNLTurnouts);
+                            if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                            {
+                                if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                                {
+                                    bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                                }
+                                else
+                                {
+                                    bnl.LikelyIssue = newbnl.LikelyIssue;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            bnl.BlockFound = blockFoundOnTurnoutSearch;
                         }
                     }
                 }
@@ -1049,7 +1063,9 @@ namespace Shuttler
             else if (LayoutItem.Substring(0, 2) == "SL")
             {
                 //slip
+
                 var slip = config.GetSlip(LayoutItem);
+
                 var cfgTurnoutA = config.GetTurnoutByUserName(slip.Turnout);
                 var cfgTurnoutB = config.GetTurnoutByUserName(slip.TurnoutB);
                 var liveTA = c.Turnouts.FirstOrDefault(f => f.ID == cfgTurnoutA.systemName);// await webClient.GetTurnout(cfgTurnoutA.systemName);
@@ -1069,9 +1085,21 @@ namespace Shuttler
                 bnltoB.Name = cfgTurnoutB.userName;
                 bnltoB.CurrentState = liveTB.State;
 
+                string blockFoundOnTurnoutSearch = "";
+
                 //Approaching from...
+
+
+
+                /*
                 if (slip.Connectaname == previousLayoutItem)
                 {
+                    //Approaching from A, need to make sure the first turnout on the slip is in our favour
+
+                    //Approaching from A, the exit options are C and D
+                    var reqioredState = slip.States.AC.Turnout;
+                    bnltoA.RequiredState = slip.States.AC.Turnout;
+
                     if (slip.States.AC.Turnout == astate && slip.States.AC.TurnoutB == bstate)
                     {
                         nextItem = slip.Connectcname;                        
@@ -1103,6 +1131,8 @@ namespace Shuttler
                 }
                 else if (slip.Connectbname == previousLayoutItem)
                 {
+                    bnltoA.RequiredState = slip.States.BC.Turnout;
+                    //Approaching from B, the exit options are C and D
                     if (slip.States.BC.Turnout == astate && slip.States.BC.TurnoutB == bstate)
                     {
                         nextItem = slip.Connectcname;
@@ -1133,6 +1163,8 @@ namespace Shuttler
                 }
                 else if (slip.Connectcname == previousLayoutItem)
                 {
+                    bnltoB.RequiredState = slip.States.AC.TurnoutB;
+                    //approaching from C or D, the exit options are A or B
                     if (slip.States.AC.Turnout == astate && slip.States.AC.TurnoutB == bstate)
                     {
                         nextItem = slip.Connectaname;
@@ -1164,6 +1196,8 @@ namespace Shuttler
                 }
                 else if (slip.Connectdname == previousLayoutItem)
                 {
+                    bnltoB.RequiredState = slip.States.BD.TurnoutB;
+                    //approaching from C or D, the exit options are A or B
                     if (slip.States.AD.Turnout == astate && slip.States.AD.TurnoutB == bstate)
                     {
                         nextItem = slip.Connectaname;
@@ -1192,7 +1226,7 @@ namespace Shuttler
                         issueFound = liveTB.Name + state + " AGAINST";
                     }
                 }
-
+                */
                 if (slip.Blockname != currentBlock)
                 {
                     bnl.EdgeConnector = slip.Ident;
@@ -1202,34 +1236,152 @@ namespace Shuttler
                 }
                 else
                 {
-                    bnl.LikelyIssue = issueFound;
-                    bnl.Breadcrumb += nextItem + ";";
-                    var newbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItem, slip.Ident, "");
-                    bnl.Breadcrumb += newbnl.Breadcrumb;
-                    bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
-                    if (newbnl.BlockFound == null)
+                    if (slip.Connectaname == previousLayoutItem || slip.Connectbname == previousLayoutItem)
                     {
-                        bnl.NoMoreBlocksFound = true;
-                    }
-                    else
-                    {
-                        bnl.BlockFound = newbnl.BlockFound;
-                    }
-                    bnl.EdgeConnector = newbnl.EdgeConnector;
-                    bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
-                    bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
-                    bnl.BNLTurnouts.AddRange(newbnl.BNLTurnouts);
-                    if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
-                    {
-                        if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                        //if (slip.Connectaname == previousLayoutItem)
+                        //{
+                        //    bnltoB.RequiredState = slip.States.AC.Turnout;
+                        //}
+                        //else
+                        //{
+                        //    bnltoB.RequiredState = slip.States.BC.Turnout;
+                        //}
+
+                        //Route is through C or D
+                        var testbnlC = NavigateThroughBlockItems(currentBlock, nextBlock, slip.Connectcname, slip.Ident, "");
+                        var testbnlD = NavigateThroughBlockItems(currentBlock, nextBlock, slip.Connectdname, slip.Ident, "");
+
+                        if (testbnlC.BlockFound == nextBlock)
                         {
-                            bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                            nextItem = slip.Connectcname;
+                            if (slip.Connectaname == previousLayoutItem)
+                            {
+                                //AC
+                                bnltoA.RequiredState = slip.States.AC.Turnout;
+                                bnltoB.RequiredState = slip.States.AC.TurnoutB;
+                            }
+                            else
+                            {
+                                //BC
+                                bnltoA.RequiredState = slip.States.BC.Turnout;
+                                bnltoB.RequiredState = slip.States.BC.TurnoutB;
+                            }
+                            //bnltoB.RequiredState = slip.States.AC.TurnoutB;
+                        }
+
+                        else if (testbnlD.BlockFound == nextBlock)
+                        {
+                            nextItem = slip.Connectdname;
+                            if (slip.Connectaname == previousLayoutItem)
+                            {
+                                //AD
+                                bnltoA.RequiredState = slip.States.AD.Turnout;
+                                bnltoB.RequiredState = slip.States.AD.TurnoutB;
+                            }
+                            else
+                            {
+                                //BD
+                                bnltoA.RequiredState = slip.States.BD.Turnout;
+                                bnltoB.RequiredState = slip.States.BD.TurnoutB;
+                            }
+                            //bnltoB.RequiredState = slip.States.AD.TurnoutB;
                         }
                         else
                         {
-                            bnl.LikelyIssue = newbnl.LikelyIssue;
+                            blockFoundOnTurnoutSearch = testbnlC.BlockFound;
                         }
                     }
+                    else
+                    {
+                        //if (slip.Connectcname == previousLayoutItem)
+                        //{
+                        //    bnltoB.RequiredState = slip.States.BC.TurnoutB;
+                        //}
+                        //else
+                        //{
+                        //    bnltoB.RequiredState = slip.States.BD.TurnoutB;
+                        //}
+                        //Route is through A or B
+                        var testbnlA = NavigateThroughBlockItems(currentBlock, nextBlock, slip.Connectaname, slip.Ident, "");
+                        var testbnlB = NavigateThroughBlockItems(currentBlock, nextBlock, slip.Connectbname, slip.Ident, "");
+                        if (testbnlA.BlockFound == nextBlock)
+                        {
+                            nextItem = slip.Connectaname;
+                            if (slip.Connectcname == previousLayoutItem)
+                            {
+                                //AC
+                                bnltoA.RequiredState = slip.States.AC.Turnout;
+                                bnltoB.RequiredState = slip.States.AC.TurnoutB;
+                            }
+                            else
+                            {
+                                //AD
+                                bnltoA.RequiredState = slip.States.AD.Turnout;
+                                bnltoB.RequiredState = slip.States.AD.TurnoutB;
+                            }
+                            //bnltoA.RequiredState = slip.States.AC.Turnout;
+                        }
+                        else if (testbnlB.BlockFound == nextBlock)
+                        {
+                            nextItem = slip.Connectdname;
+                            if (slip.Connectcname == previousLayoutItem)
+                            {
+                                //BC
+                                bnltoA.RequiredState = slip.States.BC.Turnout;
+                                bnltoB.RequiredState = slip.States.BC.TurnoutB;
+                            }
+                            else
+                            {
+                                //BD
+                                bnltoA.RequiredState = slip.States.BD.Turnout;
+                                bnltoB.RequiredState = slip.States.BD.TurnoutB;
+                            }
+                            bnltoA.RequiredState = slip.States.BC.Turnout;
+                        }
+                        else
+                        {
+                            blockFoundOnTurnoutSearch = testbnlA.BlockFound;
+                        }
+                    }
+
+                    bnl.BNLTurnouts.Add(bnltoA);
+                    bnl.BNLTurnouts.Add(bnltoB);
+                    if (string.IsNullOrEmpty(blockFoundOnTurnoutSearch))
+                    {
+                        bnl.LikelyIssue = issueFound;
+                        bnl.Breadcrumb += nextItem + ";";
+                        var newbnl = NavigateThroughBlockItems(currentBlock, nextBlock, nextItem, slip.Ident, "");
+                        bnl.Breadcrumb += newbnl.Breadcrumb;
+                        bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                        if (newbnl.BlockFound == null)
+                        {
+                            bnl.NoMoreBlocksFound = true;
+                        }
+                        else
+                        {
+                            bnl.BlockFound = newbnl.BlockFound;
+                        }
+                        bnl.EdgeConnector = newbnl.EdgeConnector;
+                        bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                        bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                        bnl.BNLTurnouts.AddRange(newbnl.BNLTurnouts);
+                        if (!String.IsNullOrEmpty(newbnl.LikelyIssue))
+                        {
+                            if (!String.IsNullOrEmpty(bnl.LikelyIssue))
+                            {
+                                bnl.LikelyIssue += "; " + newbnl.LikelyIssue;
+                            }
+                            else
+                            {
+                                bnl.LikelyIssue = newbnl.LikelyIssue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        bnl.BlockFound = blockFoundOnTurnoutSearch;
+                    }
+
                 }
             }
             return bnl;
