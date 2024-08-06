@@ -115,6 +115,7 @@ namespace JMRIReader
                         logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
                         logEntry.HasAlternate = hasAlternate;
                         logEntry.SectionSequenceId = sectionCounter;
+                        logEntry.SequenceState = JourneySequenceState.Queued;
                         tr.BlocksInOrder.Add(logEntry);
                     }
 

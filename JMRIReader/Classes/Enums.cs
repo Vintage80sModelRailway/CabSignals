@@ -53,5 +53,12 @@
             Forward = 1,
             Reverse = 0
         }
+
+        public enum JourneySequenceState
+        {
+            Queued,
+            Active,
+            Traversed
+        }
     }
 }

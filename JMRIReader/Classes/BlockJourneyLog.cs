@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static JMRIReader.Classes.Enums;
 
 namespace JMRIReader.Classes
 {
@@ -16,6 +17,8 @@ namespace JMRIReader.Classes
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }
         public int SectionSequenceId { get; set; }
+
+        public JourneySequenceState SequenceState { get; set; }
 
     }
 }

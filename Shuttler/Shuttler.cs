@@ -115,10 +115,24 @@ namespace Shuttler
                 {
                     var newBlockStates = await webClient.GetBlocks();
                     var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
-                    var oldActiveBlocks = _allBlocks.Where(w => w.data.state == 2).ToList();
+                    var oldActiveBlocks = _allBlocks.Where(w => w.data.state == 2).ToList();                    
 
                     var activeBlocks = oldActiveBlocks.Union(newActiveBlocks).ToList();
                     var newActiveThisTimeBlocks = newActiveBlocks.Where(p => !oldActiveBlocks.Any(p2 => p2.data.name == p.data.name)).ToList();
+
+                    var goneInactiveBlocks = oldActiveBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
+
+                    foreach (var gib in goneInactiveBlocks)
+                    {
+                        if (gib.data.value == null) continue;
+                        var relatedLog = _logs.FirstOrDefault(f => f.DCCiD == gib.data.value.data.userName);
+                        if (relatedLog == null) continue;
+                        var sequenceBlock = relatedLog.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == gib.data.name && f.SequenceState == JourneySequenceState.Active);
+                        if (sequenceBlock != null)
+                        {
+                            sequenceBlock.SequenceState = JourneySequenceState.Traversed;
+                        }
+                    }
 
                     foreach (var nab in newActiveThisTimeBlocks)
                     {
@@ -172,6 +186,8 @@ namespace Shuttler
                         }
 
                         var logBlock = existingLog.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == activeBlock.systemName && f.SectionSequenceId == activeSection.Sequence);
+                        logBlock.SequenceState = JourneySequenceState.Active;
+
                         existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
 
                         var newBlockBNL = NavigateThroughBlockItems(nab.data.userName, nextBlockName, existingLog.CurrentBlockBNL.EdgeConnector, existingLog.CurrentBlockBNL.EdgeConnectorDirectionConnector, "");
@@ -198,25 +214,24 @@ namespace Shuttler
         {
             foreach (var log in _logs)
             {
-                var lastBlock = "";
-                var lastBlockNextBlock = "";
-                var lastBlockEdgeConnector = "";
-                var lastBlockEdgeDirectionConnector = "";
                 int sectionCounter = 0;
                 int blockCounter = 0;
-                string sectionIssueLog = "";
                 var previousBlockBNL = log.PreviousBlockBNL;
-
 
                 //check blocks for issues
                 List<block> CheckedBlocks = new List<block>();
+
+                if (!string.IsNullOrEmpty(log.PreviousBlock))
+                {
+                    var livePreviousBlock = LiveBlocks.FirstOrDefault(f => f.data.userName == log.PreviousBlock);
+                }
+
 
                 int blocksRemaining = log.AutomatedBlockList.Count - log.AutomatedCurrentBlockIndex;
                 if (blocksRemaining > 3) blocksRemaining = 3;
                 for (int i = log.AutomatedCurrentBlockIndex; i < log.AutomatedCurrentBlockIndex + blocksRemaining; i++)
                 {
-                    bool danger = false;
-                    bool caution = false;
+                    bool requiresCustomSpeedValue = false;
                     blockCounter++;
 
                     var thisLogBlock = log.AutomatedBlockList[i];
@@ -276,6 +291,32 @@ namespace Shuttler
                         }
                     }
 
+                    //previous speed restrictions first as they should be superceded by current block speed restrictions
+                    var previousBlocksStillActive = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.Active && w.Sequence < thisLogBlock.Sequence);
+                    var previousActiveBlockHasSpeedRestriction = false;
+                    var previousActiveSpeedRestrictionReason = "";
+                    var previousSpeedRestriction = AutomatedTrainRunningSpeed.Caution;
+                    foreach (var pb in previousBlocksStillActive)
+                    {
+                        var bSection = log.AutomatedSectionList.FirstOrDefault(f => f.Sequence == pb.SectionSequenceId);
+                        if (bSection == null) continue;
+                        var cBlock = bSection.Blocks.FirstOrDefault(f => f.systemName == pb.BlockSystemname);
+                        if (cBlock == null) continue;
+                        if (cBlock.BlockSpeed != AutomatedTrainRunningSpeed.Full)
+                        {
+                            previousActiveBlockHasSpeedRestriction = true;
+                            previousActiveSpeedRestrictionReason = "Previous block " + cBlock.userName + " still active and has speed " + cBlock.AutomatedSpeedReason + " for " + cBlock.AutomatedSpeedReason;
+                            previousSpeedRestriction = cBlock.BlockSpeed;
+                        }
+                    }
+
+                    if (previousActiveBlockHasSpeedRestriction)
+                    {
+                        requiresCustomSpeedValue = true;
+                        thisLogSectionBlock.BlockSpeed = previousSpeedRestriction;
+                        thisLogSectionBlock.AutomatedSpeedReason = previousActiveSpeedRestrictionReason;
+                    }
+
                     foreach (var to in thisLogSectionBlock.BNL.BNLTurnouts)
                     {
                         if (to.RequiredState != to.CurrentState)
@@ -287,7 +328,8 @@ namespace Shuttler
                         if (to.RequiredState == "4")
                         {
                             thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                            thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in path";
+                            thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in path ("+to.Name+")";
+                            requiresCustomSpeedValue = true;
                         }
                     }
 
@@ -310,6 +352,7 @@ namespace Shuttler
                         {
                             thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
                             thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in next block";
+                            requiresCustomSpeedValue = true;
                         }
                     }
 
@@ -322,6 +365,7 @@ namespace Shuttler
                     {
                         thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
                         thisLogSectionBlock.AutomatedSpeedReason = "Penultimate block";
+                        requiresCustomSpeedValue = true;
                     }
 
                     if (!string.IsNullOrEmpty(issue))
@@ -338,6 +382,14 @@ namespace Shuttler
                     thisLogSectionBlock.CheckSequence = blockCounter;
                     CheckedBlocks.Add(thisLogSectionBlock);
                     previousBlockBNL = thisLogSectionBlock.BNL;
+
+
+
+                    if (!requiresCustomSpeedValue && thisLogSectionBlock.AutomatedSpeedReason != "Approaching end of journey")
+                    {
+                        thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
+                        thisLogSectionBlock.AutomatedSpeedReason = "Default apeed";
+                    }
                 }
 
                 //calculate aspect here?
