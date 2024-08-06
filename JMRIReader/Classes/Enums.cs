@@ -20,5 +20,38 @@
             Down = 8192,
             Notknown = 99
         }
+
+        public enum SignalAspect
+        {
+            Danger,
+            Caution,
+            Proceed,
+            Stop
+        }
+
+        public enum AutomatedTrainRunningStatus
+        {
+            Starting,
+            RampingUp,
+            Running,
+            RampingDown,
+            Caution,
+            Waiting,
+            Complete
+        }
+
+        public enum AutomatedTrainRunningSpeed
+        {
+            Full,
+            Caution,
+            Crawl,
+            Stop
+        }
+
+        public enum TrainDirection
+        {
+            Forward = 1,
+            Reverse = 0
+        }
     }
 }

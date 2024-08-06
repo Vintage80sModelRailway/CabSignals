@@ -2,6 +2,8 @@
 // NOTE: Generated code may require at least .NET Framework 4.5 or .NET Core/Standard 2.0.
 using JMRIReader.Classes;
 using System.Collections.Generic;
+using System.ComponentModel;
+using static JMRIReader.Classes.Enums;
 /// <remarks/>
 [System.SerializableAttribute()]
 [System.ComponentModel.DesignerCategoryAttribute("code")]
@@ -30,6 +32,21 @@ public partial class block
     private byte curveField;
 
     public BlockNavigationLog BNL;
+
+    public AutomatedTrainRunningSpeed BlockSpeed;
+
+    public string AutomatedSpeedReason;
+
+    public SignalAspect SignalAspect;
+    public string SignalAspectReason;
+
+    public bool BlockContainsDanger;
+    public string DangerReason;
+
+    public bool ClearToAllocate;
+    public string AllocationIssue;
+
+    public int CheckSequence;
 
     /// <remarks/>
     public string systemName

@@ -46,11 +46,19 @@
             this.cbTransitTrainDirection = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
             this.lbOutput = new System.Windows.Forms.ListBox();
+            this.lbRunningTransits = new System.Windows.Forms.ListBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.lblActiveTransitID = new System.Windows.Forms.Label();
+            this.lblActiveTransitName = new System.Windows.Forms.Label();
+            this.lblSignalAspect = new System.Windows.Forms.Label();
+            this.lblSignalReason = new System.Windows.Forms.Label();
+            this.lblSpeed = new System.Windows.Forms.Label();
+            this.lblSpeedReason = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
             // 
-            this.btnTest.Location = new System.Drawing.Point(661, 29);
+            this.btnTest.Location = new System.Drawing.Point(43, 32);
             this.btnTest.Name = "btnTest";
             this.btnTest.Size = new System.Drawing.Size(75, 23);
             this.btnTest.TabIndex = 0;
@@ -68,7 +76,7 @@
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(1219, 13);
+            this.btnStart.Location = new System.Drawing.Point(601, 16);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(75, 23);
             this.btnStart.TabIndex = 2;
@@ -78,7 +86,7 @@
             // 
             // btnStop
             // 
-            this.btnStop.Location = new System.Drawing.Point(1219, 54);
+            this.btnStop.Location = new System.Drawing.Point(601, 57);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(75, 23);
             this.btnStop.TabIndex = 3;
@@ -105,7 +113,7 @@
             // cbAvailableTransits
             // 
             this.cbAvailableTransits.FormattingEnabled = true;
-            this.cbAvailableTransits.Location = new System.Drawing.Point(1088, 125);
+            this.cbAvailableTransits.Location = new System.Drawing.Point(470, 128);
             this.cbAvailableTransits.Name = "cbAvailableTransits";
             this.cbAvailableTransits.Size = new System.Drawing.Size(206, 21);
             this.cbAvailableTransits.TabIndex = 6;
@@ -161,7 +169,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(1085, 104);
+            this.label4.Location = new System.Drawing.Point(467, 107);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(86, 13);
             this.label4.TabIndex = 12;
@@ -169,7 +177,7 @@
             // 
             // btnTransitsReload
             // 
-            this.btnTransitsReload.Location = new System.Drawing.Point(1219, 99);
+            this.btnTransitsReload.Location = new System.Drawing.Point(601, 102);
             this.btnTransitsReload.Name = "btnTransitsReload";
             this.btnTransitsReload.Size = new System.Drawing.Size(75, 23);
             this.btnTransitsReload.TabIndex = 13;
@@ -179,7 +187,7 @@
             // 
             // btnStartTransit
             // 
-            this.btnStartTransit.Location = new System.Drawing.Point(1185, 202);
+            this.btnStartTransit.Location = new System.Drawing.Point(567, 205);
             this.btnStartTransit.Name = "btnStartTransit";
             this.btnStartTransit.Size = new System.Drawing.Size(109, 23);
             this.btnStartTransit.TabIndex = 14;
@@ -193,7 +201,7 @@
             this.cbTransitTrainDirection.Items.AddRange(new object[] {
             "Forward",
             "Reverse"});
-            this.cbTransitTrainDirection.Location = new System.Drawing.Point(1088, 175);
+            this.cbTransitTrainDirection.Location = new System.Drawing.Point(470, 178);
             this.cbTransitTrainDirection.Name = "cbTransitTrainDirection";
             this.cbTransitTrainDirection.Size = new System.Drawing.Size(205, 21);
             this.cbTransitTrainDirection.TabIndex = 15;
@@ -201,7 +209,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(1088, 153);
+            this.label5.Location = new System.Drawing.Point(470, 156);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(76, 13);
             this.label5.TabIndex = 16;
@@ -210,16 +218,96 @@
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(630, 231);
+            this.lbOutput.Location = new System.Drawing.Point(12, 234);
             this.lbOutput.Name = "lbOutput";
             this.lbOutput.Size = new System.Drawing.Size(664, 199);
             this.lbOutput.TabIndex = 17;
+            // 
+            // lbRunningTransits
+            // 
+            this.lbRunningTransits.FormattingEnabled = true;
+            this.lbRunningTransits.Location = new System.Drawing.Point(1142, 39);
+            this.lbRunningTransits.Name = "lbRunningTransits";
+            this.lbRunningTransits.Size = new System.Drawing.Size(152, 394);
+            this.lbRunningTransits.TabIndex = 18;
+            this.lbRunningTransits.SelectedIndexChanged += new System.EventHandler(this.lbRunningTransits_SelectedIndexChanged);
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(1142, 20);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(73, 13);
+            this.label6.TabIndex = 19;
+            this.label6.Text = "Active transits";
+            // 
+            // lblActiveTransitID
+            // 
+            this.lblActiveTransitID.AutoSize = true;
+            this.lblActiveTransitID.Location = new System.Drawing.Point(710, 13);
+            this.lblActiveTransitID.Name = "lblActiveTransitID";
+            this.lblActiveTransitID.Size = new System.Drawing.Size(18, 13);
+            this.lblActiveTransitID.TabIndex = 20;
+            this.lblActiveTransitID.Text = "ID";
+            // 
+            // lblActiveTransitName
+            // 
+            this.lblActiveTransitName.AutoSize = true;
+            this.lblActiveTransitName.Location = new System.Drawing.Point(710, 32);
+            this.lblActiveTransitName.Name = "lblActiveTransitName";
+            this.lblActiveTransitName.Size = new System.Drawing.Size(44, 13);
+            this.lblActiveTransitName.TabIndex = 21;
+            this.lblActiveTransitName.Text = "Journey";
+            // 
+            // lblSignalAspect
+            // 
+            this.lblSignalAspect.AutoSize = true;
+            this.lblSignalAspect.Location = new System.Drawing.Point(710, 57);
+            this.lblSignalAspect.Name = "lblSignalAspect";
+            this.lblSignalAspect.Size = new System.Drawing.Size(36, 13);
+            this.lblSignalAspect.TabIndex = 22;
+            this.lblSignalAspect.Text = "Signal";
+            // 
+            // lblSignalReason
+            // 
+            this.lblSignalReason.AutoSize = true;
+            this.lblSignalReason.Location = new System.Drawing.Point(801, 57);
+            this.lblSignalReason.Name = "lblSignalReason";
+            this.lblSignalReason.Size = new System.Drawing.Size(71, 13);
+            this.lblSignalReason.TabIndex = 23;
+            this.lblSignalReason.Text = "Signal reason";
+            // 
+            // lblSpeed
+            // 
+            this.lblSpeed.AutoSize = true;
+            this.lblSpeed.Location = new System.Drawing.Point(710, 88);
+            this.lblSpeed.Name = "lblSpeed";
+            this.lblSpeed.Size = new System.Drawing.Size(38, 13);
+            this.lblSpeed.TabIndex = 24;
+            this.lblSpeed.Text = "Speed";
+            // 
+            // lblSpeedReason
+            // 
+            this.lblSpeedReason.AutoSize = true;
+            this.lblSpeedReason.Location = new System.Drawing.Point(804, 88);
+            this.lblSpeedReason.Name = "lblSpeedReason";
+            this.lblSpeedReason.Size = new System.Drawing.Size(73, 13);
+            this.lblSpeedReason.TabIndex = 25;
+            this.lblSpeedReason.Text = "Speed reason";
             // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.lblSpeedReason);
+            this.Controls.Add(this.lblSpeed);
+            this.Controls.Add(this.lblSignalReason);
+            this.Controls.Add(this.lblSignalAspect);
+            this.Controls.Add(this.lblActiveTransitName);
+            this.Controls.Add(this.lblActiveTransitID);
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this.lbRunningTransits);
             this.Controls.Add(this.lbOutput);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.cbTransitTrainDirection);
@@ -265,5 +353,13 @@
         private System.Windows.Forms.ComboBox cbTransitTrainDirection;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.ListBox lbOutput;
+        private System.Windows.Forms.ListBox lbRunningTransits;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label lblActiveTransitID;
+        private System.Windows.Forms.Label lblActiveTransitName;
+        private System.Windows.Forms.Label lblSignalAspect;
+        private System.Windows.Forms.Label lblSignalReason;
+        private System.Windows.Forms.Label lblSpeed;
+        private System.Windows.Forms.Label lblSpeedReason;
     }
 }
