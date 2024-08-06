@@ -13,5 +13,7 @@ namespace JMRIReader.Classes
         public string Name { get; set; }
         public string CurrentState { get; set; }
         public string RequiredState { get; set; }
+
+        public int NumberOfRetries { get; set; }
     }
 }

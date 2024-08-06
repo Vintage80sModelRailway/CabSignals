@@ -222,7 +222,7 @@
             this.lbOutput.FormattingEnabled = true;
             this.lbOutput.Location = new System.Drawing.Point(12, 234);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(664, 199);
+            this.lbOutput.Size = new System.Drawing.Size(1124, 199);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
