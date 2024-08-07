@@ -61,3 +61,7 @@ JMRIReader/obj/Debug/JMRIReader.pdb
 /WiiThrottleClient/bin/Debug
 /WiiThrottleClient/obj/Debug
 /LayoutMonitor/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
+/Shuttler/bin/Release
+/WiiThrottleClient/bin/Release
+/WiiThrottleClient/obj/Release
+/JMRIReader/obj/Release/JMRIReader.csproj.CoreCompileInputs.cache
