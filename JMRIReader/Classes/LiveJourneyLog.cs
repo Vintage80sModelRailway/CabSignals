@@ -41,5 +41,12 @@ namespace JMRIReader.Classes
         public string TerminatedReason { get; set; }
 
         public bool ProcessingNewBlock { get; set; }
+
+        public int TrainSpeedStep { get; set; }
+        public TrainDirection TrainDirection { get; set; }
+        public DateTime SpeedStepLastSet { get; set; }
+        public int TargetTrainSpeedStep { get; set; }
+
+        public TrainMotionConfig tmc { get; set; }
     }
 }

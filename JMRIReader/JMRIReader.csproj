@@ -67,6 +67,7 @@
     <Compile Include="Classes\Roster.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />
     <Compile Include="Classes\Test.cs" />
+    <Compile Include="Classes\TrainMotionConfig.cs" />
     <Compile Include="Classes\TurnoutRootObject.cs" />
     <Compile Include="Classes\Block.cs" />
     <Compile Include="Classes\BlockRootObject.cs" />

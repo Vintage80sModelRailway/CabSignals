@@ -23,6 +23,7 @@ namespace Shuttler
         private string _JMRIServerIP;
         private int _WiThrottlePort;
         private string _cfgFilePath;
+        private string RosterPath;
         private ConfigReader config;
         private JSONReader webClient;
         private List<BlockRootObject> _startBlocks;
@@ -33,6 +34,9 @@ namespace Shuttler
         private string MQTTServer;
         private string BlockAllocateTopic;
         private string BlockReleaseTopic;
+        private int DefaultCautionMMS;
+        private int DefaultCrawlMMS;
+        private int DefaultFullSpeedMMS;
 
         WiThrottle c;
 
@@ -45,6 +49,13 @@ namespace Shuttler
             {
                 _cfgFilePath = cfgFilePath.ToString();
             }
+
+            var rosterFilePath = ConfigurationManager.AppSettings["RosterFilePath"];
+            if (rosterFilePath != null)
+            {
+                RosterPath = rosterFilePath.ToString();
+            }
+
             var cfgWebServerIP = ConfigurationManager.AppSettings["JMRIServerIP"];
             if (cfgWebServerIP != null)
             {
@@ -74,6 +85,27 @@ namespace Shuttler
             if (cfgBlockReleaseTopic != null)
             {
                 BlockReleaseTopic = cfgBlockReleaseTopic.ToString();
+            }
+
+            var cfgdefaultCrawlMMS = ConfigurationManager.AppSettings["DefaultCrawlMMS"];
+            if (cfgdefaultCrawlMMS != null)
+            {
+                var dcmms = cfgdefaultCrawlMMS.ToString();
+                DefaultCrawlMMS = int.Parse(dcmms);
+            }
+
+            var cfgDefaultCautionMMS = ConfigurationManager.AppSettings["DefaultCautionMMS"];
+            if (cfgDefaultCautionMMS != null)
+            {
+                var dcams = cfgDefaultCautionMMS.ToString();
+                DefaultCautionMMS = int.Parse(dcams);
+            }
+
+            var cfgFullSpeedMMS = ConfigurationManager.AppSettings["DefaultFullSpeedMMS"];
+            if (cfgFullSpeedMMS != null)
+            {
+                var dfs = cfgFullSpeedMMS.ToString();
+                DefaultFullSpeedMMS = int.Parse(dfs);
             }
 
             lbRunningTransits.ValueMember = "Value";
@@ -228,6 +260,9 @@ namespace Shuttler
                             + " speed "+existingLog.AutomatedTrainRunningSpeed.ToString()+" - reason "+existingLog.AutomatedTrainSpeedReason);
                     }
                     CheckRunningTrains(newBlockStates);
+                    CalculateSpeedForTrains();
+                    SetTrainSpeeds();
+
                     UpdateLogPanel();
                     _allBlocks = newBlockStates;
                 }
@@ -235,6 +270,29 @@ namespace Shuttler
                 await c.CheckForMessages();
                 await Task.Delay(500);
             }
+
+        }
+
+        private void CalculateSpeedForTrains()
+        {
+            foreach (var log in _logs)
+            {
+                //Get current block
+
+                //Check speed matches speed set on 
+
+                var signalAspect = log.SignalAspect;
+                var expectedSpeed = log.AutomatedTrainRunningSpeed;
+
+                if (log.TargetTrainSpeedStep != log.TrainSpeedStep)
+                {
+                    //is it ramping? Check ramp
+                }
+            }
+        }
+
+        private void SetTrainSpeeds()
+        {
 
         }
 
@@ -287,39 +345,6 @@ namespace Shuttler
 
 
                     string issue = "";
-                    /*
-                    var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == thisLogSectionBlock.systemName);
-
-                    if (liveStateBlock != null)
-                    {
-                        var state = liveStateBlock.data.state;
-                        var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-                        if (state == 2 && sectionCounter > 1) //occupied
-                        {
-                            issue = "Occupied";
-                            if (value.Length > 0) issue += " by " + value;
-                            thisLogSectionBlock.BNL.OccupiedBy = value;
-                            thisLogSectionBlock.ClearToAllocate = false;
-                            thisLogSectionBlock.AllocationIssue = value;
-                        }
-                        else
-                        {
-                            thisLogSectionBlock.BNL.OccupiedBy = "";
-                            if (value.Length > 0 && value != log.DCCiD)
-                            {
-                                //check for allocation                              
-                                issue = "Allocated to " + value;
-                                thisLogSectionBlock.BNL.AllocatedTo = value;
-                                thisLogSectionBlock.ClearToAllocate = false;
-                                thisLogSectionBlock.AllocationIssue = value;
-                            }
-                            else
-                            {
-                                thisLogSectionBlock.BNL.AllocatedTo = "";
-                            }
-                        }
-                    }
-                    */
 
                     //previous speed restrictions first as they should be superceded by current block speed restrictions
                     var previousBlocksStillActive = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.Active && w.Sequence < thisLogBlock.Sequence);
@@ -810,6 +835,142 @@ namespace Shuttler
             trainLog.CurrentBlockBNL = firstBlockBNL;
             trainLog.StatusLastChanged = DateTime.Now;
             trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
+
+            //get train roster entry
+            var rosterCfG = new RosterReader(RosterPath);
+            var roster = rosterCfG.GetRoster();
+            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == trainLog.DCCiD);
+
+            int crawlSpeedStep;
+            int cautionSpeedStep;
+            int FullSpeedStep;
+
+            var tmc = new TrainMotionConfig();
+            tmc.Name = trainLog.Name;
+            tmc.DCCID = trainLog.DCCiD;
+
+            if (fullInfo != null && fullInfo.Speedprofile != null)
+            {
+                var firstSpeed = fullInfo.Speedprofile.Speeds.Speed.FirstOrDefault();
+                if (firstSpeed != null)
+                {
+                    decimal prevForwardSpeed = 0.0M;
+                    decimal prevReverseSpeed = 0.0M;
+                    var decFSuccess = decimal.TryParse(firstSpeed.Forward, out prevForwardSpeed);
+                    var decRSuccess = decimal.TryParse(firstSpeed.Reverse, out prevReverseSpeed);
+                    if (decFSuccess && decRSuccess)
+                    {
+                        foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
+                        {
+                            var tStep = step.Step;
+                            var speed = step.Forward;
+                            decimal dForward = 0.0M;
+                            decimal dReverse = 0.0M;
+                            bool fSuccess = decimal.TryParse(step.Forward, out dForward);
+                            bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
+                            if (fSuccess && rSuccess)
+                            {
+                                if ((DefaultCrawlMMS < dForward && DefaultCrawlMMS > prevForwardSpeed) || (DefaultCrawlMMS < prevForwardSpeed && tmc.ForwardCrawlSpeedStep <= 0))
+                                {
+                                    var sSperc = step.Step;
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+                                        
+                                        int dSS = (int) decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ForwardCrawlSpeedStep = dSS;
+                                    }
+
+                                }
+                                if ((DefaultCrawlMMS < dReverse && DefaultCrawlMMS > prevReverseSpeed) || (DefaultCrawlMMS < prevReverseSpeed && tmc.ReverseCrawlSpeedStep <= 0))
+                                {
+                                    var sSperc = step.Step;
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+
+                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ReverseCrawlSpeedStep = dSS;
+                                    }
+
+                                }
+
+
+                                if ((DefaultCautionMMS < dForward && DefaultCautionMMS > prevForwardSpeed) || (DefaultCrawlMMS < prevForwardSpeed && tmc.ForwardCrawlSpeedStep <= 0))
+                                {
+                                    var sSperc = step.Step;
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+
+                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ForwardCautionSpeedStep = dSS;
+                                    }
+
+                                }
+                                if ((DefaultCautionMMS < dReverse && DefaultCautionMMS > prevReverseSpeed) || (DefaultCrawlMMS < prevReverseSpeed && tmc.ReverseCautionSpeedStep <= 0))
+                                {
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+
+                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ReverseCautionSpeedStep = dSS;
+                                    }
+
+                                }
+
+                                if ((DefaultFullSpeedMMS < dForward && DefaultFullSpeedMMS > prevForwardSpeed))
+                                {
+                                    var sSperc = step.Step;
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+
+                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ForwardFullSpeedStep = dSS;
+                                    }
+
+                                }
+                                if ((DefaultFullSpeedMMS < dReverse && DefaultFullSpeedMMS > prevReverseSpeed))
+                                {
+                                    decimal dss = 0.0M;
+                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
+                                    if (dssSuccess)
+                                    {
+                                        var asPerc1 = dss / 1000;
+
+                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                                        tmc.ReverseFullSpeedStep = dSS;
+                                    }
+
+                                }
+
+                            }
+                            prevForwardSpeed = dForward;
+                            prevReverseSpeed = dReverse;
+                        }
+                    }
+                }
+
+
+                //get speed val
+                //divide by 1000 then x by 128
+
+            }
+
+            trainLog.tmc = tmc;
+
             _logs.Add(trainLog);
 
             lbRunningTransits.Items.Add(new
@@ -950,11 +1111,18 @@ namespace Shuttler
                 }
                 else derivedXoverBlockName = to.Blockname;
 
-                if (derivedXoverBlockName != currentBlock && derivedXoverBlockName == nextBlock && to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
+                if (derivedXoverBlockName != currentBlock && (derivedXoverBlockName == nextBlock || nextBlock == "") && to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
                 {
                     bnl.EdgeConnector = to.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    bnl.BlockFound = to.Blockname;
+                    if (derivedXoverBlockName == nextBlock)
+                        bnl.BlockFound = to.Blockname;
+                    else
+                    {
+                        bnl.BlockFound = "";
+                        bnl.NoMoreBlocksFound = true;
+                        bnl.LikelyIssue = "End of journey";
+                    }    
                     if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
                     {
                         bnl.NextBlockEdgeConnector = to.Connectaname;
@@ -1217,7 +1385,15 @@ namespace Shuttler
                 {
                     bnl.EdgeConnector = ts.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    bnl.BlockFound = ts.Blockname;
+                    if (nextBlock == "")
+                    {
+                        bnl.BlockFound = "";
+                        bnl.NoMoreBlocksFound = true;
+                        bnl.LikelyIssue = "End of journey";
+                    }
+                    else
+                        bnl.BlockFound = ts.Blockname;
+
                     if (ts.Connect1name != previousLayoutItem)
                     {
                         bnl.NextBlockEdgeConnector = ts.Connect1name;
@@ -1325,7 +1501,15 @@ namespace Shuttler
                 {
                     bnl.EdgeConnector = slip.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    bnl.BlockFound = slip.Blockname;
+                    if (nextBlock == "")
+                    {
+                        bnl.BlockFound = "";
+                        bnl.NoMoreBlocksFound = true;
+                        bnl.LikelyIssue = "End of journey";
+                    }
+                    else
+                        bnl.BlockFound = slip.Blockname;
+
                     bnl.NextBlockEdgeConnector = nextItem;
                 }
                 else

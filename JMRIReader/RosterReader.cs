@@ -14,10 +14,12 @@ namespace JMRIReader
     {
         private string filePath;
         XDocument rosterCFG;
+        private List<Locomotive> _locos;
         public RosterReader(string FilePath)
         {
             filePath = FilePath;
             rosterCFG = XDocument.Load(filePath);
+            _locos = new List<Locomotive>();
         }
 
         public List<RosterEntry> GetRoster()
@@ -29,6 +31,7 @@ namespace JMRIReader
             foreach (var loco in locos)
             {
                 var xLoco = (Locomotive)serial.Deserialize(loco.CreateReader());
+                _locos.Add(xLoco);
                 var re = new RosterEntry();
                 re.Name = xLoco.Id;
                 re.ID = xLoco.DccAddress;
@@ -36,6 +39,14 @@ namespace JMRIReader
             }
 
             return locolist;
+        }
+
+        public List<Locomotive> FullRoster
+        {
+            get
+            {
+                return _locos;
+            }
         }
 
     }
