@@ -30,6 +30,14 @@ namespace JMRIReader.Classes
 
         public string UsedEdgeConnector { get; set; }
         public string UsedEdgeConnectorDirectionConnector { get; set; }
+        public List<string> BlockBreadcrumb { get; set; }
+        public List<BlockNavigationLog> bnlBreadcrumb { get; set; }
+
+        public bool TargetFound { get; set; }
+        public List<string> ValidBlockPath { get; set; }
+        public List<string> BranchBlockLog { get; set; }
+
+        //public List<List<string>> BranchLogs { get; set; }
 
     }
 }

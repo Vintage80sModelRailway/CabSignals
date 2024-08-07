@@ -114,7 +114,19 @@ namespace Shuttler
 
         private async void btnTest_Click(object sender, EventArgs e)
         {
-            
+            c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
+            if (webClient == null && c != null && c.WebServerPort > -1)
+            {
+                var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
+                webClient = new JSONReader(serverAddress);
+                LoadStartBlocks();
+                _allBlocks = await webClient.GetBlocks();
+            }
+            LoadConfig();
+
+            var emptyBC = new List<List<string>>();
+            var bnl = GetFirstBNL("Yard AC Line 1 Block 1", "AC Yard Exit");
+            var result = SearchForBlock("Yard AC Line 1 Block 1", "UD-AC Station Bay Platform", emptyBC, bnl.EdgeConnector, bnl.EdgeConnectorDirectionConnector,"",0);
         }
 
         private async void RunShuttles()
@@ -284,16 +296,13 @@ namespace Shuttler
                 var signalAspect = log.SignalAspect;
                 var expectedSpeed = log.AutomatedTrainRunningSpeed;
 
-                if (log.TargetTrainSpeedStep != log.TrainSpeedStep)
-                {
-                    //is it ramping? Check ramp
-                }
+
             }
         }
 
         private void SetTrainSpeeds()
         {
-
+            //if current speed < target speed and not ramping up, set ramp up
         }
 
         private async void CheckRunningTrains(List<BlockRootObject> LiveBlocks)
@@ -966,6 +975,24 @@ namespace Shuttler
 
                 //get speed val
                 //divide by 1000 then x by 128
+
+            }
+            else
+            {
+                decimal speed = new decimal(DefaultCrawlMMS);
+                var asPerc1 = speed / 1000;
+                tmc.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                tmc.ReverseCrawlSpeedStep = tmc.ForwardCrawlSpeedStep;
+
+                speed = DefaultCautionMMS;
+                asPerc1 = speed / 1000;
+                tmc.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                tmc.ReverseCautionSpeedStep = tmc.ForwardCautionSpeedStep;
+
+                speed = DefaultFullSpeedMMS;
+                asPerc1 = speed / 1000;
+                tmc.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                tmc.ReverseFullSpeedStep = tmc.ForwardFullSpeedStep;
 
             }
 
@@ -1685,6 +1712,460 @@ namespace Shuttler
         private void lbRunningTransits_SelectedIndexChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private BlockNavigationLog SearchForBlock(string currentBlock, string targetBlock, List<List<string>> traversedBlocks,  string LayoutItem, string previousLayoutItem, string breadcrumbStart, int branchLevel)
+        {
+            if (string.IsNullOrEmpty(LayoutItem) || string.IsNullOrEmpty(currentBlock) || string.IsNullOrEmpty(previousLayoutItem))
+                return null;
+
+            var bnl = new BlockNavigationLog();
+            bnl.BNLTurnouts = new List<BNLTurnout>();
+            bnl.BlockChecked = currentBlock;
+            bnl.StartItem = LayoutItem;
+            bnl.StartPreviousItem = previousLayoutItem;
+            bnl.UsedEdgeConnector = LayoutItem;
+            bnl.ValidBlockPath = new List<string>();
+            bnl.UsedEdgeConnectorDirectionConnector = previousLayoutItem;
+            bnl.BranchBlockLog = new List<string>();
+            bnl.TargetFound = false;
+            //bnl.PreviousBlock = previousBlock;
+            if (breadcrumbStart != "") bnl.Breadcrumb += breadcrumbStart + ";";
+
+            var testTrav = traversedBlocks.ElementAtOrDefault(branchLevel);
+            if (testTrav == null)
+            {
+                traversedBlocks.Add(new List<string>());
+            }
+            if (LayoutItem.Substring(0, 2) == "TO")
+            {
+                //turnout
+                var to = config.GetLayuoutTurnout(LayoutItem);
+                var configTurnout = config.GetTurnoutByUserName(to.Turnoutname);
+                var derivedXoverBlockName = "";
+
+                if (to.Type.Contains("XOVER"))
+                {
+                    if (to.Connectaname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.Blockname;
+                    }
+                    else if (to.Connectbname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.Blockname;
+                    }
+                    else if (to.Connectcname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.Blockcname;
+                    }
+                    else if (to.Connectdname == previousLayoutItem)
+                    {
+                        derivedXoverBlockName = to.Blockdname;
+                    }
+
+                }
+                else derivedXoverBlockName = to.Blockname;
+
+                //&& to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
+                if (derivedXoverBlockName != currentBlock)
+                {
+                    traversedBlocks[branchLevel].Add(currentBlock);
+                    currentBlock = derivedXoverBlockName;
+                }
+
+                var blockLog = FlattenLog(traversedBlocks, branchLevel - 1);
+                if (derivedXoverBlockName == targetBlock)
+                {
+                    bnl.TargetFound = true;
+                    bnl.EdgeConnector = to.Ident;
+                    bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
+                    bnl.BlockFound = to.Blockname;
+                    traversedBlocks[branchLevel].Add(to.Blockcname);
+                    bnl.ValidBlockPath = traversedBlocks[branchLevel];
+                }
+                else if (blockLog.Contains(derivedXoverBlockName))
+                {
+                    //come across a duplicate, go back
+                    bnl.TargetFound = false;
+                }
+                else
+                {
+                    string nextItemIdent = "";
+                    if (to.Type.Contains("XOVER"))
+                    {
+                        if (to.Type.StartsWith("LH"))
+                        {
+                            //On a LH - connections B and D approach at turnout start - A and C approach at V
+                            //if approaching on B, test A and D
+                            //if approaching on D, test B and C
+                            //if approaching from A or C, need closed
+
+                            if (to.Connectaname == previousLayoutItem || to.Connectcname == previousLayoutItem)
+                            {
+                                nextItemIdent = to.Connectaname == previousLayoutItem ? to.Connectbname : to.Connectdname;
+                                bnl.Breadcrumb += nextItemIdent + ";";
+
+                                var newbnl = SearchForBlock(currentBlock, targetBlock, traversedBlocks, nextItemIdent, to.Ident, "", branchLevel);
+                                bnl.Breadcrumb += newbnl.Breadcrumb;
+                                bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                                bnl.TargetFound = newbnl.TargetFound;
+                                bnl.EdgeConnector = newbnl.EdgeConnector;
+                                bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                                bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                                bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                            }
+                            else if (to.Connectbname == previousLayoutItem)
+                            {
+                                branchLevel++;
+                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel);
+                                if (testbnlA.TargetFound == true)
+                                {
+                                    bnl.TargetFound = true;
+                                    bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
+                                }
+                                else
+                                {
+                                    var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel);
+                                    if (testbnlD.TargetFound == true)
+                                    {
+                                        bnl.TargetFound = true;
+                                        bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
+                                    }
+                                }
+                                if (!bnl.TargetFound)
+                                {
+                                    branchLevel--;
+                                    //traversedBlocks.RemoveAt(branchLevel + 1);
+                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                                    bnl.TargetFound = false;
+                                }
+                            }
+                            else if (to.Connectdname == previousLayoutItem)
+                            {
+                                branchLevel++;
+                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
+                                if (testbnlB.TargetFound == true)
+                                {
+                                    bnl.TargetFound = true;
+                                    bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
+                                }
+                                else
+                                {
+                                    var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
+                                    if (testbnlC.TargetFound)
+                                    {
+                                        bnl.TargetFound = true;
+                                        bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
+                                    }
+                                }
+                                if (!bnl.TargetFound)
+                                {
+                                    branchLevel--;
+                                    //traversedBlocks.RemoveAt(branchLevel + 1);
+                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                                    bnl.TargetFound = false;
+                                }
+                            }
+                        }
+                        else if (to.Type.StartsWith("RH"))
+                        {
+                            //on a RH - connections A and C approach at turnout start - B and D approach at V
+                            //if approaching from A, test B and C
+                            //if approaching from C, test D and A
+
+                            //if approaching from D or B, need closed
+                            if (to.Connectbname == previousLayoutItem || to.Connectdname == previousLayoutItem)
+                            {
+                                nextItemIdent = to.Connectbname == previousLayoutItem ? to.Connectaname : to.Connectcname;
+
+                                bnl.Breadcrumb += nextItemIdent + ";";
+
+                                var newbnl = SearchForBlock(currentBlock, targetBlock, traversedBlocks, nextItemIdent, to.Ident, "", branchLevel);
+                                bnl.Breadcrumb += newbnl.Breadcrumb;
+                                bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                                bnl.EdgeConnector = newbnl.EdgeConnector;
+                                bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                                bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                                bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                                bnl.TargetFound = newbnl.TargetFound;
+                            }
+                            else if (to.Connectaname == previousLayoutItem)
+                            {
+                                branchLevel++;
+                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
+                                if (testbnlB.TargetFound == true)
+                                {
+                                    bnl.TargetFound = true;
+                                    bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
+                                }
+                                else
+                                {
+                                    var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
+                                    if (testbnlC.TargetFound)
+                                    {
+                                        bnl.TargetFound = true;
+                                        bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
+                                    }
+                                }
+
+                                if (!bnl.TargetFound)
+                                {
+                                    branchLevel--;
+                                    //traversedBlocks.RemoveAt(branchLevel + 1);
+                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                                    bnl.TargetFound = false;
+                                }
+                            }
+                            else if (to.Connectcname == previousLayoutItem)
+                            {
+                                branchLevel++;
+                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel);
+                                if (testbnlA.TargetFound == true)
+                                {
+                                    bnl.TargetFound = true;
+                                    bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
+                                }
+                                else
+                                {
+                                    var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel);
+                                    if (testbnlD.TargetFound == true)
+                                    {
+                                        bnl.TargetFound = true;
+                                        bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
+                                    }
+                                }
+
+                                if (!bnl.TargetFound)
+                                {
+                                    branchLevel--;
+                                    //traversedBlocks.RemoveAt(branchLevel + 1);
+                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                                    bnl.TargetFound = false;
+                                }
+                            }
+                        }
+
+                        bnl.Breadcrumb += nextItemIdent + ";";
+
+                    }
+                    else
+                    {
+                        //turnout
+                        if (to.Connectbname == previousLayoutItem || to.Connectcname == previousLayoutItem)
+                        {
+                            nextItemIdent = to.Connectaname;
+                            //Arriving at V of turnout
+                            bnl.Breadcrumb += nextItemIdent + ";";
+
+                            var newbnl = SearchForBlock(currentBlock, targetBlock, traversedBlocks, nextItemIdent, to.Ident, "", branchLevel);
+                            bnl.Breadcrumb += newbnl.Breadcrumb;
+                            bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                            bnl.EdgeConnector = newbnl.EdgeConnector;
+                            bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                            bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                            bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                            bnl.TargetFound = newbnl.TargetFound;
+
+                        }
+                        else
+                        {
+                            //arriving at front
+                            branchLevel++;
+                            var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
+                            if (testbnlB.TargetFound)
+                            {
+                                bnl.TargetFound = true;
+                                bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
+                            }
+                            else
+                            {
+                                var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
+                                if (testbnlC.TargetFound)
+                                {
+                                    bnl.TargetFound = true;
+                                    bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath); ;
+                                }
+                            }
+
+                            if (!bnl.TargetFound)
+                            {
+                                branchLevel--;
+                                //traversedBlocks.RemoveAt(branchLevel + 1);
+                                traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                                bnl.TargetFound = false;
+                            }
+
+                        }
+                        bnl.Breadcrumb += nextItemIdent + ";";
+                    }
+                }
+                //turnout still in same block, keep going
+
+
+            }
+            else if (LayoutItem.Substring(0, 1) == "T")
+            {
+                //track
+                var ts = config.GetLayoutTracksegment(LayoutItem);
+                if (ts.Blockname != currentBlock)
+                {
+                    traversedBlocks[branchLevel].Add(currentBlock);
+                    currentBlock = ts.Blockname;
+                }
+                var blockLog = FlattenLog(traversedBlocks, branchLevel - 1);
+                if (ts.Blockname == targetBlock)
+                {
+                    bnl.TargetFound = true;
+                    //bnl.ValidBlockPath.AddRange(traversedBlocks);
+                    bnl.ValidBlockPath.Add(ts.Blockname);
+                }
+                else if (blockLog.Contains(ts.Blockname))
+                {
+                    bnl.TargetFound = false;
+                }
+                else
+                {
+                    var nextItem = ts.Connect2name;
+                    if (ts.Connect2name == previousLayoutItem) nextItem = ts.Connect1name;
+                    bnl.Breadcrumb += nextItem + ";";
+                    var newbnl = SearchForBlock(currentBlock, targetBlock, traversedBlocks, nextItem, ts.Ident, "", branchLevel);
+                    bnl.Breadcrumb += newbnl.Breadcrumb;
+                    bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                    bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                    bnl.TargetFound = newbnl.TargetFound;
+                    bnl.EdgeConnector = newbnl.EdgeConnector;
+                    bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                    bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                }
+            }
+            else if (LayoutItem.Substring(0, 1) == "A")
+            {
+                //anchor
+                var a = config.GetTrackLayoutAnchorPoint(LayoutItem);
+                var nextItem = a.Connect2name;
+                if (a.Connect2name == previousLayoutItem) nextItem = a.Connect1name;
+                bnl.Breadcrumb += nextItem + ";";
+                var newbnl = SearchForBlock(currentBlock, targetBlock, traversedBlocks, nextItem, a.Ident, "", branchLevel);
+                bnl.Breadcrumb += newbnl.Breadcrumb;
+                bnl.NoMoreBlocksFound = newbnl.NoMoreBlocksFound;
+                bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                bnl.TargetFound = newbnl.TargetFound;
+                bnl.EdgeConnector = newbnl.EdgeConnector;
+                bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
+                bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+            }
+            else if (LayoutItem.Substring(0, 2) == "SL")
+            {
+                //slip
+
+                var slip = config.GetSlip(LayoutItem);
+
+                var cfgTurnoutA = config.GetTurnoutByUserName(slip.Turnout);
+                var cfgTurnoutB = config.GetTurnoutByUserName(slip.TurnoutB);
+
+                if (branchLevel >= 7 && slip.Ident.Contains("Approach"))
+                {
+                    var stop = "";
+                }
+
+                if (slip.Blockname != currentBlock)
+                {  
+                    traversedBlocks[branchLevel].Add(currentBlock);     
+                    currentBlock = slip.Blockname;
+                }
+                var blockLog = FlattenLog(traversedBlocks, branchLevel - 1);
+                if (slip.Blockname == targetBlock)
+                {
+                    bnl.TargetFound = true;
+                    //bnl.ValidBlockPath.AddRange(traversedBlocks);
+                    bnl.ValidBlockPath.Add(slip.Blockname);
+                }
+                else if (blockLog.Contains(slip.Blockname))
+                {
+                    bnl.TargetFound = false;
+                }
+                else
+                {
+                    if (slip.Connectaname == previousLayoutItem || slip.Connectbname == previousLayoutItem)
+                    {
+                        //Approaching from...
+
+                        //Route is through C or D
+                        branchLevel++;
+                        var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectcname, slip.Ident, "", branchLevel);
+                        if (testbnlC.TargetFound)
+                        {
+                            bnl.TargetFound = true;
+                            bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
+                        }
+                        else
+                        {
+                            var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectdname, slip.Ident, "", branchLevel);
+                            if (testbnlD.TargetFound)
+                            {
+                                bnl.TargetFound = true;
+                                bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
+                            }
+                        }                     
+
+                        if (!bnl.TargetFound)
+                        {
+                            branchLevel--;
+                            //traversedBlocks.RemoveAt(branchLevel + 1);
+                            traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                        }
+                    }
+                    else
+                    {
+                        branchLevel++;
+                        var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectaname, slip.Ident, "", branchLevel);
+                        if (testbnlA.TargetFound)
+                        {
+                            bnl.TargetFound = true;
+                            bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
+                        }
+                        else
+                        {
+                            var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectbname, slip.Ident, "", branchLevel);
+
+                            if (testbnlB.TargetFound)
+                            {
+                                bnl.TargetFound = true;
+                                bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
+                            }
+                        }
+
+                        if (!bnl.TargetFound)
+                        {
+                            branchLevel--;
+                            //traversedBlocks.RemoveAt(branchLevel + 1);
+                            traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
+                            bnl.TargetFound = false;
+                        }
+                    }
+                }
+            }
+            else if (LayoutItem.Substring(0, 2) == "EB")
+            {
+                //end bumper - end of the line
+                bnl.NoMoreBlocksFound = true;
+
+                //can only go backwards from here
+                bnl.EdgeConnector = previousLayoutItem;
+                bnl.EdgeConnectorDirectionConnector = LayoutItem;
+                bnl.BlockFound = "";
+                bnl.LikelyIssue = "No more blocks";
+            }
+            return bnl;
+        }
+        public List<string> FlattenLog(List<List<string>> list, int toLevel)
+        {
+            List<string> result = new List<string>();
+            for (int i = 0; i <= toLevel;i++)
+            {
+                result.AddRange(list[i]);
+            }
+            return result;
         }
     }
 }
