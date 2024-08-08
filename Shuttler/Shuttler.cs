@@ -37,6 +37,8 @@ namespace Shuttler
         private int DefaultCautionMMS;
         private int DefaultCrawlMMS;
         private int DefaultFullSpeedMMS;
+        List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
+        int routeIndex = -1;
 
         WiThrottle c;
 
@@ -2133,6 +2135,155 @@ namespace Shuttler
                 result.AddRange(list[i]);
             }
             return result;
+        }
+
+        private void btnMoveTrain_Click(object sender, EventArgs e)
+        {
+            if (lbStartBlocks.SelectedIndex < 0 || lbDestinationBlocks.SelectedIndex < 0) return;
+
+            ViableRoutes = new List<ViableRouteList>();
+
+            dynamic sb = lbStartBlocks.SelectedItem;
+            string db = lbDestinationBlocks.SelectedItem as string;
+
+            if (sb == null || db == null) return;
+
+            string sbv = sb.Value as string;
+
+            var sourceBlock = config.GetBlockBySystemName(sbv);
+            var destinationBlock = config.GetBlockByUserName(db);
+
+            var connectingBlocks = GetAllConnectedBlocks(sourceBlock.userName);
+
+            foreach (var cb in connectingBlocks)
+            {
+                var emptyBC = new List<List<string>>();
+                var bnl = GetFirstBNL(sourceBlock.userName, cb);
+                var result = SearchForBlock(sourceBlock.userName, destinationBlock.userName, emptyBC, bnl.EdgeConnector, bnl.EdgeConnectorDirectionConnector, "", 0);
+                foreach (var route in result.ViablePaths)
+                {
+                    var vrbList = ProcessViableRoute(route);
+                    var vrl = new ViableRouteList();
+                    vrl.Blocks = vrbList;
+                    var unAv = vrbList.Count(c => c.IsAvailable == false);
+                    vrl.NumberOfUnavailableBlocks = unAv;
+                    ViableRoutes.Add(vrl);
+                }
+            }
+
+            ViableRoutes = ViableRoutes.OrderBy(o => o.Blocks.Count).ThenBy(t => t.NumberOfUnavailableBlocks).ToList();
+            routeIndex = 0;
+            PopulateRoute();
+
+        }
+
+        private List<ViableRouteBlock> ProcessViableRoute(List<string> Route)
+        {
+            var blockList = new List<ViableRouteBlock>();
+
+            foreach (var block in Route)
+            {
+                var vrb = new ViableRouteBlock();
+                vrb.Blockname = block;
+                var liveBlock = _allBlocks.FirstOrDefault(f => f.data.userName == block);
+                if (liveBlock != null)
+                {
+                    vrb.IsAvailable = liveBlock.data.state == 4 ? true : false;
+                }
+                blockList.Add(vrb);
+            }
+            return blockList;
+        }
+
+        private List<string> GetAllConnectedBlocks(string blockName)
+        {
+            List<string> result = new List<string>();
+
+            string connector1 = "";
+            string connector2 = "";
+            string previousConnector = "";
+            string breadcrumbStart = "";
+
+            List<Positionablepoint> anchorPoints = new List<Positionablepoint>();
+
+            var trackSegments = config.GetTracksegmentsForBlock(blockName).OrderBy(o => o.Ident).ToList();
+
+            foreach (var ts in trackSegments)
+            {
+                if (ts.Connect1name.StartsWith("A"))
+                {
+                    var ap = config.GetTrackLayoutAnchorPoint(ts.Connect1name);
+                    anchorPoints.Add(ap);
+                }
+                if (ts.Connect2name.StartsWith("A"))
+                {
+                    var ap = config.GetTrackLayoutAnchorPoint(ts.Connect2name);
+                    anchorPoints.Add(ap);
+                }
+            }
+
+            List<string> blockNames = new List<string>();
+            foreach (var ap in anchorPoints)
+            {
+                var ts1 = config.GetLayoutTracksegment(ap.Connect1name);
+                var ts2 = config.GetLayoutTracksegment(ap.Connect2name);
+                if (!blockNames.Contains(ts1.Blockname) && ts1.Blockname != blockName)
+                    blockNames.Add(ts1.Blockname);
+                if (!blockNames.Contains(ts2.Blockname) && ts2.Blockname != blockName)
+                    blockNames.Add(ts2.Blockname);
+            }
+
+            return blockNames;
+        }
+
+        private void btnRoutePrev_Click(object sender, EventArgs e)
+        {
+            routeIndex--;
+            PopulateRoute();
+        }
+
+        private void btnRouteAccept_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnRouteNext_Click(object sender, EventArgs e)
+        {
+            routeIndex++;
+            PopulateRoute();
+        }
+
+        private void PopulateRoute()
+        {
+            lbRoute.Items.Clear();
+            var route = ViableRoutes.ElementAtOrDefault(routeIndex);
+            if (route == null)
+            {
+                btnRoutePrev.Enabled = false;
+                btnRouteNext.Enabled = false;
+                btnRouteAccept.Enabled = false;
+                lblRoute.Text = "Route";
+                return;
+            }
+
+            btnRouteAccept.Enabled = true;
+            lblRoute.Text = "Route "+(routeIndex+1).ToString();
+            foreach (var ap in route.Blocks)
+            {
+                lbRoute.Items.Add(ap.Blockname);
+            }
+
+            if (routeIndex > 0)
+            {
+                btnRoutePrev.Enabled = true;
+            }
+            else
+                btnRoutePrev.Enabled = false;
+
+            if (ViableRoutes.Count > routeIndex + 1)
+                btnRouteNext.Enabled = true;
+            else
+                btnRouteNext.Enabled = false;
         }
     }
 }

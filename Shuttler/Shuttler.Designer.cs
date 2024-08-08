@@ -56,11 +56,17 @@
             this.lblSpeedReason = new System.Windows.Forms.Label();
             this.label7 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
+            this.btnMoveTrain = new System.Windows.Forms.Button();
+            this.lbRoute = new System.Windows.Forms.ListBox();
+            this.lblRoute = new System.Windows.Forms.Label();
+            this.btnRoutePrev = new System.Windows.Forms.Button();
+            this.btnRouteNext = new System.Windows.Forms.Button();
+            this.btnRouteAccept = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnTest
             // 
-            this.btnTest.Location = new System.Drawing.Point(926, 20);
+            this.btnTest.Location = new System.Drawing.Point(717, 20);
             this.btnTest.Name = "btnTest";
             this.btnTest.Size = new System.Drawing.Size(75, 23);
             this.btnTest.TabIndex = 0;
@@ -78,7 +84,7 @@
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(1036, 20);
+            this.btnStart.Location = new System.Drawing.Point(827, 20);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(75, 23);
             this.btnStart.TabIndex = 2;
@@ -88,7 +94,7 @@
             // 
             // btnStop
             // 
-            this.btnStop.Location = new System.Drawing.Point(1036, 57);
+            this.btnStop.Location = new System.Drawing.Point(827, 57);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(75, 23);
             this.btnStop.TabIndex = 3;
@@ -222,7 +228,7 @@
             this.lbOutput.FormattingEnabled = true;
             this.lbOutput.Location = new System.Drawing.Point(12, 234);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1124, 199);
+            this.lbOutput.Size = new System.Drawing.Size(890, 199);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
@@ -317,11 +323,78 @@
             this.label8.TabIndex = 27;
             this.label8.Text = "Signal";
             // 
+            // btnMoveTrain
+            // 
+            this.btnMoveTrain.Location = new System.Drawing.Point(786, 196);
+            this.btnMoveTrain.Name = "btnMoveTrain";
+            this.btnMoveTrain.Size = new System.Drawing.Size(116, 23);
+            this.btnMoveTrain.TabIndex = 28;
+            this.btnMoveTrain.Text = "Generate route";
+            this.btnMoveTrain.UseVisualStyleBackColor = true;
+            this.btnMoveTrain.Click += new System.EventHandler(this.btnMoveTrain_Click);
+            // 
+            // lbRoute
+            // 
+            this.lbRoute.FormattingEnabled = true;
+            this.lbRoute.Location = new System.Drawing.Point(998, 39);
+            this.lbRoute.Name = "lbRoute";
+            this.lbRoute.Size = new System.Drawing.Size(138, 368);
+            this.lbRoute.TabIndex = 29;
+            // 
+            // lblRoute
+            // 
+            this.lblRoute.AutoSize = true;
+            this.lblRoute.Location = new System.Drawing.Point(998, 20);
+            this.lblRoute.Name = "lblRoute";
+            this.lblRoute.Padding = new System.Windows.Forms.Padding(0, 0, 50, 0);
+            this.lblRoute.Size = new System.Drawing.Size(86, 13);
+            this.lblRoute.TabIndex = 30;
+            this.lblRoute.Text = "Route";
+            // 
+            // btnRoutePrev
+            // 
+            this.btnRoutePrev.Enabled = false;
+            this.btnRoutePrev.Location = new System.Drawing.Point(998, 410);
+            this.btnRoutePrev.Name = "btnRoutePrev";
+            this.btnRoutePrev.Size = new System.Drawing.Size(33, 23);
+            this.btnRoutePrev.TabIndex = 31;
+            this.btnRoutePrev.Text = "<<";
+            this.btnRoutePrev.UseVisualStyleBackColor = true;
+            this.btnRoutePrev.Click += new System.EventHandler(this.btnRoutePrev_Click);
+            // 
+            // btnRouteNext
+            // 
+            this.btnRouteNext.Enabled = false;
+            this.btnRouteNext.Location = new System.Drawing.Point(1105, 409);
+            this.btnRouteNext.Name = "btnRouteNext";
+            this.btnRouteNext.Size = new System.Drawing.Size(30, 23);
+            this.btnRouteNext.TabIndex = 32;
+            this.btnRouteNext.Text = ">>";
+            this.btnRouteNext.UseVisualStyleBackColor = true;
+            this.btnRouteNext.Click += new System.EventHandler(this.btnRouteNext_Click);
+            // 
+            // btnRouteAccept
+            // 
+            this.btnRouteAccept.Enabled = false;
+            this.btnRouteAccept.Location = new System.Drawing.Point(1037, 410);
+            this.btnRouteAccept.Name = "btnRouteAccept";
+            this.btnRouteAccept.Size = new System.Drawing.Size(62, 23);
+            this.btnRouteAccept.TabIndex = 33;
+            this.btnRouteAccept.Text = "Start";
+            this.btnRouteAccept.UseVisualStyleBackColor = true;
+            this.btnRouteAccept.Click += new System.EventHandler(this.btnRouteAccept_Click);
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.btnRouteAccept);
+            this.Controls.Add(this.btnRouteNext);
+            this.Controls.Add(this.btnRoutePrev);
+            this.Controls.Add(this.lblRoute);
+            this.Controls.Add(this.lbRoute);
+            this.Controls.Add(this.btnMoveTrain);
             this.Controls.Add(this.label8);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.lblSpeedReason);
@@ -387,5 +460,11 @@
         private System.Windows.Forms.Label lblSpeedReason;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Button btnMoveTrain;
+        private System.Windows.Forms.ListBox lbRoute;
+        private System.Windows.Forms.Label lblRoute;
+        private System.Windows.Forms.Button btnRoutePrev;
+        private System.Windows.Forms.Button btnRouteNext;
+        private System.Windows.Forms.Button btnRouteAccept;
     }
 }

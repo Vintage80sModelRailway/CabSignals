@@ -80,6 +80,8 @@
     <Compile Include="Classes\SignalMastLogic.cs" />
     <Compile Include="Classes\Transit.cs" />
     <Compile Include="Classes\Turnout.cs" />
+    <Compile Include="Classes\ViableRouteBlock.cs" />
+    <Compile Include="Classes\ViableRouteList.cs" />
     <Compile Include="ConfigReader.cs" />
     <Compile Include="JMRIReader.cs" />
     <Compile Include="JSONReader.cs" />
