@@ -2267,7 +2267,7 @@ namespace Shuttler
             }
 
             btnRouteAccept.Enabled = true;
-            lblRoute.Text = "Route "+(routeIndex+1).ToString();
+            lblRoute.Text = "Route "+(routeIndex+1).ToString()+ " / "+ViableRoutes.Count.ToString() +" ("+route.NumberOfUnavailableBlocks.ToString()+")";
             foreach (var ap in route.Blocks)
             {
                 lbRoute.Items.Add(ap.Blockname);
