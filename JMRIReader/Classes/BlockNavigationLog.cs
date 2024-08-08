@@ -37,6 +37,8 @@ namespace JMRIReader.Classes
         public List<string> ValidBlockPath { get; set; }
         public List<string> BranchBlockLog { get; set; }
 
+        public List<List<string>> ViablePaths { get; set; }
+
         //public List<List<string>> BranchLogs { get; set; }
 
     }

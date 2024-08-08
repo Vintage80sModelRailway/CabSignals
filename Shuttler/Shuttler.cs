@@ -1729,6 +1729,7 @@ namespace Shuttler
             bnl.UsedEdgeConnectorDirectionConnector = previousLayoutItem;
             bnl.BranchBlockLog = new List<string>();
             bnl.TargetFound = false;
+            bnl.ViablePaths = new List<List<string>>();
             //bnl.PreviousBlock = previousBlock;
             if (breadcrumbStart != "") bnl.Breadcrumb += breadcrumbStart + ";";
 
@@ -1741,7 +1742,6 @@ namespace Shuttler
             {
                 //turnout
                 var to = config.GetLayuoutTurnout(LayoutItem);
-                var configTurnout = config.GetTurnoutByUserName(to.Turnoutname);
                 var derivedXoverBlockName = "";
 
                 if (to.Type.Contains("XOVER"))
@@ -1780,8 +1780,9 @@ namespace Shuttler
                     bnl.EdgeConnector = to.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
                     bnl.BlockFound = to.Blockname;
-                    traversedBlocks[branchLevel].Add(to.Blockcname);
+                    traversedBlocks[branchLevel].Add(to.Blockname);
                     bnl.ValidBlockPath = traversedBlocks[branchLevel];
+                    bnl.ViablePaths.Add(FlattenLog(traversedBlocks, branchLevel));
                 }
                 else if (blockLog.Contains(derivedXoverBlockName))
                 {
@@ -1813,58 +1814,47 @@ namespace Shuttler
                                 bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                                 bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
                                 bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
+                                bnl.ViablePaths.AddRange(newbnl.ViablePaths);
                             }
                             else if (to.Connectbname == previousLayoutItem)
                             {
-                                branchLevel++;
-                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel);
-                                if (testbnlA.TargetFound == true)
+                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel+1);
+                                if (testbnlA.TargetFound)
                                 {
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlA.ViablePaths);
                                     bnl.TargetFound = true;
-                                    bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
                                 }
-                                else
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+                                var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel + 1);
+                                if (testbnlD.TargetFound)
                                 {
-                                    var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel);
-                                    if (testbnlD.TargetFound == true)
-                                    {
-                                        bnl.TargetFound = true;
-                                        bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
-                                    }
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlD.ViablePaths);
+                                    bnl.TargetFound = true;
                                 }
-                                if (!bnl.TargetFound)
-                                {
-                                    branchLevel--;
-                                    //traversedBlocks.RemoveAt(branchLevel + 1);
-                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                                    bnl.TargetFound = false;
-                                }
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+
                             }
                             else if (to.Connectdname == previousLayoutItem)
                             {
-                                branchLevel++;
-                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
-                                if (testbnlB.TargetFound == true)
+                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel + 1);
+                                if (testbnlB.TargetFound)
                                 {
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlB.ViablePaths);
                                     bnl.TargetFound = true;
-                                    bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
                                 }
-                                else
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+                                var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel+1);
+                                if (testbnlC.TargetFound)
                                 {
-                                    var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
-                                    if (testbnlC.TargetFound)
-                                    {
-                                        bnl.TargetFound = true;
-                                        bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
-                                    }
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlC.ViablePaths);
+                                    bnl.TargetFound = true;
                                 }
-                                if (!bnl.TargetFound)
-                                {
-                                    branchLevel--;
-                                    //traversedBlocks.RemoveAt(branchLevel + 1);
-                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                                    bnl.TargetFound = false;
-                                }
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+
                             }
                         }
                         else if (to.Type.StartsWith("RH"))
@@ -1888,60 +1878,48 @@ namespace Shuttler
                                 bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
                                 bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
                                 bnl.TargetFound = newbnl.TargetFound;
+                                bnl.ViablePaths.AddRange(newbnl.ViablePaths);
                             }
                             else if (to.Connectaname == previousLayoutItem)
                             {
-                                branchLevel++;
-                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
-                                if (testbnlB.TargetFound == true)
+                                var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel + 1);
+                                if (testbnlB.TargetFound)
                                 {
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlB.ViablePaths);
                                     bnl.TargetFound = true;
-                                    bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
                                 }
-                                else
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+                                var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel+1);
+                                if (testbnlC.TargetFound)
                                 {
-                                    var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
-                                    if (testbnlC.TargetFound)
-                                    {
-                                        bnl.TargetFound = true;
-                                        bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
-                                    }
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlC.ViablePaths);
+                                    bnl.TargetFound = true;
                                 }
+                                traversedBlocks.RemoveAt(branchLevel + 1);
 
-                                if (!bnl.TargetFound)
-                                {
-                                    branchLevel--;
-                                    //traversedBlocks.RemoveAt(branchLevel + 1);
-                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                                    bnl.TargetFound = false;
-                                }
+
                             }
                             else if (to.Connectcname == previousLayoutItem)
                             {
-                                branchLevel++;
-                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel);
-                                if (testbnlA.TargetFound == true)
+                                var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectaname, to.Ident, "", branchLevel + 1);
+                                if (testbnlA.TargetFound)
                                 {
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlA.ViablePaths);
                                     bnl.TargetFound = true;
-                                    bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
                                 }
-                                else
+                                traversedBlocks.RemoveAt(branchLevel + 1);
+                                var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel+1);
+                                if (testbnlD.TargetFound)
                                 {
-                                    var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectdname, to.Ident, "", branchLevel);
-                                    if (testbnlD.TargetFound == true)
-                                    {
-                                        bnl.TargetFound = true;
-                                        bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
-                                    }
+                                    var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                    bnl.ViablePaths.AddRange(testbnlD.ViablePaths);
+                                    bnl.TargetFound = true;
                                 }
+                                traversedBlocks.RemoveAt(branchLevel + 1);
 
-                                if (!bnl.TargetFound)
-                                {
-                                    branchLevel--;
-                                    //traversedBlocks.RemoveAt(branchLevel + 1);
-                                    traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                                    bnl.TargetFound = false;
-                                }
                             }
                         }
 
@@ -1965,36 +1943,27 @@ namespace Shuttler
                             bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
                             bnl.ValidBlockPath.AddRange(newbnl.ValidBlockPath);
                             bnl.TargetFound = newbnl.TargetFound;
-
+                            bnl.ViablePaths.AddRange(newbnl.ViablePaths);
                         }
                         else
                         {
                             //arriving at front
-                            branchLevel++;
-                            var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel);
+                            var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectbname, to.Ident, "", branchLevel + 1);
                             if (testbnlB.TargetFound)
                             {
+                                var viablePath = FlattenLog(traversedBlocks, branchLevel+1);
+                                bnl.ViablePaths.AddRange(testbnlB.ViablePaths);
                                 bnl.TargetFound = true;
-                                bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
                             }
-                            else
+                            traversedBlocks.RemoveAt(branchLevel + 1);
+                            var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel+1);
+                            if (testbnlC.TargetFound)
                             {
-                                var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, to.Connectcname, to.Ident, "", branchLevel);
-                                if (testbnlC.TargetFound)
-                                {
-                                    bnl.TargetFound = true;
-                                    bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath); ;
-                                }
+                                var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                                bnl.ViablePaths.AddRange(testbnlC.ViablePaths);
+                                bnl.TargetFound = true;
                             }
-
-                            if (!bnl.TargetFound)
-                            {
-                                branchLevel--;
-                                //traversedBlocks.RemoveAt(branchLevel + 1);
-                                traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                                bnl.TargetFound = false;
-                            }
-
+                            traversedBlocks.RemoveAt(branchLevel + 1);
                         }
                         bnl.Breadcrumb += nextItemIdent + ";";
                     }
@@ -2017,7 +1986,9 @@ namespace Shuttler
                 {
                     bnl.TargetFound = true;
                     //bnl.ValidBlockPath.AddRange(traversedBlocks);
+                    traversedBlocks[branchLevel].Add(ts.Blockname);
                     bnl.ValidBlockPath.Add(ts.Blockname);
+                    bnl.ViablePaths.Add(FlattenLog(traversedBlocks, branchLevel));
                 }
                 else if (blockLog.Contains(ts.Blockname))
                 {
@@ -2036,6 +2007,7 @@ namespace Shuttler
                     bnl.EdgeConnector = newbnl.EdgeConnector;
                     bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                     bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                    bnl.ViablePaths.AddRange(newbnl.ViablePaths);
                 }
             }
             else if (LayoutItem.Substring(0, 1) == "A")
@@ -2053,20 +2025,13 @@ namespace Shuttler
                 bnl.EdgeConnector = newbnl.EdgeConnector;
                 bnl.EdgeConnectorDirectionConnector = newbnl.EdgeConnectorDirectionConnector;
                 bnl.NextBlockEdgeConnector = newbnl.NextBlockEdgeConnector;
+                bnl.ViablePaths.AddRange(newbnl.ViablePaths);
             }
             else if (LayoutItem.Substring(0, 2) == "SL")
             {
                 //slip
 
                 var slip = config.GetSlip(LayoutItem);
-
-                var cfgTurnoutA = config.GetTurnoutByUserName(slip.Turnout);
-                var cfgTurnoutB = config.GetTurnoutByUserName(slip.TurnoutB);
-
-                if (branchLevel >= 7 && slip.Ident.Contains("Approach"))
-                {
-                    var stop = "";
-                }
 
                 if (slip.Blockname != currentBlock)
                 {  
@@ -2079,6 +2044,9 @@ namespace Shuttler
                     bnl.TargetFound = true;
                     //bnl.ValidBlockPath.AddRange(traversedBlocks);
                     bnl.ValidBlockPath.Add(slip.Blockname);
+                    traversedBlocks[branchLevel].Add(slip.Blockname);
+                    bnl.ViablePaths.Add(FlattenLog(traversedBlocks, branchLevel));
+                    traversedBlocks[branchLevel].Add(slip.Blockname);
                 }
                 else if (blockLog.Contains(slip.Blockname))
                 {
@@ -2091,57 +2059,56 @@ namespace Shuttler
                         //Approaching from...
 
                         //Route is through C or D
-                        branchLevel++;
-                        var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectcname, slip.Ident, "", branchLevel);
+                        if (slip.Ident.Contains("approach"))
+                        {
+                            var test = "stop here";
+                        }
+                        var testbnlC = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectcname, slip.Ident, "", branchLevel+1);
                         if (testbnlC.TargetFound)
                         {
+                            var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                            bnl.ViablePaths.AddRange(testbnlC.ViablePaths);
                             bnl.TargetFound = true;
-                            bnl.ValidBlockPath.AddRange(testbnlC.ValidBlockPath);
                         }
-                        else
+                        traversedBlocks.RemoveAt(branchLevel + 1);
+                        var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectdname, slip.Ident, "", branchLevel+1);
+                        if (testbnlD.TargetFound)
                         {
-                            var testbnlD = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectdname, slip.Ident, "", branchLevel);
-                            if (testbnlD.TargetFound)
-                            {
-                                bnl.TargetFound = true;
-                                bnl.ValidBlockPath.AddRange(testbnlD.ValidBlockPath);
-                            }
-                        }                     
+                            var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                            bnl.ViablePaths.AddRange(testbnlD.ViablePaths);
+                            bnl.TargetFound = true;
+                        }
+                        traversedBlocks.RemoveAt(branchLevel + 1);
 
-                        if (!bnl.TargetFound)
-                        {
-                            branchLevel--;
-                            //traversedBlocks.RemoveAt(branchLevel + 1);
-                            traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                        }
                     }
                     else
                     {
-                        branchLevel++;
-                        var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectaname, slip.Ident, "", branchLevel);
+                        if (slip.Ident.Contains("approach"))
+                        {
+                            var test = "stop here";
+                        }
+                        var testbnlA = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectaname, slip.Ident, "", branchLevel+1);
                         if (testbnlA.TargetFound)
                         {
+                            var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                            bnl.ViablePaths.AddRange(testbnlA.ViablePaths);
                             bnl.TargetFound = true;
-                            bnl.ValidBlockPath.AddRange(testbnlA.ValidBlockPath);
                         }
-                        else
+                        traversedBlocks.RemoveAt(branchLevel + 1);
+                        var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectbname, slip.Ident, "", branchLevel+1);
+                        if (testbnlB.TargetFound)
                         {
-                            var testbnlB = SearchForBlock(currentBlock, targetBlock, traversedBlocks, slip.Connectbname, slip.Ident, "", branchLevel);
-
-                            if (testbnlB.TargetFound)
-                            {
-                                bnl.TargetFound = true;
-                                bnl.ValidBlockPath.AddRange(testbnlB.ValidBlockPath);
-                            }
+                            var viablePath = FlattenLog(traversedBlocks, branchLevel + 1);
+                            bnl.ViablePaths.AddRange(testbnlB.ViablePaths);
+                            bnl.TargetFound = true;
                         }
+                        traversedBlocks.RemoveAt(branchLevel + 1);
 
-                        if (!bnl.TargetFound)
-                        {
-                            branchLevel--;
-                            //traversedBlocks.RemoveAt(branchLevel + 1);
-                            traversedBlocks.RemoveAt(traversedBlocks.Count - 1);
-                            bnl.TargetFound = false;
-                        }
+                        //if (testbnlA.TargetFound || testbnlB.TargetFound)
+                        //{
+                        //    bnl.ViablePaths.Add(FlattenLog(traversedBlocks, branchLevel + 1));
+                        //}
+
                     }
                 }
             }
