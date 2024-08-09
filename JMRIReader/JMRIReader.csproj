@@ -56,6 +56,7 @@
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
     <Compile Include="Classes\BlockNavigationLog.cs" />
+    <Compile Include="Classes\BlockToDecorate.cs" />
     <Compile Include="Classes\BNLTurnout.cs" />
     <Compile Include="Classes\DeOccupiedBlock.cs" />
     <Compile Include="Classes\DTO\RosterEntry.cs" />

@@ -14,7 +14,6 @@ namespace JMRIReader.Classes
         public string PreviousBlock { get; set; }
         public string CurrentBlock { get; set; }
         public int AutomatedCurrentBlockIndex { get; set; }
-        public TrainDirection AutomatedTrainDirection { get; set; }
         public bool AutomatedTrainActive { get; set; }
         public List<BlockJourneyLog> AutomatedBlockList { get; set; }
         public int AutomatedCurrentSectionIndex { get; set; }
@@ -36,17 +35,11 @@ namespace JMRIReader.Classes
         public BlockNavigationLog TwoBlocksBNL { get; set; }
         public List<string> AllocatedBlocks { get; set; }
         public bool IsAutomated { get; set; }
-
         public bool Terminated { get; set; }
         public string TerminatedReason { get; set; }
+        public bool ProcessingNewBlock { get; set; }     
+        public DateTime TimeStarted { get; set; }
 
-        public bool ProcessingNewBlock { get; set; }
-
-        public int TrainSpeedStep { get; set; }
-        public TrainDirection TrainDirection { get; set; }
-        public DateTime SpeedStepLastSet { get; set; }
-        public int TargetTrainSpeedStep { get; set; }
-
-        public TrainMotionConfig tmc { get; set; }
+        public TrainMotionConfig TrainMotionCfg { get; set; }
     }
 }

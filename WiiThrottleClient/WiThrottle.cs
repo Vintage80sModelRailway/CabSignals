@@ -144,6 +144,7 @@ namespace WiThrottleClient
             var mtIndex = line.Substring(1, 1);
             var throttle = _throttles.FirstOrDefault(f => f.mtIndex == mtIndex);
             var suffix = value.Substring(1);
+            
             switch (valueHeader)
             {
                 case "s":
