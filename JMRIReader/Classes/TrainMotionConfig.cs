@@ -30,6 +30,7 @@ namespace JMRIReader.Classes
         public DateTime RampSpeedLastSet { get; set; }
         public DateTime CurrentSpeedLastSet { get; set; }
         public DateTime CurrentBlockEntryTime { get; set; }
+        public bool IsActive { get; set; }
 
     }
 }

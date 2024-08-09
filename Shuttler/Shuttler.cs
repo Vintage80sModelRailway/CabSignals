@@ -295,6 +295,15 @@ namespace Shuttler
             {
                 if (log.TrainMotionCfg == null) return;
 
+                if (!log.TrainMotionCfg.IsActive)
+                {
+                    log.TrainMotionCfg.TargetSpeedStep = 0;
+                    log.TrainMotionCfg.RequiredSpeedStep = 0;
+                    log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    log.AutomatedTrainSpeedReason = "Manually cancelled";
+                    return;
+                }
+
                 var timeSinceStarted = DateTime.Now - log.TimeStarted;
                 if (timeSinceStarted.TotalSeconds < 10)
                 {
@@ -1120,6 +1129,7 @@ namespace Shuttler
 
             tmc.CurrentSpeedStep = 0;
             tmc.TargetSpeedStep = 0;
+            tmc.IsActive = true;
 
             trainLog.TrainMotionCfg = tmc;
             trainLog.TimeStarted = DateTime.Now;
@@ -2498,7 +2508,15 @@ namespace Shuttler
 
         private void btnStopTransit_Click(object sender, EventArgs e)
         {
+            if (lbRunningTransits.SelectedIndex >= 0)
+            {
+                dynamic rt = lbRunningTransits.SelectedItem as dynamic;
+                var dccId = rt.Value;
+                var log = _logs.FirstOrDefault(f => f.DCCiD == dccId);
+                if (log == null) return;
 
+                log.TrainMotionCfg.IsActive = false;
+            }
         }
     }
 }
