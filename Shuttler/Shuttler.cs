@@ -181,6 +181,11 @@ namespace Shuttler
                         {
                             sequenceBlock.SequenceState = JourneySequenceState.Traversed;
                             WriteToLog("Block " + sequenceBlock.BlockUserName + " exited");
+                            var posInSequence = relatedLog.AutomatedBlockList.IndexOf(sequenceBlock);
+                            if (posInSequence > -1)
+                            {
+                                relatedLog.AutomatedBlockList.ElementAt(posInSequence + 1).PreviousBlockExited = true;
+                            }
                         }
                     }
 

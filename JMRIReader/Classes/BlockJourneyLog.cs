@@ -23,6 +23,7 @@ namespace JMRIReader.Classes
         public decimal BlockLengthMM { get; set; }
 
         public List<SpeedStepLog> SpeedLog { get; set; }
+        public bool PreviousBlockExited { get; set; }
 
     }
 }
