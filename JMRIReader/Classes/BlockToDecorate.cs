@@ -13,5 +13,7 @@ namespace JMRIReader.Classes
         public int Position { get; set; }
         public bool Processed { get; set; }
 
+
+
     }
 }

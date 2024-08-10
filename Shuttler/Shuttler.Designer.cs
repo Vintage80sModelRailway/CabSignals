@@ -64,6 +64,10 @@
             this.btnRouteAccept = new System.Windows.Forms.Button();
             this.lblSpeedStep = new System.Windows.Forms.Label();
             this.btnStopTransit = new System.Windows.Forms.Button();
+            this.label9 = new System.Windows.Forms.Label();
+            this.lblCurrentBlockName = new System.Windows.Forms.Label();
+            this.label10 = new System.Windows.Forms.Label();
+            this.label11 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -255,7 +259,7 @@
             // lblActiveTransitID
             // 
             this.lblActiveTransitID.AutoSize = true;
-            this.lblActiveTransitID.Location = new System.Drawing.Point(24, 99);
+            this.lblActiveTransitID.Location = new System.Drawing.Point(24, 85);
             this.lblActiveTransitID.Name = "lblActiveTransitID";
             this.lblActiveTransitID.Size = new System.Drawing.Size(18, 13);
             this.lblActiveTransitID.TabIndex = 20;
@@ -264,7 +268,7 @@
             // lblActiveTransitName
             // 
             this.lblActiveTransitName.AutoSize = true;
-            this.lblActiveTransitName.Location = new System.Drawing.Point(24, 118);
+            this.lblActiveTransitName.Location = new System.Drawing.Point(48, 85);
             this.lblActiveTransitName.Name = "lblActiveTransitName";
             this.lblActiveTransitName.Size = new System.Drawing.Size(44, 13);
             this.lblActiveTransitName.TabIndex = 21;
@@ -273,7 +277,7 @@
             // lblSignalAspect
             // 
             this.lblSignalAspect.AutoSize = true;
-            this.lblSignalAspect.Location = new System.Drawing.Point(24, 160);
+            this.lblSignalAspect.Location = new System.Drawing.Point(24, 172);
             this.lblSignalAspect.Name = "lblSignalAspect";
             this.lblSignalAspect.Size = new System.Drawing.Size(36, 13);
             this.lblSignalAspect.TabIndex = 22;
@@ -282,7 +286,7 @@
             // lblSignalReason
             // 
             this.lblSignalReason.AutoSize = true;
-            this.lblSignalReason.Location = new System.Drawing.Point(115, 160);
+            this.lblSignalReason.Location = new System.Drawing.Point(115, 172);
             this.lblSignalReason.Name = "lblSignalReason";
             this.lblSignalReason.Size = new System.Drawing.Size(71, 13);
             this.lblSignalReason.TabIndex = 23;
@@ -320,7 +324,7 @@
             // 
             this.label8.AutoSize = true;
             this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label8.Location = new System.Drawing.Point(24, 141);
+            this.label8.Location = new System.Drawing.Point(24, 153);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(42, 13);
             this.label8.TabIndex = 27;
@@ -406,11 +410,52 @@
             this.btnStopTransit.UseVisualStyleBackColor = true;
             this.btnStopTransit.Click += new System.EventHandler(this.btnStopTransit_Click);
             // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label9.Location = new System.Drawing.Point(24, 108);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(39, 13);
+            this.label9.TabIndex = 36;
+            this.label9.Text = "Block";
+            // 
+            // lblCurrentBlockName
+            // 
+            this.lblCurrentBlockName.AutoSize = true;
+            this.lblCurrentBlockName.Location = new System.Drawing.Point(78, 108);
+            this.lblCurrentBlockName.Name = "lblCurrentBlockName";
+            this.lblCurrentBlockName.Size = new System.Drawing.Size(0, 13);
+            this.lblCurrentBlockName.TabIndex = 37;
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label10.Location = new System.Drawing.Point(27, 128);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(68, 13);
+            this.label10.TabIndex = 38;
+            this.label10.Text = "Length mm";
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(101, 128);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(41, 13);
+            this.label11.TabIndex = 39;
+            this.label11.Text = "label11";
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.label11);
+            this.Controls.Add(this.label10);
+            this.Controls.Add(this.lblCurrentBlockName);
+            this.Controls.Add(this.label9);
             this.Controls.Add(this.btnStopTransit);
             this.Controls.Add(this.lblSpeedStep);
             this.Controls.Add(this.btnRouteAccept);
@@ -492,5 +537,9 @@
         private System.Windows.Forms.Button btnRouteAccept;
         private System.Windows.Forms.Label lblSpeedStep;
         private System.Windows.Forms.Button btnStopTransit;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Label lblCurrentBlockName;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.Label label11;
     }
 }

@@ -116,6 +116,7 @@ namespace JMRIReader
                         logEntry.HasAlternate = hasAlternate;
                         logEntry.SectionSequenceId = sectionCounter;
                         logEntry.SequenceState = JourneySequenceState.Queued;
+                        logEntry.BlockLengthMM = b.length;
                         tr.BlocksInOrder.Add(logEntry);
                     }
 

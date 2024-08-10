@@ -11,6 +11,8 @@ namespace JMRIReader.Classes
     {
         public string Name { get; set; }
         public string DCCiD { get; set; }
+
+        public string TransitName { get; set; }
         public string PreviousBlock { get; set; }
         public string CurrentBlock { get; set; }
         public int AutomatedCurrentBlockIndex { get; set; }
