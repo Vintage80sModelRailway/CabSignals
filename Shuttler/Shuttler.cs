@@ -267,7 +267,7 @@ namespace Shuttler
                         }
 
                         logBlock.TimeTrainEnteredBlock = DateTime.Now;
-                        logBlock.millimetresCoveredInBlock = 0;
+                        logBlock.mmCovered = 0;
                         logBlock.SequenceState = JourneySequenceState.Active;
                         logBlock.SpeedLog = new List<SpeedStepLog>();
 
@@ -327,15 +327,15 @@ namespace Shuttler
                 }
 
                 //get speed setting and set that first - this will be superceded by signal based speed
-                switch (log.SignalAspect)
-                {
-                    case SignalAspect.Danger:
-                        log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
-                        break;
-                    case SignalAspect.Caution:
-                        log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
-                        break;
-                }
+                //switch (log.SignalAspect)
+                //{
+                //    case SignalAspect.Danger:
+                //        log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                //        break;
+                //    case SignalAspect.Caution:
+                //        log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
+                //        break;
+                //}
 
                 bool emergencyStopRequiremd = false;
                 int targetSpeedRequired = 0;
@@ -422,7 +422,41 @@ namespace Shuttler
                 //then set signal based speed
 
 
+
             }
+        }
+
+        private decimal GetRelativeSpeedMM(decimal percent, decimal highSpeed, decimal lowSpeed)
+        {
+            //work out percentage position between prevStep and Step
+            decimal pos = 0.0M;
+
+            var scale = highSpeed - lowSpeed;
+            if (scale == 0)
+                pos = scale;
+            else
+                //pos = (scale / frac) * 100;
+                pos = (percent / 100) * scale;
+
+            //then add the pos to the base speed
+            var requiredSpeedMM = lowSpeed + pos;
+            return requiredSpeedMM;
+        }
+
+        private decimal GetRelativeSpeedStepPosition(int speedStep, decimal prevStep, decimal thisStep )
+        {
+            decimal a = speedStep - prevStep;
+            decimal b = thisStep - prevStep;
+            decimal frac = 0.0M;
+            if (b == 0)
+            {
+                frac = 100;
+            }
+            else
+                frac = (a / b) * 100;
+
+            return frac;
+
         }
 
         private void SetTrainSpeeds()
@@ -437,12 +471,74 @@ namespace Shuttler
                     c.SetThrottleSpeedStep(rosterIndex, log.TrainMotionCfg.RequiredSpeedStep);
                     log.TrainMotionCfg.CurrentSpeedStep = log.TrainMotionCfg.RequiredSpeedStep;
 
-                    var currentBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
-                    currentBlock.SpeedLog.Add(new SpeedStepLog(){
-                        start = DateTime.Now,
-                        SpeedStep = log.TrainMotionCfg.CurrentSpeedStep,
-                        SpeedMMS = log.TrainMotionCfg.CurrentSpeedMMS
-                    });
+
+                    //get relative position of new speed step
+                    var rosterCfG = new RosterReader(RosterPath);
+                    var roster = rosterCfG.GetRoster();
+                    var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
+                    decimal interimMMS = 0.0M;
+
+                    if (fullInfo != null && fullInfo.Speedprofile != null)
+                    {
+                        var firstSpeed = fullInfo.Speedprofile.Speeds.Speed.FirstOrDefault();
+                        if (firstSpeed != null)
+                        {
+                            decimal prevForwardSpeed = 0.0M;
+                            decimal prevReverseSpeed = 0.0M;
+                            decimal prevStep = 0.0M;
+                            var decFSuccess = decimal.TryParse(firstSpeed.Forward, out prevForwardSpeed);
+                            var decRSuccess = decimal.TryParse(firstSpeed.Reverse, out prevReverseSpeed);
+                            //bool fsSuccess = decimal.TryParse(firstSpeed.Step, out prevStep);
+                            var mmPerSecond = 0.0M;
+                            foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
+                            {
+                                var tStep = step.Step;
+                                var speed = step.Forward;
+                                decimal dForward = 0.0M;
+                                decimal dReverse = 0.0M;
+                                decimal dStep = 0.0M;
+                                decimal prevReverseSpeedMM = 0.0M;
+                                decimal prevForwardSpeedMM = 0.0M;
+
+                                bool fSuccess = decimal.TryParse(step.Forward, out dForward);
+                                bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
+                                bool dSuccess = decimal.TryParse(step.Step, out dStep);
+
+                                if (fSuccess && rSuccess && dSuccess)
+                                {
+
+                                    if ((log.TrainMotionCfg.RequiredSpeedStep < dStep && log.TrainMotionCfg.RequiredSpeedStep > prevStep))
+                                    {
+                                        var percent = GetRelativeSpeedStepPosition(log.TrainMotionCfg.RequiredSpeedStep, prevStep, dStep);
+                                        if (log.TrainMotionCfg.TrainDirection == TrainDirection.Forward)
+                                        {
+                                            mmPerSecond = GetRelativeSpeedMM(percent, dForward, prevForwardSpeedMM);
+                                        }
+                                        else
+                                        {
+                                            mmPerSecond = GetRelativeSpeedMM(percent, dReverse, prevReverseSpeedMM);
+                                        }
+                                    }
+                                }
+                                prevStep = dStep;
+                                prevReverseSpeedMM = dReverse;
+                                prevForwardSpeedMM = dForward;
+                            }
+                            if (mmPerSecond > 0.0M)
+                            {
+                                var activeBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
+                                if (activeBlock != null)
+                                {
+                                    activeBlock.SpeedLog.Add(new SpeedStepLog()
+                                    {
+                                        SpeedMMS = mmPerSecond,
+                                        start = DateTime.Now,
+                                        SpeedStep = log.TrainMotionCfg.RequiredSpeedStep
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -491,12 +587,21 @@ namespace Shuttler
 
                     thisLogSectionBlock.ClearToAllocate = true;
 
-                    if (log.AutomatedTrainRunningSpeed != thisLogSectionBlock.BlockSpeed && blockCounter == 1)
+                    //mm covered
+                    decimal mmCoveredSoFar = 0.0M;
+                    for (int b =  0; b < thisLogBlock.SpeedLog.Count; b++)
                     {
-                        WriteToLog("Speed change required for " + log.Name + " from " + log.AutomatedTrainRunningSpeed.ToString() + " to " + thisLogSectionBlock.BlockSpeed.ToString() + " - " + thisLogSectionBlock.AutomatedSpeedReason);
-                        log.AutomatedTrainRunningSpeed = thisLogSectionBlock.BlockSpeed;
-                        log.AutomatedTrainSpeedReason = thisLogSectionBlock.AutomatedSpeedReason;
+                        var dateTimeTo = DateTime.Now;
+                        if (b+1 < thisLogBlock.SpeedLog.Count)
+                        {
+                            dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                        }
+
+                        var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                        mmCoveredSoFar += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                        thisLogBlock.mmCovered = mmCoveredSoFar;
                     }
+
 
 
                     string issue = "";
@@ -593,12 +698,17 @@ namespace Shuttler
                     CheckedBlocks.Add(thisLogSectionBlock);
                     previousBlockBNL = thisLogSectionBlock.BNL;
 
-
-
                     if (!requiresCustomSpeedValue && thisLogSectionBlock.AutomatedSpeedReason != "Approaching end of journey")
                     {
                         thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
-                        thisLogSectionBlock.AutomatedSpeedReason = "Default apeed";
+                        thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
+                    }
+
+                    if (log.AutomatedTrainRunningSpeed != thisLogSectionBlock.BlockSpeed && blockCounter == 1)
+                    {
+                        WriteToLog("Speed change required for " + log.Name + " from " + log.AutomatedTrainRunningSpeed.ToString() + " to " + thisLogSectionBlock.BlockSpeed.ToString() + " - " + thisLogSectionBlock.AutomatedSpeedReason);
+                        log.AutomatedTrainRunningSpeed = thisLogSectionBlock.BlockSpeed;
+                        log.AutomatedTrainSpeedReason = thisLogSectionBlock.AutomatedSpeedReason;
                     }
                 }
 
@@ -1009,9 +1119,9 @@ namespace Shuttler
             var roster = rosterCfG.GetRoster();
             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == trainLog.DCCiD);
 
-            var tmc = new TrainMotionConfig();
-            tmc.Name = trainLog.Name;
-            tmc.DCCID = trainLog.DCCiD;
+
+            trainLog.TrainMotionCfg.Name = trainLog.Name;
+            trainLog.TrainMotionCfg.DCCID = trainLog.DCCiD;
 
             if (fullInfo != null && fullInfo.Speedprofile != null)
             {
@@ -1020,111 +1130,92 @@ namespace Shuttler
                 {
                     decimal prevForwardSpeed = 0.0M;
                     decimal prevReverseSpeed = 0.0M;
-                    var decFSuccess = decimal.TryParse(firstSpeed.Forward, out prevForwardSpeed);
-                    var decRSuccess = decimal.TryParse(firstSpeed.Reverse, out prevReverseSpeed);
-                    if (decFSuccess && decRSuccess)
+                    decimal prevStep = 0.0M;
+                    //var decFSuccess = decimal.TryParse(firstSpeed.Forward, out prevForwardSpeed);
+                    //var decRSuccess = decimal.TryParse(firstSpeed.Reverse, out prevReverseSpeed);
+                    //bool fsSuccess = decimal.TryParse(firstSpeed.Step, out prevStep);
+
+                    foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
                     {
-                        foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
+                        var tStep = step.Step;
+                        var speed = step.Forward;
+                        decimal dForward = 0.0M;
+                        decimal dReverse = 0.0M;
+                        decimal dStep = 0.0M;
+
+                        bool fSuccess = decimal.TryParse(step.Forward, out dForward);
+                        bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
+                        bool dSuccess = decimal.TryParse(step.Step, out dStep);
+
+
+                        if (fSuccess && rSuccess)
                         {
-                            var tStep = step.Step;
-                            var speed = step.Forward;
-                            decimal dForward = 0.0M;
-                            decimal dReverse = 0.0M;
-                            bool fSuccess = decimal.TryParse(step.Forward, out dForward);
-                            bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
-                            if (fSuccess && rSuccess)
+                            if ((DefaultCrawlMMS < dForward && DefaultCrawlMMS > prevForwardSpeed))
                             {
-                                if ((DefaultCrawlMMS < dForward && DefaultCrawlMMS > prevForwardSpeed) || (DefaultCrawlMMS < prevForwardSpeed && tmc.ForwardCrawlSpeedStep <= 0))
-                                {
-                                    var sSperc = step.Step;
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
-                                        
-                                        int dSS = (int) decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ForwardCrawlSpeedStep = dSS;
-                                    }
-                                    tmc.ForwardCrawlMMS = dForward;
-                                }
-                                if ((DefaultCrawlMMS < dReverse && DefaultCrawlMMS > prevReverseSpeed) || (DefaultCrawlMMS < prevReverseSpeed && tmc.ReverseCrawlSpeedStep <= 0))
-                                {
-                                    var sSperc = step.Step;
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
 
-                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ReverseCrawlSpeedStep = dSS;
-                                    }
-                                    tmc.ReverseCrawlMMS = dReverse;
-                                }
+                                var calc = GetRelativeSpeedPercentage(DefaultCrawlMMS, prevForwardSpeed, dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
-
-                                if ((DefaultCautionMMS < dForward && DefaultCautionMMS > prevForwardSpeed) || (DefaultCrawlMMS < prevForwardSpeed && tmc.ForwardCrawlSpeedStep <= 0))
-                                {
-                                    var sSperc = step.Step;
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
-
-                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ForwardCautionSpeedStep = dSS;
-                                    }
-                                    tmc.ForwardCautionMMS = dForward;
-                                }
-                                if ((DefaultCautionMMS < dReverse && DefaultCautionMMS > prevReverseSpeed) || (DefaultCrawlMMS < prevReverseSpeed && tmc.ReverseCautionSpeedStep <= 0))
-                                {
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
-
-                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ReverseCautionSpeedStep = dSS;
-                                    }
-                                    tmc.ReverseCautionMMS = dReverse;
-                                }
-
-                                if ((DefaultFullSpeedMMS < dForward && DefaultFullSpeedMMS > prevForwardSpeed))
-                                {
-                                    var sSperc = step.Step;
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
-
-                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ForwardFullSpeedStep = dSS;
-                                    }
-                                    tmc.ForwardFullSpeedMMS = dForward;
-                                }
-                                if ((DefaultFullSpeedMMS < dReverse && DefaultFullSpeedMMS > prevReverseSpeed))
-                                {
-                                    decimal dss = 0.0M;
-                                    var dssSuccess = decimal.TryParse(step.Step, out dss);
-                                    if (dssSuccess)
-                                    {
-                                        var asPerc1 = dss / 1000;
-
-                                        int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                                        tmc.ReverseFullSpeedStep = dSS;
-                                    }
-                                    tmc.ReverseFullSpeedMMS = dReverse;
-                                }
-
+                                trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ForwardCrawlMMS = calculatedMMS;
                             }
-                            prevForwardSpeed = dForward;
-                            prevReverseSpeed = dReverse;
+                            if ((DefaultCrawlMMS < dReverse && DefaultCrawlMMS > prevReverseSpeed))
+                            {
+
+                                var calc = GetRelativeSpeedPercentage(DefaultCrawlMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ReverseCrawlMMS = calculatedMMS;
+                            }
+
+
+                            if ((DefaultCautionMMS < dForward && DefaultCautionMMS > prevForwardSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS,prevForwardSpeed,dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage,prevStep,dStep);
+
+                                trainLog.TrainMotionCfg.ForwardCautionSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ForwardCautionMMS = calculatedMMS;
+                            }
+                            if ((DefaultCautionMMS < dReverse && DefaultCautionMMS > prevReverseSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                trainLog.TrainMotionCfg.ReverseCautionSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ReverseCautionMMS = calculatedMMS;
+                            }
+
+                            if ((DefaultFullSpeedMMS < dForward && DefaultFullSpeedMMS > prevForwardSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(DefaultFullSpeedMMS, prevForwardSpeed, dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                trainLog.TrainMotionCfg.ForwardFullSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ForwardFullSpeedMMS = calculatedMMS;
+                            }
+                            if ((DefaultFullSpeedMMS < dReverse && DefaultFullSpeedMMS > prevReverseSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(DefaultFullSpeedMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                trainLog.TrainMotionCfg.ReverseFullSpeedStep = calculatedSpeedStep;
+                                trainLog.TrainMotionCfg.ReverseFullSpeedMMS = calculatedMMS;
+                            }
+
                         }
+                        prevForwardSpeed = dForward;
+                        prevReverseSpeed = dReverse;
+                        prevStep = dStep;
                     }
+
                 }
 
 
@@ -1136,37 +1227,37 @@ namespace Shuttler
             {
                 decimal speed = new decimal(DefaultCrawlMMS);
                 var asPerc1 = speed / 1000;
-                tmc.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                tmc.ReverseCrawlSpeedStep = tmc.ForwardCrawlSpeedStep;
-                tmc.ForwardCrawlMMS = DefaultCrawlMMS;
-                tmc.ReverseCrawlMMS = DefaultCrawlMMS;
+                trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = trainLog.TrainMotionCfg.ForwardCrawlSpeedStep;
+                trainLog.TrainMotionCfg.ForwardCrawlMMS = DefaultCrawlMMS;
+                trainLog.TrainMotionCfg.ReverseCrawlMMS = DefaultCrawlMMS;
 
                 speed = DefaultCautionMMS;
                 asPerc1 = speed / 1000;
-                tmc.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                tmc.ReverseCautionSpeedStep = tmc.ForwardCautionSpeedStep;
-                tmc.ForwardCautionMMS = DefaultCautionMMS;
-                tmc.ReverseCautionMMS = DefaultCautionMMS;
+                trainLog.TrainMotionCfg.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                trainLog.TrainMotionCfg.ReverseCautionSpeedStep = trainLog.TrainMotionCfg.ForwardCautionSpeedStep;
+                trainLog.TrainMotionCfg.ForwardCautionMMS = DefaultCautionMMS;
+                trainLog.TrainMotionCfg.ReverseCautionMMS = DefaultCautionMMS;
 
                 speed = DefaultFullSpeedMMS;
                 asPerc1 = speed / 1000;
-                tmc.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                tmc.ReverseFullSpeedStep = tmc.ForwardFullSpeedStep;
-                tmc.ForwardFullSpeedMMS = DefaultFullSpeedMMS;
-                tmc.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
+                trainLog.TrainMotionCfg.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                trainLog.TrainMotionCfg.ReverseFullSpeedStep = trainLog.TrainMotionCfg.ForwardFullSpeedStep;
+                trainLog.TrainMotionCfg.ForwardFullSpeedMMS = DefaultFullSpeedMMS;
+                trainLog.TrainMotionCfg.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
             }
 
-            tmc.RampUpSpeedStepIncrease = 1;
-            tmc.RampUpIntervalMS = 200;
-            tmc.RampDownIntervalMS = 200;
-            tmc.RampDownSpeedStepDecrease = 2;
+            trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = 1;
+            trainLog.TrainMotionCfg.RampUpIntervalMS = 200;
+            trainLog.TrainMotionCfg.RampDownIntervalMS = 200;
+            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 2;
 
 
-            tmc.CurrentSpeedStep = 0;
-            tmc.TargetSpeedStep = 0;
-            tmc.IsActive = true;
+            trainLog.TrainMotionCfg.CurrentSpeedStep = 0;
+            trainLog.TrainMotionCfg.TargetSpeedStep = 0;
+            trainLog.TrainMotionCfg.IsActive = true;
 
-            trainLog.TrainMotionCfg = tmc;
+            trainLog.TrainMotionCfg = trainLog.TrainMotionCfg;
             trainLog.TimeStarted = DateTime.Now;
 
             string mtIndex = c.GetThrottle(rosterIndex);
@@ -1186,6 +1277,50 @@ namespace Shuttler
             });
 
             WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name); 
+        }
+
+        private (decimal percentage, decimal speed) GetRelativeSpeedPercentage(int targetMMS, decimal prevForwardSpeed, decimal thisForwardSpeed)
+        {
+            decimal a = targetMMS - prevForwardSpeed;
+            decimal b = thisForwardSpeed - prevForwardSpeed;
+            decimal frac = 0.0M;
+            if (b == 0)
+            {
+                frac = 100;
+            }
+            else
+                frac = (a / b) * 100;
+
+            //frac now equals percentage
+            //get that percentage of the full forward speed for relative speed
+
+            var scale = thisForwardSpeed - prevForwardSpeed;
+            decimal perc = 0.0M;
+            if (scale == 0)
+                perc = scale;
+            else
+                perc = (frac / 100) * scale;
+            return (frac,perc) ;
+        }
+
+        private int GetRelativeSpeedStep(decimal percentage, decimal prevStep, decimal thisStep)
+        {
+            //work out percentage position between prevStep and Step
+            decimal pos = 0.0M;
+
+            var scale = thisStep - prevStep;
+            if (scale == 0)
+                pos = scale;
+            else
+                //pos = (scale / frac) * 100;
+                pos = (percentage / 100) * scale;
+            //then add the pos to the ... step?
+            //int requiredSpeedStep = (int)decimal.Round( prevStep + pos,0,MidpointRounding.AwayFromZero);
+            var requiredStep =  prevStep + pos;
+            var asPerc1 = requiredStep / 1000;
+            var beforeRound = asPerc1 * 128;
+            int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+            return dSS;
         }
 
         private BlockNavigationLog GetFirstBNL(string firstBlock, string secondBlock)
@@ -1885,6 +2020,14 @@ namespace Shuttler
                 lblSpeed.Text = log.AutomatedTrainRunningSpeed.ToString();
                 lblSpeedReason.Text = log.AutomatedTrainSpeedReason;
                 lblSpeedStep.Text = log.TrainMotionCfg.CurrentSpeedStep.ToString()+" / "+log.TrainMotionCfg.TargetSpeedStep.ToString();
+
+
+                var logBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
+                if (logBlock != null)
+                {
+                    lblBlockLength.Text = logBlock.BlockLengthMM.ToString();
+                    lblMmCoveredThisBlock.Text = logBlock.mmCovered.ToString();
+                }
 
             }
         }

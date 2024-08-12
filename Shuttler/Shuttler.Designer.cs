@@ -67,7 +67,9 @@
             this.label9 = new System.Windows.Forms.Label();
             this.lblCurrentBlockName = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
+            this.lblBlockLength = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
+            this.lblMmCoveredThisBlock = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -438,21 +440,42 @@
             this.label10.TabIndex = 38;
             this.label10.Text = "Length mm";
             // 
+            // lblBlockLength
+            // 
+            this.lblBlockLength.AutoSize = true;
+            this.lblBlockLength.Location = new System.Drawing.Point(101, 128);
+            this.lblBlockLength.Name = "lblBlockLength";
+            this.lblBlockLength.Size = new System.Drawing.Size(41, 13);
+            this.lblBlockLength.TabIndex = 39;
+            this.lblBlockLength.Text = "label11";
+            // 
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(101, 128);
+            this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label11.Location = new System.Drawing.Point(154, 129);
             this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(41, 13);
-            this.label11.TabIndex = 39;
-            this.label11.Text = "label11";
+            this.label11.Size = new System.Drawing.Size(76, 13);
+            this.label11.TabIndex = 40;
+            this.label11.Text = "Covered mm";
+            // 
+            // lblMmCoveredThisBlock
+            // 
+            this.lblMmCoveredThisBlock.AutoSize = true;
+            this.lblMmCoveredThisBlock.Location = new System.Drawing.Point(236, 129);
+            this.lblMmCoveredThisBlock.Name = "lblMmCoveredThisBlock";
+            this.lblMmCoveredThisBlock.Size = new System.Drawing.Size(41, 13);
+            this.lblMmCoveredThisBlock.TabIndex = 41;
+            this.lblMmCoveredThisBlock.Text = "label12";
             // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.lblMmCoveredThisBlock);
             this.Controls.Add(this.label11);
+            this.Controls.Add(this.lblBlockLength);
             this.Controls.Add(this.label10);
             this.Controls.Add(this.lblCurrentBlockName);
             this.Controls.Add(this.label9);
@@ -540,6 +563,8 @@
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.Label lblCurrentBlockName;
         private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.Label lblBlockLength;
         private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.Label lblMmCoveredThisBlock;
     }
 }

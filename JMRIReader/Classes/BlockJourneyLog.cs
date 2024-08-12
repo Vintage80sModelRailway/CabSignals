@@ -18,11 +18,11 @@ namespace JMRIReader.Classes
         public bool PossibleAlternate { get; set; }
         public int SectionSequenceId { get; set; }
         public DateTime TimeTrainEnteredBlock { get; set; }
-        public int millimetresCoveredInBlock { get; set; }
         public JourneySequenceState SequenceState { get; set; }
         public decimal BlockLengthMM { get; set; }
 
         public List<SpeedStepLog> SpeedLog { get; set; }
+        public decimal mmCovered { get; set; }
         public bool PreviousBlockExited { get; set; }
 
     }

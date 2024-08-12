@@ -12,11 +12,17 @@ namespace JMRIReader.Classes
         public string Name { get; set; }
         public string DCCID { get; set; }
         public int ForwardCrawlSpeedStep { get; set; }
+        public decimal ForwardCrawlMMS { get; set; }
         public int ForwardCautionSpeedStep { get; set; }
+        public decimal ForwardCautionMMS { get; set; }
         public int ForwardFullSpeedStep { get; set; }
+        public decimal ForwardFullSpeedMMS { get; set; }
         public int ReverseCrawlSpeedStep { get; set; }
+        public decimal ReverseCrawlMMS { get; set; }
         public int ReverseCautionSpeedStep { get; set; }
+        public decimal ReverseCautionMMS { get; set; }
         public int ReverseFullSpeedStep { get; set; }
+        public decimal ReverseFullSpeedMMS { get; set; }
         public int RampUpSpeedStepIncrease { get; set; }
         public int RampUpIntervalMS { get; set; }
         public int RampDownSpeedStepDecrease { get;  set; }
@@ -24,6 +30,7 @@ namespace JMRIReader.Classes
         public bool InRampUp { get; set; }
         public bool InRampDown { get; set; }
         public int CurrentSpeedStep { get; set; }
+        public decimal CurrentSpeedMMS { get; set; }
         public int RequiredSpeedStep { get; set; }
         public TrainDirection TrainDirection { get; set; }
         public int TargetSpeedStep { get; set; }

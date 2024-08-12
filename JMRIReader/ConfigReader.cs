@@ -118,6 +118,7 @@ namespace JMRIReader
                         logEntry.SequenceState = JourneySequenceState.Queued;
                         logEntry.BlockLengthMM = b.length;
                         logEntry.PreviousBlockExited = false;
+                        logEntry.SpeedLog = new List<SpeedStepLog>();
                         tr.BlocksInOrder.Add(logEntry);
                     }
 
