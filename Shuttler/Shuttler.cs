@@ -37,6 +37,9 @@ namespace Shuttler
         private int DefaultCautionMMS;
         private int DefaultCrawlMMS;
         private int DefaultFullSpeedMMS;
+        private int cautiomBlockPercentToBeginRampDown;
+        private int dangerBlockPercentToBeginRampDown;
+
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
         private List<BlockToDecorate> blocksToDecorate = new List<BlockToDecorate>();
@@ -113,6 +116,8 @@ namespace Shuttler
 
             lbRunningTransits.ValueMember = "Value";
             lbRunningTransits.DisplayMember = "Name";
+            cautiomBlockPercentToBeginRampDown = 75;
+            dangerBlockPercentToBeginRampDown = 50;
         }
 
         private async void btnTest_Click(object sender, EventArgs e)
@@ -363,8 +368,7 @@ namespace Shuttler
                             ? log.TrainMotionCfg.ForwardFullSpeedStep : log.TrainMotionCfg.ReverseFullSpeedStep;
                         actualSpeedMMSRequired = log.TrainMotionCfg.TrainDirection == TrainDirection.Forward
                             ? log.TrainMotionCfg.ForwardFullSpeedMMS : log.TrainMotionCfg.ReverseFullSpeedMMS;
-                        break;                          
-                        
+                        break;                                          
                 }
 
                 if (targetSpeedRequired > log.TrainMotionCfg.CurrentSpeedStep)
@@ -390,6 +394,11 @@ namespace Shuttler
                         if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampUpIntervalMS)
                         {
                             actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep + log.TrainMotionCfg.RampUpSpeedStepIncrease;
+                            if (actualSpeedRequired >= targetSpeedRequired)
+                            {
+                                actualSpeedRequired = targetSpeedRequired;
+                                log.TrainMotionCfg.InRampUp = false;
+                            }
                             log.TrainMotionCfg.RampSpeedLastSet = DateTime.Now;
                         }
                         log.TrainMotionCfg.InRampDown = false;
@@ -400,12 +409,15 @@ namespace Shuttler
                         if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampDownIntervalMS)
                         {
                             actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep - log.TrainMotionCfg.RampDownSpeedStepDecrease;
+                            if (actualSpeedRequired <= targetSpeedRequired)
+                            {
+                                actualSpeedRequired = targetSpeedRequired;
+                                log.TrainMotionCfg.InRampDown = false;
+                            }
                             log.TrainMotionCfg.RampSpeedLastSet = DateTime.Now;
                         }
                         log.TrainMotionCfg.InRampUp = false;
                     }
-
-
                 }
 
                 log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
@@ -704,6 +716,29 @@ namespace Shuttler
                         thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
                     }
 
+                    var lengthMM = thisLogBlock.BlockLengthMM;
+                    var traversedSoFarMM = thisLogBlock.mmCovered;
+                    decimal percentageOfBlockTraversed = 100.0M;
+
+                    if (lengthMM != null && lengthMM > 0 && traversedSoFarMM > 0)
+                    {
+                        percentageOfBlockTraversed = (traversedSoFarMM / lengthMM) * 100;
+                    }
+
+                    if (log.AutomatedTrainRunningSpeed == AutomatedTrainRunningSpeed.Caution && !log.TrainMotionCfg.InRampDown && percentageOfBlockTraversed > cautiomBlockPercentToBeginRampDown 
+                        && thisLogSectionBlock.SignalAspect == SignalAspect.Caution && blockCounter == 1)
+                    {
+                        thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        thisLogSectionBlock.AutomatedSpeedReason = "Towards end of caution block and approaching danger";
+                    }
+
+                    if (log.AutomatedTrainRunningSpeed == AutomatedTrainRunningSpeed.Crawl && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown
+                            && thisLogSectionBlock.SignalAspect == SignalAspect.Danger && blockCounter == 1)
+                    {
+                        thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Stop;
+                        thisLogSectionBlock.AutomatedSpeedReason = "Danger block time to stop";
+                    }
+
                     if (log.AutomatedTrainRunningSpeed != thisLogSectionBlock.BlockSpeed && blockCounter == 1)
                     {
                         WriteToLog("Speed change required for " + log.Name + " from " + log.AutomatedTrainRunningSpeed.ToString() + " to " + thisLogSectionBlock.BlockSpeed.ToString() + " - " + thisLogSectionBlock.AutomatedSpeedReason);
@@ -741,7 +776,6 @@ namespace Shuttler
                     log.SignalAspect = SignalAspect.Proceed;
                     log.SignalAspectReason = "";
                 }
-
 
                 //check sections for allocation and turnout setting
 
