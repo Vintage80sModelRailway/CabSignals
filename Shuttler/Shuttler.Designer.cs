@@ -70,6 +70,9 @@
             this.lblBlockLength = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
             this.lblMmCoveredThisBlock = new System.Windows.Forms.Label();
+            this.lblSpeedMMS = new System.Windows.Forms.Label();
+            this.lblmmCoveredPercentLabel = new System.Windows.Forms.Label();
+            this.lblmmCoveredPercent = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -297,7 +300,7 @@
             // lblSpeed
             // 
             this.lblSpeed.AutoSize = true;
-            this.lblSpeed.Location = new System.Drawing.Point(81, 212);
+            this.lblSpeed.Location = new System.Drawing.Point(29, 212);
             this.lblSpeed.Name = "lblSpeed";
             this.lblSpeed.Size = new System.Drawing.Size(38, 13);
             this.lblSpeed.TabIndex = 24;
@@ -306,7 +309,7 @@
             // lblSpeedReason
             // 
             this.lblSpeedReason.AutoSize = true;
-            this.lblSpeedReason.Location = new System.Drawing.Point(154, 212);
+            this.lblSpeedReason.Location = new System.Drawing.Point(322, 212);
             this.lblSpeedReason.Name = "lblSpeedReason";
             this.lblSpeedReason.Size = new System.Drawing.Size(73, 13);
             this.lblSpeedReason.TabIndex = 25;
@@ -468,11 +471,42 @@
             this.lblMmCoveredThisBlock.TabIndex = 41;
             this.lblMmCoveredThisBlock.Text = "label12";
             // 
+            // lblSpeedMMS
+            // 
+            this.lblSpeedMMS.AutoSize = true;
+            this.lblSpeedMMS.Location = new System.Drawing.Point(101, 212);
+            this.lblSpeedMMS.Name = "lblSpeedMMS";
+            this.lblSpeedMMS.Size = new System.Drawing.Size(66, 13);
+            this.lblSpeedMMS.TabIndex = 42;
+            this.lblSpeedMMS.Text = "Speed MMS";
+            // 
+            // lblmmCoveredPercentLabel
+            // 
+            this.lblmmCoveredPercentLabel.AutoSize = true;
+            this.lblmmCoveredPercentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblmmCoveredPercentLabel.Location = new System.Drawing.Point(322, 129);
+            this.lblmmCoveredPercentLabel.Name = "lblmmCoveredPercentLabel";
+            this.lblmmCoveredPercentLabel.Size = new System.Drawing.Size(51, 13);
+            this.lblmmCoveredPercentLabel.TabIndex = 43;
+            this.lblmmCoveredPercentLabel.Text = "Percent";
+            // 
+            // lblmmCoveredPercent
+            // 
+            this.lblmmCoveredPercent.AutoSize = true;
+            this.lblmmCoveredPercent.Location = new System.Drawing.Point(392, 129);
+            this.lblmmCoveredPercent.Name = "lblmmCoveredPercent";
+            this.lblmmCoveredPercent.Size = new System.Drawing.Size(41, 13);
+            this.lblmmCoveredPercent.TabIndex = 44;
+            this.lblmmCoveredPercent.Text = "label12";
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1904, 450);
+            this.Controls.Add(this.lblmmCoveredPercent);
+            this.Controls.Add(this.lblmmCoveredPercentLabel);
+            this.Controls.Add(this.lblSpeedMMS);
             this.Controls.Add(this.lblMmCoveredThisBlock);
             this.Controls.Add(this.label11);
             this.Controls.Add(this.lblBlockLength);
@@ -566,5 +600,8 @@
         private System.Windows.Forms.Label lblBlockLength;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Label lblMmCoveredThisBlock;
+        private System.Windows.Forms.Label lblSpeedMMS;
+        private System.Windows.Forms.Label lblmmCoveredPercentLabel;
+        private System.Windows.Forms.Label lblmmCoveredPercent;
     }
 }
