@@ -187,7 +187,7 @@ namespace Shuttler
                         if (sequenceBlock != null)
                         {
                             sequenceBlock.SequenceState = JourneySequenceState.Traversed;
-                            WriteToLog("Block " + sequenceBlock.BlockUserName + " exited");
+                            //WriteToLog("Block " + sequenceBlock.BlockUserName + " exited");
                             var posInSequence = relatedLog.AutomatedBlockList.IndexOf(sequenceBlock);
                             if (posInSequence > -1)
                             {
@@ -265,7 +265,7 @@ namespace Shuttler
                             if (logBlock.SequenceState != JourneySequenceState.Queued)
                             {
                                 //flickering? This block has already been processed as a new block.
-                                WriteToLog(nab.data.userName + " detected as new block but already procedded - ignored as it's probably flickering");
+                                WriteToLog(nab.data.userName + " detected as new block but already processed - ignored as it's probably flickering");
                                 continue;
                             }
                         }
@@ -308,8 +308,8 @@ namespace Shuttler
                         existingLog.PreviousBlockBNL = existingLog.CurrentBlockBNL;
                         existingLog.CurrentBlockBNL = newBlockBNL;
 
-                        WriteToLog("New block " + nab.data.userName + " block index "+existingLog.AutomatedCurrentBlockIndex.ToString()+ " for train " + existingLog.Name + " next block " + existingLog.NextBlock 
-                            + " speed "+existingLog.AutomatedTrainRunningSpeed.ToString()+" - reason "+existingLog.AutomatedTrainSpeedReason);
+                        //WriteToLog("New block " + nab.data.userName + " block index "+existingLog.AutomatedCurrentBlockIndex.ToString()+ " for train " + existingLog.Name + " next block " + existingLog.NextBlock 
+                        //    + " speed "+existingLog.AutomatedTrainRunningSpeed.ToString()+" - reason "+existingLog.AutomatedTrainSpeedReason);
                     }
                     CheckRunningTrains(newBlockStates);
                     CalculateSpeedForTrains();
@@ -426,7 +426,7 @@ namespace Shuttler
                             {
                                 actualSpeedRequired = targetSpeedRequired;
                                 log.TrainMotionCfg.InRampDown = false;
-                                WriteToLog("Ramp down complete speed = "+actualSpeedRequired.ToString());
+                                //WriteToLog("Ramp down complete speed = "+actualSpeedRequired.ToString());
                             }
                             log.TrainMotionCfg.RampSpeedLastSet = DateTime.Now;
                         }
@@ -577,12 +577,17 @@ namespace Shuttler
         {
             foreach (var log in _logs.ToList())
             {
+                if (log.AutomatedCurrentBlockIndex == log.AutomatedBlockList.Count-1 && log.TrainMotionCfg.InRampDown == false && log.TrainMotionCfg.CurrentSpeedStep == 0 && log.TrainMotionCfg.RequiredSpeedStep == 0)
+                {
+                    log.TrainMotionCfg.IsActive = false;
+                    var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
+                    var rosterIndex = c.Roster.IndexOf(re);
+                    c.SetThrottleSpeedStep(rosterIndex, 0);
+                    c.ReleaseThrottle(rosterIndex);
+                    log.Terminated = true;
+                }
                 if (!log.TrainMotionCfg.IsActive)
                 {
-                    //var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
-                    //var rosterIndex = c.Roster.IndexOf(re);
-                    //c.SetThrottleSpeedStep(rosterIndex, 0);
-                    //c.ReleaseThrottle(rosterIndex);
                     return;
                 }
                 int sectionCounter = 0;
@@ -778,8 +783,11 @@ namespace Shuttler
                         thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
                     }
 
-                    currentOccupiedLogSectionBlock = thisLogSectionBlock;
-                    currentBlockLog = thisLogBlock;
+                    if (i == log.AutomatedCurrentBlockIndex)
+                    {
+                        currentOccupiedLogSectionBlock = thisLogSectionBlock;
+                        currentBlockLog = thisLogBlock;
+                    }
                 }
 
 
@@ -842,7 +850,7 @@ namespace Shuttler
                         }
                         else
                         {
-                            WriteToLog("Danger acknowledged but current speed is lower");
+                            //WriteToLog("Danger acknowledged but current speed is lower");
                             newRunningSpeedReason = "Danger acknowledged but respecting current speed of " + currentOccupiedLogSectionBlock.BlockSpeed.ToString();
                         }
 
@@ -855,7 +863,7 @@ namespace Shuttler
                         }
                         else
                         {
-                            WriteToLog("Caution acknowledged but current speed is lower");
+                            //WriteToLog("Caution acknowledged but current speed is lower");
                             newRunningSpeedReason = "Caution acknowledged but respecting current speed of "+currentOccupiedLogSectionBlock.BlockSpeed.ToString();
                         }
 
@@ -1021,7 +1029,7 @@ namespace Shuttler
                                             Position = log.AutomatedBlockList.IndexOf(correspondingLogBlock)
                                         });
                                         await webClient.AllocateBlock(block.systemName, log.DCCiD);
-                                        WriteToLog("Allocated block " + block.userName + " to " + log.Name);
+                                        //WriteToLog("Allocated block " + block.userName + " to " + log.Name);
                                         log.AllocatedBlocks.Add(block.userName);
                                     }
                                     catch (Exception ex)
@@ -1076,7 +1084,7 @@ namespace Shuttler
                                         {
                                             to.NumberOfRetries++;
                                             c.SetTurnout(to.ID, int.Parse(to.RequiredState));
-                                            WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
+                                            //WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
                                         }
                                     }
                                 }
