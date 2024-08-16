@@ -1480,10 +1480,10 @@ namespace Shuttler
                 trainLog.TrainMotionCfg.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
             }
 
-            trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = 5;
+            trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = 3;
             trainLog.TrainMotionCfg.RampUpIntervalMS = 200;
             trainLog.TrainMotionCfg.RampDownIntervalMS = 200;
-            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 5;
+            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 3;
 
 
             trainLog.TrainMotionCfg.CurrentSpeedStep = 0;
@@ -1791,13 +1791,13 @@ namespace Shuttler
                                 if (testbnlB.BlockFound == nextBlock)
                                 {
                                     nextItemIdent = to.Connectbname;
-                                    bnlto.RequiredState = "4";
+                                    bnlto.RequiredState = "2";
 
                                 }
                                 else if (testbnlC.BlockFound == nextBlock)
                                 {
                                     nextItemIdent = to.Connectcname;
-                                    bnlto.RequiredState = "2";
+                                    bnlto.RequiredState = "4";
                                 }
                                 else
                                 {
