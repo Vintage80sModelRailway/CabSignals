@@ -106,6 +106,8 @@ namespace JMRIReader
                     {
                         blockCounter++;
                         block b = GetBlockBySystemName(blockEntry.sName);
+                        b.SignalAspect = SignalAspect.Proceed;
+                        b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                         newSection.Blocks.Add(b);
                         var logEntry = new BlockJourneyLog();
                         logEntry.BlockSystemname = b.systemName;

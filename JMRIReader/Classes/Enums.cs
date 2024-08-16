@@ -23,10 +23,10 @@
 
         public enum SignalAspect
         {
-            Danger,
-            Caution,
-            Proceed,
-            Stop
+            Stop = 4,
+            Danger = 3,
+            Caution = 2,
+            Proceed = 1
         }
 
         public enum AutomatedTrainRunningStatus
@@ -42,10 +42,11 @@
 
         public enum AutomatedTrainRunningSpeed
         {
-            Full,
-            Caution,
-            Crawl,
-            Stop
+            Full = 5,
+            Caution = 4,
+            Crawl = 3,
+            Stop = 2,
+            EmergencyStop = 1
         }
 
         public enum TrainDirection

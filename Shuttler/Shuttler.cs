@@ -39,6 +39,7 @@ namespace Shuttler
         private int DefaultFullSpeedMMS;
         private int cautiomBlockPercentToBeginRampDown;
         private int dangerBlockPercentToBeginRampDown;
+        private int shortBlockThresholdMM;
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -116,8 +117,9 @@ namespace Shuttler
 
             lbRunningTransits.ValueMember = "Value";
             lbRunningTransits.DisplayMember = "Name";
-            cautiomBlockPercentToBeginRampDown = 75;
+            cautiomBlockPercentToBeginRampDown = 50;
             dangerBlockPercentToBeginRampDown = 50;
+            shortBlockThresholdMM = 300;
         }
 
         private async void btnTest_Click(object sender, EventArgs e)
@@ -189,7 +191,11 @@ namespace Shuttler
                             var posInSequence = relatedLog.AutomatedBlockList.IndexOf(sequenceBlock);
                             if (posInSequence > -1)
                             {
-                                relatedLog.AutomatedBlockList.ElementAt(posInSequence + 1).PreviousBlockExited = true;
+                                var affectedBlock =  relatedLog.AutomatedBlockList.ElementAtOrDefault(posInSequence + 1);
+                                if (affectedBlock != null)
+                                {
+                                    affectedBlock.PreviousBlockExited = true;
+                                }
                             }
                         }
                     }
@@ -207,7 +213,6 @@ namespace Shuttler
 
 
                         //if new block is in current section
-
 
                         var activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
                         if (activeBlock == null)
@@ -316,7 +321,7 @@ namespace Shuttler
                 }
 
                 await c.CheckForMessages();
-                await Task.Delay(500);
+                await Task.Delay(200);
             }
 
         }
@@ -330,7 +335,7 @@ namespace Shuttler
                 if (!log.TrainMotionCfg.IsActive && log.TrainMotionCfg.CurrentSpeedStep > 0)
                 {
                     log.TrainMotionCfg.TargetSpeedStep = 0;
-                    //log.TrainMotionCfg.RequiredSpeedStep = 0;
+                    log.TrainMotionCfg.RequiredSpeedStep = 0;
                     log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     log.AutomatedTrainSpeedReason = "Manually cancelled";
                     return;
@@ -350,8 +355,10 @@ namespace Shuttler
                 decimal actualSpeedMMSRequired = 0.0M;
                 switch (log.AutomatedTrainRunningSpeed)
                 {
-                    case AutomatedTrainRunningSpeed.Stop:
+                    case AutomatedTrainRunningSpeed.EmergencyStop:
                         emergencyStopRequired = true;
+                        break;
+                    case AutomatedTrainRunningSpeed.Stop:
                         targetSpeedRequired = 0;
                         break;
                     case AutomatedTrainRunningSpeed.Crawl:
@@ -379,11 +386,12 @@ namespace Shuttler
                     log.TrainMotionCfg.InRampDown = false;
                     log.TrainMotionCfg.InRampUp = true;
                 }
-                else if (targetSpeedRequired < log.TrainMotionCfg.CurrentSpeedStep)
+                else if (targetSpeedRequired < log.TrainMotionCfg.CurrentSpeedStep && !emergencyStopRequired)
                 {
                     log.TrainMotionCfg.InRampDown = true;
                     log.TrainMotionCfg.InRampUp = false;
                 }
+
 
                 log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
 
@@ -433,6 +441,9 @@ namespace Shuttler
                 {
                     log.TrainMotionCfg.TargetSpeedStep = 0;
                     log.TrainMotionCfg.RequiredSpeedStep = 0;
+                    log.TrainMotionCfg.InRampDown = false;
+                    log.TrainMotionCfg.InRampUp = false;
+                    WriteToLog("Emergency stop executed for " + log.Name);
                 }
 
                 log.TrainMotionCfg.CurrentSpeedMMS = actualSpeedMMSRequired;
@@ -568,6 +579,10 @@ namespace Shuttler
             {
                 if (!log.TrainMotionCfg.IsActive)
                 {
+                    //var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
+                    //var rosterIndex = c.Roster.IndexOf(re);
+                    //c.SetThrottleSpeedStep(rosterIndex, 0);
+                    //c.ReleaseThrottle(rosterIndex);
                     return;
                 }
                 int sectionCounter = 0;
@@ -582,25 +597,15 @@ namespace Shuttler
                     var livePreviousBlock = LiveBlocks.FirstOrDefault(f => f.data.userName == log.PreviousBlock);
                 }
 
-                int blocksRemaining = log.AutomatedBlockList.Count - log.AutomatedCurrentBlockIndex;
-                if (blocksRemaining > 3) blocksRemaining = 3;
+                //This definition is for the 'for' loop. Want the for loop to run through the next 2 blocks, or fewer if fewer than 2 blocks remain
+                //Don't want to check further ahead, so if there are more than 2 remaining, limit what we search through
+                int blocksRemainingIncludingCurrent = log.AutomatedBlockList.Count - log.AutomatedCurrentBlockIndex;
+                if (blocksRemainingIncludingCurrent > 3) blocksRemainingIncludingCurrent = 3;
+                
                 var currentOccupiedLogSectionBlock = new block();
                 var currentBlockLog = new BlockJourneyLog();
 
-                if (blocksRemaining == 1)
-                {
-                    //last block?
-                    if (log.TrainMotionCfg != null)
-                    {
-                        if (log.TrainMotionCfg.CurrentSpeedStep == 0)
-                        {
-                            WriteToLog("Ended train " + log.Name);
-                            log.TrainMotionCfg.IsActive = false;
-                        }
-                    }
-                }
-
-                for (int i = log.AutomatedCurrentBlockIndex; i < log.AutomatedCurrentBlockIndex + blocksRemaining; i++)
+                for (int i = log.AutomatedCurrentBlockIndex; i < log.AutomatedCurrentBlockIndex + blocksRemainingIncludingCurrent; i++)
                 {
                     bool requiresCustomSpeedValue = false;
                     blockCounter++;
@@ -608,12 +613,6 @@ namespace Shuttler
                     var thisLogBlock = log.AutomatedBlockList.ElementAt(i);
                     var thisLogSection = log.AutomatedSectionList.ElementAtOrDefault(thisLogBlock.SectionSequenceId);
                     var thisLogSectionBlock = thisLogSection.Blocks.FirstOrDefault(f => f.systemName == thisLogBlock.BlockSystemname);
-
-                    if (i == log.AutomatedCurrentBlockIndex)
-                    {
-                        currentOccupiedLogSectionBlock = thisLogSectionBlock;
-                        currentBlockLog = thisLogBlock;
-                    }
 
                     var nextBlock = log.AutomatedBlockList.ElementAtOrDefault(i + 1);
 
@@ -627,20 +626,24 @@ namespace Shuttler
 
                     thisLogSectionBlock.ClearToAllocate = true;
 
-                    //mm covered
-                    decimal mmCoveredSoFar = 0.0M;
-                    for (int b =  0; b < thisLogBlock.SpeedLog.Count; b++)
+                    //mm covered - only check for current active block
+                    if (i == log.AutomatedCurrentBlockIndex)
                     {
-                        var dateTimeTo = DateTime.Now;
-                        if (b+1 < thisLogBlock.SpeedLog.Count)
+                        decimal mmCoveredSoFar = 0.0M;
+                        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
                         {
-                            dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
-                        }
+                            var dateTimeTo = DateTime.Now;
+                            if (b + 1 < thisLogBlock.SpeedLog.Count)
+                            {
+                                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                            }
 
-                        var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
-                        mmCoveredSoFar += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                        thisLogBlock.mmCovered = mmCoveredSoFar;
+                            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                            mmCoveredSoFar += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                            thisLogBlock.mmCovered = mmCoveredSoFar;
+                        }
                     }
+
 
                     string issue = "";
 
@@ -648,31 +651,34 @@ namespace Shuttler
                     var previousBlocksStillActive = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.Active && w.Sequence < thisLogBlock.Sequence);
                     var previousActiveBlockHasSpeedRestriction = false;
                     var previousActiveSpeedRestrictionReason = "";
-                    var previousSpeedRestriction = AutomatedTrainRunningSpeed.Caution;
                     foreach (var pb in previousBlocksStillActive)
                     {
                         var bSection = log.AutomatedSectionList.FirstOrDefault(f => f.Sequence == pb.SectionSequenceId);
                         if (bSection == null) continue;
                         var cBlock = bSection.Blocks.FirstOrDefault(f => f.systemName == pb.BlockSystemname);
                         if (cBlock == null) continue;
-                        if (cBlock.BlockSpeed != AutomatedTrainRunningSpeed.Full)
+
+                        foreach (var to in cBlock.BNL.BNLTurnouts)
                         {
-                            previousActiveBlockHasSpeedRestriction = true;
-                            previousActiveSpeedRestrictionReason = "Previous block " + cBlock.userName + " still active and has speed " + cBlock.AutomatedSpeedReason + " for " + cBlock.AutomatedSpeedReason;
-                            previousSpeedRestriction = cBlock.BlockSpeed;
+                            if (to.RequiredState == "4")
+                            {
+                                previousActiveBlockHasSpeedRestriction = true;
+                                previousActiveSpeedRestrictionReason = "Previous block " + cBlock.userName + " still active and has thrown turnout "+to.Name;
+                            }
                         }
                     }
-
                     if (previousActiveBlockHasSpeedRestriction)
                     {
                         requiresCustomSpeedValue = true;
-                        thisLogSectionBlock.BlockSpeed = previousSpeedRestriction;
-                        thisLogSectionBlock.AutomatedSpeedReason = previousActiveSpeedRestrictionReason;
+                        if ((int)thisLogSectionBlock.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution)
+                        {
+                            thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                            thisLogSectionBlock.AutomatedSpeedReason = previousActiveSpeedRestrictionReason;
+                        }
                     }
 
                     foreach (var to in thisLogSectionBlock.BNL.BNLTurnouts)
                     {
-
                         if (to.RequiredState != to.CurrentState)
                         {
                             //this would be an issue if this train was blocked by another train's allocation / occupancy
@@ -681,14 +687,17 @@ namespace Shuttler
                         }
                         if (to.RequiredState == "4")
                         {
-                            thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                            thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in path ("+to.Name+")";
-                            requiresCustomSpeedValue = true;
+                            if ((int)thisLogSectionBlock.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || thisLogSectionBlock.BlockSpeed == 0)
+                            {
+                                thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                                thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in path (" + to.Name + ")";
+                                requiresCustomSpeedValue = true;
+                            }
                         }
                     }
 
                     //Don't check occupancy for the block the train is already in - it'll always be occupied
-                    if (blockCounter > 1)
+                    if (i > log.AutomatedCurrentBlockIndex)
                     {
                         var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.userName == thisLogBlock.BlockUserName);
                         if (liveStateBlock != null)
@@ -729,22 +738,23 @@ namespace Shuttler
                         }
                         if (nextBlockHasThrownTurnout)
                         {
-                            thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                            thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in next block";
-                            requiresCustomSpeedValue = true;
+                            if ((int)thisLogSectionBlock.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || thisLogSectionBlock.BlockSpeed == 0)
+                            {
+                                thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                                thisLogSectionBlock.AutomatedSpeedReason = "Thrown turnout in next block";
+                                requiresCustomSpeedValue = true;
+                            }
                         }
-                    }
-
-                    if (i == log.AutomatedBlockList.Count-1)
-                    {
-                        issue += "; End of journey";
                     }
 
                     if (i == log.AutomatedBlockList.Count-2)
                     {
-                        thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                        thisLogSectionBlock.AutomatedSpeedReason = "Penultimate block";
-                        requiresCustomSpeedValue = true;
+                        if ((int)thisLogSectionBlock.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || thisLogSectionBlock.BlockSpeed == 0)
+                        {
+                            thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                            thisLogSectionBlock.AutomatedSpeedReason = "Penultimate block";
+                            requiresCustomSpeedValue = true;
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(issue))
@@ -767,7 +777,14 @@ namespace Shuttler
                         thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                         thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
                     }
+
+                    currentOccupiedLogSectionBlock = thisLogSectionBlock;
+                    currentBlockLog = thisLogBlock;
                 }
+
+
+                SignalAspect newAspect = log.SignalAspect;
+                string newAspectReason = string.Empty;
 
                 //calculate aspect here?
                 //if next next block contains danger then caution
@@ -776,47 +793,92 @@ namespace Shuttler
                     //caution
                     //log.SignalAspect = SignalAspect.Caution;
                     //log.SignalAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(2).DangerReason;
-                    currentOccupiedLogSectionBlock.SignalAspect = SignalAspect.Caution;
-                    currentOccupiedLogSectionBlock.SignalAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(2).DangerReason;
+                    newAspect = SignalAspect.Caution;
+                    newAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(2).DangerReason;
                 }
 
                 if (CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(1) != null && CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(1).BlockContainsDanger)
                 {
                     //danger
-                    currentOccupiedLogSectionBlock.SignalAspect = SignalAspect.Danger;
-                    currentOccupiedLogSectionBlock.SignalAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(1).DangerReason;
+                    newAspect = SignalAspect.Danger;
+                    newAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(1).DangerReason;
                 }
 
                 if (CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0) != null && CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0).BlockContainsDanger)
                 {
                     //stop
-                    currentOccupiedLogSectionBlock.SignalAspect = SignalAspect.Stop;
-                    currentOccupiedLogSectionBlock.SignalAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0).DangerReason;
+                    newAspect = SignalAspect.Stop;
+                    newAspectReason = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0).DangerReason;
                 }
 
                 var anyDanger = CheckedBlocks.Any(a => a.BlockContainsDanger);
                 if (!anyDanger)
                 {
-                    currentOccupiedLogSectionBlock.SignalAspect = SignalAspect.Proceed;
+                    newAspect = SignalAspect.Proceed;
                     currentOccupiedLogSectionBlock.SignalAspectReason = "";
                 }
 
-                log.SignalAspect = currentOccupiedLogSectionBlock.SignalAspect;
-                log.SignalAspectReason = currentOccupiedLogSectionBlock.SignalAspectReason;
+                log.SignalAspect = newAspect;
+                log.SignalAspectReason = newAspectReason;
+
+                var newRunningSpeed = currentOccupiedLogSectionBlock.BlockSpeed;
+                var newRunningSpeedReason = currentOccupiedLogSectionBlock.AutomatedSpeedReason;
+               // bool speedRestrictionRequired = false;
 
                 //get speed setting and set that first - this will be superceded by signal based speed
                 switch (log.SignalAspect)
                 {
                     case SignalAspect.Stop:
+                        newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
+                        newRunningSpeedReason = "Danger in current block";
+                        //speedRestrictionRequired = true;
+                        break;
 
                     case SignalAspect.Danger:
-                        currentOccupiedLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
-                        currentOccupiedLogSectionBlock.AutomatedSpeedReason = "Signal set to danger";
+                        if ((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0)
+                        {
+                            newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
+                            newRunningSpeedReason = "Signal aspect set to danger";
+                        }
+                        else
+                        {
+                            WriteToLog("Danger acknowledged but current speed is lower");
+                            newRunningSpeedReason = "Danger acknowledged but respecting current speed of " + currentOccupiedLogSectionBlock.BlockSpeed.ToString();
+                        }
+
                         break;
                     case SignalAspect.Caution:
-                        currentOccupiedLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                        currentOccupiedLogSectionBlock.AutomatedSpeedReason = "Signal set to caution";
+                        if ((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution || log.AutomatedTrainRunningSpeed == 0)
+                        {
+                            newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
+                            newRunningSpeedReason = "Signal set to caution";
+                        }
+                        else
+                        {
+                            WriteToLog("Caution acknowledged but current speed is lower");
+                            newRunningSpeedReason = "Caution acknowledged but respecting current speed of "+currentOccupiedLogSectionBlock.BlockSpeed.ToString();
+                        }
+
                         break;
+                }
+
+                int numberOfBlocksRemaining = (log.AutomatedBlockList.Count - 1) - log.AutomatedCurrentBlockIndex;
+                if (blocksRemainingIncludingCurrent == 2)
+                {
+                    //ensure caution to slow towards end
+                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution)
+                    {
+                        newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
+                        newRunningSpeedReason += "; approaching end of journey";
+                    }
+                }
+                else if (blocksRemainingIncludingCurrent == 1)
+                {
+                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl)
+                    {
+                        newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        newRunningSpeedReason += "; penulatimate block";
+                    }
                 }
 
                 var lengthMM = currentBlockLog.BlockLengthMM;
@@ -828,26 +890,48 @@ namespace Shuttler
                     percentageOfBlockTraversed = (traversedSoFarMM / lengthMM) * 100;
                 }
 
-                if (!log.TrainMotionCfg.InRampDown && percentageOfBlockTraversed > cautiomBlockPercentToBeginRampDown
-                    && currentOccupiedLogSectionBlock.SignalAspect == SignalAspect.Caution)
+                if (numberOfBlocksRemaining == 0 && (lengthMM < shortBlockThresholdMM || percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown))
                 {
-                    currentOccupiedLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
-                    currentOccupiedLogSectionBlock.AutomatedSpeedReason = "Towards end of caution block and approaching danger";
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    newRunningSpeedReason = "End of journey - stopping";
                 }
 
-                if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown
-                        && (currentOccupiedLogSectionBlock.SignalAspect == SignalAspect.Stop || currentOccupiedLogSectionBlock.SignalAspect == SignalAspect.Danger))
+                else if (percentageOfBlockTraversed > cautiomBlockPercentToBeginRampDown && log.SignalAspect == SignalAspect.Caution && lengthMM > 0)
                 {
-                    currentOccupiedLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Stop;
-                    currentOccupiedLogSectionBlock.AutomatedSpeedReason = "Danger block time to stop";
+                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0)
+                    {
+                        newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        newRunningSpeedReason = "Towards end of caution block and approaching danger";
+                        WriteToLog("Dropping from caution to crawl as approaching danger block for " + log.Name);
+                    }
                 }
 
-                if (log.AutomatedTrainRunningSpeed != currentOccupiedLogSectionBlock.BlockSpeed)
+                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0
+                        && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
-                    WriteToLog("Speed change required for " + log.Name + " from " + log.AutomatedTrainRunningSpeed.ToString() + " to " + currentOccupiedLogSectionBlock.BlockSpeed.ToString() + " - " + currentOccupiedLogSectionBlock.AutomatedSpeedReason);
-                    log.AutomatedTrainRunningSpeed = currentOccupiedLogSectionBlock.BlockSpeed;
-                    log.AutomatedTrainSpeedReason = currentOccupiedLogSectionBlock.AutomatedSpeedReason;
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    newRunningSpeedReason = "Danger block time to stop";
                 }
+
+                else if (lengthMM < 200 && lengthMM > 0 && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    newRunningSpeedReason = "Short block, stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
+                }
+
+
+
+                //test
+                //currentOccupiedLogSectionBlock.SignalAspectReason = "testing";
+
+                if (log.AutomatedTrainRunningSpeed != newRunningSpeed)
+                {
+                    WriteToLog("Speed change required for " + log.Name + " from " + log.AutomatedTrainRunningSpeed.ToString() + " to " + newRunningSpeed.ToString() + " - " + newRunningSpeedReason);
+                    log.AutomatedTrainRunningSpeed = newRunningSpeed;
+                    log.AutomatedTrainSpeedReason = newRunningSpeedReason;
+                }
+
+                //log.AutomatedSectionList.ElementAt(currentBlockLog.SectionSequenceId).Blocks[currentOccupiedLogSectionBlockIndex] = currentOccupiedLogSectionBlock;
 
                 //check sections for allocation and turnout setting
 
@@ -1016,8 +1100,11 @@ namespace Shuttler
                     {
                         foreach (var block in section.Blocks)
                         {
-                            block.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                            block.AutomatedSpeedReason = "Approaching end of journey";
+                            if ((int)block.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || block.BlockSpeed == 0)
+                            {
+                                block.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                                block.AutomatedSpeedReason = "Approaching end of journey";
+                            }
                         }
                     }
                 }                    
@@ -1377,7 +1464,7 @@ namespace Shuttler
             trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = 5;
             trainLog.TrainMotionCfg.RampUpIntervalMS = 200;
             trainLog.TrainMotionCfg.RampDownIntervalMS = 200;
-            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 2;
+            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 5;
 
 
             trainLog.TrainMotionCfg.CurrentSpeedStep = 0;
@@ -2127,7 +2214,7 @@ namespace Shuttler
         private void WriteToLog(string message)
         {
             var fullMess = DateTime.Now + " - " + message;
-            lbOutput.Items.Add(fullMess);
+            lbOutput.Items.Add(message);
             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
         }
 
