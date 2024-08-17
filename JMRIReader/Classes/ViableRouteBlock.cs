@@ -8,6 +8,7 @@ namespace JMRIReader.Classes
 {
     public class ViableRouteBlock
     {
+        public string Displayname { get; set; }
         public string Blockname { get; set; }
         public bool IsAvailable { get; set; }
     }

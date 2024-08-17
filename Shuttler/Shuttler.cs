@@ -1275,20 +1275,8 @@ namespace Shuttler
             }
         }
 
-        private void StartAutoTrain(List<string> Blocks)
+        private void StartAutoTrain(transit transit)
         {
-
-        }
-
-        private void btnStartTransit_Click(object sender, EventArgs e)
-        {
-            dynamic transitItem = cbAvailableTransits.SelectedItem;
-            if (transitItem == null) return;
-            var tName = transitItem.Name;
-            var tSysName = transitItem.Value;
-            var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
-            if (transit == null) return;
-
             LiveJourneyLog trainLog = new LiveJourneyLog();
             trainLog.TrainMotionCfg = new TrainMotionConfig();
             trainLog.AllocatedBlocks = new List<string>();
@@ -1319,7 +1307,7 @@ namespace Shuttler
 
             trainLog.AutomatedBlockList = transit.BlocksInOrder;
 
-            var firstBlockBNL =  GetFirstBNL(trainLog.CurrentBlock, trainLog.NextBlock);
+            var firstBlockBNL = GetFirstBNL(trainLog.CurrentBlock, trainLog.NextBlock);
             if (firstBlockBNL == null) return;
 
             var prevBNL = firstBlockBNL;
@@ -1407,9 +1395,9 @@ namespace Shuttler
 
                             if ((DefaultCautionMMS < dForward && DefaultCautionMMS > prevForwardSpeed))
                             {
-                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS,prevForwardSpeed,dForward);
+                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
-                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage,prevStep,dStep);
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
                                 trainLog.TrainMotionCfg.ForwardCautionSpeedStep = calculatedSpeedStep;
                                 trainLog.TrainMotionCfg.ForwardCautionMMS = calculatedMMS;
@@ -1510,7 +1498,19 @@ namespace Shuttler
                 Value = trainLog.DCCiD
             });
 
-            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name+" - "+Enum.GetName(typeof(TrainDirection),trainLog.TrainMotionCfg.TrainDirection)); 
+            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection));
+        }
+
+        private void btnStartTransit_Click(object sender, EventArgs e)
+        {
+            dynamic transitItem = cbAvailableTransits.SelectedItem;
+            if (transitItem == null) return;
+            var tName = transitItem.Name;
+            var tSysName = transitItem.Value;
+            var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
+            if (transit == null) return;
+
+            StartAutoTrain(transit);
         }
 
         private (decimal percentage, decimal speed) GetRelativeSpeedPercentage(int targetMMS, decimal prevForwardSpeed, decimal thisForwardSpeed)
@@ -2749,6 +2749,7 @@ namespace Shuttler
             foreach (var block in Route)
             {
                 var vrb = new ViableRouteBlock();
+                vrb.Blockname = block;
                 var blockName = block;
 
                 var liveBlock = _allBlocks.FirstOrDefault(f => f.data.userName == block);
@@ -2766,7 +2767,7 @@ namespace Shuttler
                     }
                     vrb.IsAvailable = liveBlock.data.state == 4 ? true : false;
                 }
-                vrb.Blockname = blockName;
+                vrb.Displayname = blockName;
                 blockList.Add(vrb);
             }
             return blockList;
@@ -2824,6 +2825,9 @@ namespace Shuttler
             List<SectionJourneyLog> sections = new List<SectionJourneyLog>();
             var log = new LiveJourneyLog();
 
+            var route = ViableRoutes.ElementAtOrDefault(routeIndex);
+            var transit = config.BuildTransitFromBlockList(route.Blocks);
+            StartAutoTrain(transit);
         }
 
         private void btnRouteNext_Click(object sender, EventArgs e)
@@ -2855,7 +2859,7 @@ namespace Shuttler
             lblRoute.Text = "Route "+(routeIndex+1).ToString()+ " / "+ViableRoutes.Count.ToString() +" ("+route.NumberOfUnavailableBlocks.ToString()+")";
             foreach (var ap in route.Blocks)
             {
-                lbRoute.Items.Add(ap.Blockname);
+                lbRoute.Items.Add(ap.Displayname);
             }
 
             if (routeIndex > 0)

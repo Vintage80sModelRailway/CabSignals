@@ -76,6 +76,54 @@ namespace JMRIReader
             return tr;
         }
 
+        public transit BuildTransitFromBlockList(List<ViableRouteBlock> blockList)
+        {
+            transit tr = new transit();
+            tr.BlocksInOrder = new List<BlockJourneyLog>();
+            tr.Sections = new List<SectionJourneyLog>();
+            int counter = -1;
+            foreach (var block in blockList)
+            {
+                counter++;
+                var configBlock = GetBlockByUserName(block.Blockname);
+                var sec = new section();
+                var secLog = new SectionJourneyLog();
+                secLog.Blocks = new List<block>();
+                configBlock.SignalAspect = SignalAspect.Proceed;
+                configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
+                secLog.Blocks.Add(configBlock);
+
+                secLog.SectionkUserName = block.Blockname;
+                secLog.SectionSystemname = block.Blockname;
+                secLog.HasAlternate = false;
+                secLog.PossibleAlternate = false;
+                secLog.Sequence = counter;
+                secLog.Traversed = false;
+                tr.Sections.Add(secLog);
+
+                var logEntry = new BlockJourneyLog();
+                logEntry.BlockSystemname = configBlock.systemName;
+                logEntry.BlockUserName = configBlock.userName;
+                logEntry.Traversed = false;
+                logEntry.Sequence = counter;
+                logEntry.PossibleAlternate = false;
+                logEntry.HasAlternate = false;
+                logEntry.SectionSequenceId = counter;
+                logEntry.SequenceState = JourneySequenceState.Queued;
+                logEntry.BlockLengthMM = configBlock.length;
+                logEntry.PreviousBlockExited = false;
+                logEntry.SpeedLog = new List<SpeedStepLog>();
+                tr.BlocksInOrder.Add(logEntry);
+            }
+            var sb = tr.BlocksInOrder.FirstOrDefault();
+            if (sb != null)
+                tr.StartBlock = sb.BlockUserName;
+            var eb = tr.BlocksInOrder.LastOrDefault();
+            if (eb != null)
+                tr.EndBlock = eb.BlockUserName;
+            return tr;
+        }
+
         public List<transit> GetTransits()
         {
             List<transit> trs = new List<transit>();

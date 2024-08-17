@@ -119,7 +119,7 @@
             this.lbStartBlocks.FormattingEnabled = true;
             this.lbStartBlocks.Location = new System.Drawing.Point(1015, 39);
             this.lbStartBlocks.Name = "lbStartBlocks";
-            this.lbStartBlocks.Size = new System.Drawing.Size(192, 394);
+            this.lbStartBlocks.Size = new System.Drawing.Size(192, 186);
             this.lbStartBlocks.TabIndex = 4;
             this.lbStartBlocks.SelectedIndexChanged += new System.EventHandler(this.lbStartBlocks_SelectedIndexChanged);
             // 
@@ -128,7 +128,7 @@
             this.lbDestinationBlocks.FormattingEnabled = true;
             this.lbDestinationBlocks.Location = new System.Drawing.Point(1213, 39);
             this.lbDestinationBlocks.Name = "lbDestinationBlocks";
-            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 394);
+            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 186);
             this.lbDestinationBlocks.TabIndex = 5;
             // 
             // cbAvailableTransits
@@ -239,9 +239,9 @@
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(12, 234);
+            this.lbOutput.Location = new System.Drawing.Point(12, 260);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(839, 173);
+            this.lbOutput.Size = new System.Drawing.Size(1375, 147);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
@@ -249,7 +249,7 @@
             this.lbRunningTransits.FormattingEnabled = true;
             this.lbRunningTransits.Location = new System.Drawing.Point(857, 39);
             this.lbRunningTransits.Name = "lbRunningTransits";
-            this.lbRunningTransits.Size = new System.Drawing.Size(152, 394);
+            this.lbRunningTransits.Size = new System.Drawing.Size(152, 186);
             this.lbRunningTransits.TabIndex = 18;
             this.lbRunningTransits.SelectedIndexChanged += new System.EventHandler(this.lbRunningTransits_SelectedIndexChanged);
             // 
@@ -367,7 +367,7 @@
             // btnRoutePrev
             // 
             this.btnRoutePrev.Enabled = false;
-            this.btnRoutePrev.Location = new System.Drawing.Point(701, 410);
+            this.btnRoutePrev.Location = new System.Drawing.Point(702, 234);
             this.btnRoutePrev.Name = "btnRoutePrev";
             this.btnRoutePrev.Size = new System.Drawing.Size(33, 23);
             this.btnRoutePrev.TabIndex = 31;
@@ -378,7 +378,7 @@
             // btnRouteNext
             // 
             this.btnRouteNext.Enabled = false;
-            this.btnRouteNext.Location = new System.Drawing.Point(821, 410);
+            this.btnRouteNext.Location = new System.Drawing.Point(822, 234);
             this.btnRouteNext.Name = "btnRouteNext";
             this.btnRouteNext.Size = new System.Drawing.Size(30, 23);
             this.btnRouteNext.TabIndex = 32;
@@ -389,7 +389,7 @@
             // btnRouteAccept
             // 
             this.btnRouteAccept.Enabled = false;
-            this.btnRouteAccept.Location = new System.Drawing.Point(740, 410);
+            this.btnRouteAccept.Location = new System.Drawing.Point(741, 234);
             this.btnRouteAccept.Name = "btnRouteAccept";
             this.btnRouteAccept.Size = new System.Drawing.Size(75, 23);
             this.btnRouteAccept.TabIndex = 33;
