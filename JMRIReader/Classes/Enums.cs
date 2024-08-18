@@ -33,6 +33,7 @@
         {
             Starting,
             Waiting,
+            PauseBeforeResume,
             Resuming,
             Running,
             Complete,
