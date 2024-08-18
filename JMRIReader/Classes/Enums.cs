@@ -32,12 +32,11 @@
         public enum AutomatedTrainRunningStatus
         {
             Starting,
-            RampingUp,
-            Running,
-            RampingDown,
-            Caution,
             Waiting,
-            Complete
+            Resuming,
+            Running,
+            Complete,
+            Cancelled
         }
 
         public enum AutomatedTrainRunningSpeed

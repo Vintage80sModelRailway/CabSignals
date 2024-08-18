@@ -206,7 +206,13 @@ namespace Shuttler
                     foreach (var nab in newActiveThisTimeBlocks)
                     {
                         var nextBlockName = "";
-                        var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName);
+                        var allocatedTo = "";
+                        var previousBlockState = _allBlocks.First(f => f.data.name == nab.data.name);
+                        if (previousBlockState.data.value != null) 
+                        {
+                            allocatedTo = previousBlockState.data.value.data.userName;
+                        }
+                        var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName && f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
                         if (existingLog == null)
                         {
                             continue;
@@ -320,6 +326,7 @@ namespace Shuttler
                     ProcessBlocksToDecorate();
 
                     UpdateLogPanel();
+                    CleanUpListBoxes();
                     _allBlocks = newBlockStates;
                 }
 
@@ -329,11 +336,29 @@ namespace Shuttler
 
         }
 
+        private void CleanUpListBoxes()
+        {
+            var completeLogs = _logs.Where(w => w.TrainMotionCfg.IsActive == false && (w.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Cancelled || w.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Complete)).ToList();
+            foreach(var done in completeLogs)
+            {
+                _logs.Remove(done);
+            }
+            lbRunningTransits.Items.Clear();
+            foreach (var log in _logs.OrderBy(o => o.TimeStarted))
+            {
+                lbRunningTransits.Items.Add(new
+                {
+                    Name = log.TransitName + " (" + log.DCCiD + ")",
+                    Value = log.DCCiD
+                });
+            }
+        }
+
         private void CalculateSpeedForTrains()
         {
             foreach (var log in _logs.ToList())
             {
-                if (log.TrainMotionCfg == null) return;
+                if (log.TrainMotionCfg == null) continue;
 
                 if (!log.TrainMotionCfg.IsActive && log.TrainMotionCfg.CurrentSpeedStep > 0)
                 {
@@ -341,16 +366,30 @@ namespace Shuttler
                     log.TrainMotionCfg.RequiredSpeedStep = 0;
                     log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     log.AutomatedTrainSpeedReason = "Manually cancelled";
-                    return;
+                    log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Cancelled;
+                    log.StatusLastChanged = DateTime.Now;
+                    continue;
                 }
 
-                var timeSinceStarted = DateTime.Now - log.TimeStarted;
-                if (timeSinceStarted.TotalSeconds < 10)
+                if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Starting || log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Resuming)
                 {
-                    log.TrainMotionCfg.CurrentSpeedStep = 0;
-                    log.TrainMotionCfg.TargetSpeedStep = 0;
-                    return;
+                    var timeSinceStarted = DateTime.Now - log.StatusLastChanged;
+                    if (timeSinceStarted.TotalSeconds < 5)
+                    {
+                        log.TrainMotionCfg.CurrentSpeedStep = 0;
+                        log.TrainMotionCfg.TargetSpeedStep = 0;
+                        //WriteToLog("Start delay " + log.Name + " - " + timeSinceStarted.TotalSeconds.ToString()+" - "+log.AutomatedTrainRunningStatus.ToString());
+                        continue;
+                    }
+                    else
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
+                        log.StatusLastChanged = DateTime.Now;
+                    }
                 }
+
+                if (log.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.Running)
+                    continue;
 
                 bool emergencyStopRequired = false;
 
@@ -408,6 +447,7 @@ namespace Shuttler
                         if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampUpIntervalMS)
                         {
                             actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep + log.TrainMotionCfg.RampUpSpeedStepIncrease;
+                            WriteToLog(log.Name + " ramp up " + actualSpeedRequired.ToString());
                             if (actualSpeedRequired >= targetSpeedRequired)
                             {
                                 actualSpeedRequired = targetSpeedRequired;
@@ -423,6 +463,7 @@ namespace Shuttler
                         if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampDownIntervalMS)
                         {
                             actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep - log.TrainMotionCfg.RampDownSpeedStepDecrease;
+                            WriteToLog(log.Name + " ramp down " + actualSpeedRequired.ToString());
                             if (actualSpeedRequired < 0)
                                 actualSpeedRequired = 0;
                             if (actualSpeedRequired <= targetSpeedRequired)
@@ -440,13 +481,27 @@ namespace Shuttler
                 log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
                 log.TrainMotionCfg.RequiredSpeedStep = actualSpeedRequired;
 
-                if (emergencyStopRequired)
+                if (emergencyStopRequired && (log.TrainMotionCfg.TargetSpeedStep == 0 || log.TrainMotionCfg.RequiredSpeedStep == 0))
                 {
                     log.TrainMotionCfg.TargetSpeedStep = 0;
                     log.TrainMotionCfg.RequiredSpeedStep = 0;
                     log.TrainMotionCfg.InRampDown = false;
                     log.TrainMotionCfg.InRampUp = false;
                     WriteToLog("Emergency stop executed for " + log.Name);
+                }
+
+                if (log.TrainMotionCfg.TargetSpeedStep == 0 && log.TrainMotionCfg.RequiredSpeedStep == 0)
+                {
+                    if (log.AutomatedCurrentBlockIndex == log.AutomatedBlockList.Count - 1)
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Complete;
+                        log.StatusLastChanged = DateTime.Now;
+                    }
+                    else
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Waiting;
+                        log.StatusLastChanged = DateTime.Now;
+                    }
                 }
 
                 log.TrainMotionCfg.CurrentSpeedMMS = actualSpeedMMSRequired;
@@ -610,7 +665,7 @@ namespace Shuttler
                 //check sections for allocation and turnout setting
 
                 bool previousSectionAllocated = true;
-                for (int i = log.AutomatedCurrentSectionIndex; i < log.AutomatedCurrentSectionIndex + _sectionsAhead; i++)
+                for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + _sectionsAhead; i++)
                 {
                     sectionCounter++;
                     var section = log.AutomatedSectionList.ElementAtOrDefault(i);
@@ -705,6 +760,17 @@ namespace Shuttler
                                     }
 
                                 }
+                            }
+                            else if (sectionCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
+                            {
+                                //was already allocated so just add the block to allocated blocks
+                                log.AllocatedBlocks.Add(block.userName);
+                                blocksToDecorate.Add(new BlockToDecorate
+                                {
+                                    SetToAlternate = true,
+                                    BlockUserName = block.userName,
+                                    Position = 10
+                                });
                             }
 
                             if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD)
@@ -832,6 +898,7 @@ namespace Shuttler
 
                     //previous speed restrictions first as they should be superceded by current block speed restrictions
                     var previousBlocksStillActive = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.Active && w.Sequence < thisLogBlock.Sequence);
+                    
                     var previousActiveBlockHasSpeedRestriction = false;
                     var previousActiveSpeedRestrictionReason = "";
                     foreach (var pb in previousBlocksStillActive)
@@ -843,15 +910,20 @@ namespace Shuttler
                         var cBlock = bSection.Blocks.FirstOrDefault(f => f.systemName == pb.BlockSystemname);
                         if (cBlock == null) continue;
 
-                        foreach (var to in cBlock.BNL.BNLTurnouts)
+                        var liveBlock = _allBlocks.First(f => f.data.name == cBlock.systemName);
+                        if (liveBlock.data.state == 4)
                         {
-                            if (to.RequiredState == "4")
+                            foreach (var to in cBlock.BNL.BNLTurnouts)
                             {
-                                previousActiveBlockHasSpeedRestriction = true;
-                                previousActiveSpeedRestrictionReason = "Previous block " + cBlock.userName + " still active and has thrown turnout "+to.Name;
+                                if (to.RequiredState == "4")
+                                {
+                                    previousActiveBlockHasSpeedRestriction = true;
+                                    previousActiveSpeedRestrictionReason = "Previous block " + cBlock.userName + " still active and has thrown turnout " + to.Name;
+                                }
                             }
                         }
                     }
+
                     if (previousActiveBlockHasSpeedRestriction)
                     {
                         requiresCustomSpeedValue = true;
@@ -900,6 +972,10 @@ namespace Shuttler
                                 {
                                     //check for allocation                              
                                     issue += "; Allocated to " + value;
+                                }
+                                else if (value.Length == 9)
+                                {
+                                    issue += "; not allocated";
                                 }
                             }
                         }
@@ -951,6 +1027,16 @@ namespace Shuttler
                     {
                         thisLogSectionBlock.BlockContainsDanger = false;
                         thisLogSectionBlock.DangerReason = "";
+                    }
+
+                    if (log.AutomatedCurrentBlockIndex == 0)
+                    {
+                        if ((int)thisLogSectionBlock.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || thisLogSectionBlock.BlockSpeed == 0)
+                        {
+                            thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                            thisLogSectionBlock.AutomatedSpeedReason = "First block";
+                            requiresCustomSpeedValue = true;
+                        }
                     }
 
                     thisLogSectionBlock.CheckSequence = blockCounter;
@@ -1006,6 +1092,12 @@ namespace Shuttler
 
                 if (newAspect != log.SignalAspect)
                 {
+                    if (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger && log.AutomatedTrainRunningStatus ==  AutomatedTrainRunningStatus.Waiting
+                       && (int)newAspect < (int)SignalAspect.Danger) 
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Resuming;
+                        log.StatusLastChanged = DateTime.Now;
+                    }
                     log.SignalAspect = newAspect;
                     log.SignalAspectReason = newAspectReason;
 
@@ -1039,7 +1131,7 @@ namespace Shuttler
 
                         break;
                     case SignalAspect.Caution:
-                        if ((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution || log.AutomatedTrainRunningSpeed == 0)
+                        if ((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution || log.AutomatedTrainRunningSpeed == 0 || log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Waiting)
                         {
                             newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                             newRunningSpeedReason = "Signal set to caution";
@@ -1057,7 +1149,7 @@ namespace Shuttler
                 if (blocksRemainingIncludingCurrent == 2)
                 {
                     //ensure caution to slow towards end
-                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution)
+                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Caution )
                     {
                         newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                         newRunningSpeedReason += "; approaching end of journey";
@@ -1292,6 +1384,13 @@ namespace Shuttler
             var thisLiveStartBlock = _allBlocks.FirstOrDefault(f => f.data.userName == startBlock);
             if (thisLiveStartBlock == null || thisLiveStartBlock.data.value == null) return;
 
+            var thisTrainAlreadyRunning = _logs.Any(a => a.DCCiD == thisLiveStartBlock.data.value.data.userName);
+            if (thisTrainAlreadyRunning)
+            {
+                WriteToLog("Train " + thisLiveStartBlock.data.value.data.userName + " already associated with an existing journey so can't run now");
+                return;
+            }
+
             trainLog.DCCiD = thisLiveStartBlock.data.value.data.userName;
             var rosterEntry = c.Roster.FirstOrDefault(f => f.ID == trainLog.DCCiD);
             if (rosterEntry == null) return;
@@ -1340,9 +1439,42 @@ namespace Shuttler
             var roster = rosterCfG.GetRoster();
             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == trainLog.DCCiD);
 
+            var fullSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerFullMMS");
+            var cautionSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerCautionMMS");
+            var crawlSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerCrawlMMS");
+            var rampDownInterval = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampDownIntervalMS");
+            var rampUpInterval = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpIntervalMS");
+            var rampDownStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampDownStep");
+            var rampUpStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpStep");
+            var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+
+            int fulSpeedMMS = DefaultFullSpeedMMS;
+            int cautionMMS = DefaultCautionMMS;
+            int crawlMMS = DefaultCrawlMMS;
+
+            if (fullSpeed != null)
+            {
+                int.TryParse(fullSpeed.Value, out fulSpeedMMS);
+            }
+            if (cautionSpeed != null)
+            {
+                int.TryParse(cautionSpeed.Value, out cautionMMS);
+            }
+            if (crawlSpeed != null)
+            {
+                int.TryParse(crawlSpeed.Value, out crawlMMS);
+            }
+
+            int trainLengthMM = 0;
+
+            if (trainLength != null)
+            {
+                int.TryParse(trainLength.Value, out trainLengthMM);
+            }
 
             trainLog.TrainMotionCfg.Name = trainLog.Name;
             trainLog.TrainMotionCfg.DCCID = trainLog.DCCiD;
+            trainLog.TrainLengthMM = trainLengthMM;
 
             if (fullInfo != null && fullInfo.Speedprofile != null)
             {
@@ -1352,9 +1484,6 @@ namespace Shuttler
                     decimal prevForwardSpeed = 0.0M;
                     decimal prevReverseSpeed = 0.0M;
                     decimal prevStep = 0.0M;
-                    //var decFSuccess = decimal.TryParse(firstSpeed.Forward, out prevForwardSpeed);
-                    //var decRSuccess = decimal.TryParse(firstSpeed.Reverse, out prevReverseSpeed);
-                    //bool fsSuccess = decimal.TryParse(firstSpeed.Step, out prevStep);
 
                     foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
                     {
@@ -1371,20 +1500,20 @@ namespace Shuttler
 
                         if (fSuccess && rSuccess)
                         {
-                            if ((DefaultCrawlMMS < dForward && DefaultCrawlMMS > prevForwardSpeed))
+                            if ((crawlMMS < dForward && crawlMMS > prevForwardSpeed))
                             {
 
-                                var calc = GetRelativeSpeedPercentage(DefaultCrawlMMS, prevForwardSpeed, dForward);
+                                var calc = GetRelativeSpeedPercentage(crawlMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
                                 trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = calculatedSpeedStep;
                                 trainLog.TrainMotionCfg.ForwardCrawlMMS = calculatedMMS;
                             }
-                            if ((DefaultCrawlMMS < dReverse && DefaultCrawlMMS > prevReverseSpeed))
+                            if ((crawlMMS < dReverse && crawlMMS > prevReverseSpeed))
                             {
 
-                                var calc = GetRelativeSpeedPercentage(DefaultCrawlMMS, prevReverseSpeed, dReverse);
+                                var calc = GetRelativeSpeedPercentage(crawlMMS, prevReverseSpeed, dReverse);
                                 var calculatedMMS = prevReverseSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
@@ -1393,18 +1522,18 @@ namespace Shuttler
                             }
 
 
-                            if ((DefaultCautionMMS < dForward && DefaultCautionMMS > prevForwardSpeed))
+                            if ((cautionMMS < dForward && cautionMMS > prevForwardSpeed))
                             {
-                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS, prevForwardSpeed, dForward);
+                                var calc = GetRelativeSpeedPercentage(cautionMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
                                 trainLog.TrainMotionCfg.ForwardCautionSpeedStep = calculatedSpeedStep;
                                 trainLog.TrainMotionCfg.ForwardCautionMMS = calculatedMMS;
                             }
-                            if ((DefaultCautionMMS < dReverse && DefaultCautionMMS > prevReverseSpeed))
+                            if ((cautionMMS < dReverse && cautionMMS > prevReverseSpeed))
                             {
-                                var calc = GetRelativeSpeedPercentage(DefaultCautionMMS, prevReverseSpeed, dReverse);
+                                var calc = GetRelativeSpeedPercentage(cautionMMS, prevReverseSpeed, dReverse);
                                 var calculatedMMS = prevReverseSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
@@ -1412,18 +1541,18 @@ namespace Shuttler
                                 trainLog.TrainMotionCfg.ReverseCautionMMS = calculatedMMS;
                             }
 
-                            if ((DefaultFullSpeedMMS < dForward && DefaultFullSpeedMMS > prevForwardSpeed))
+                            if ((fulSpeedMMS < dForward && fulSpeedMMS > prevForwardSpeed))
                             {
-                                var calc = GetRelativeSpeedPercentage(DefaultFullSpeedMMS, prevForwardSpeed, dForward);
+                                var calc = GetRelativeSpeedPercentage(fulSpeedMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
                                 trainLog.TrainMotionCfg.ForwardFullSpeedStep = calculatedSpeedStep;
                                 trainLog.TrainMotionCfg.ForwardFullSpeedMMS = calculatedMMS;
                             }
-                            if ((DefaultFullSpeedMMS < dReverse && DefaultFullSpeedMMS > prevReverseSpeed))
+                            if ((fulSpeedMMS < dReverse && fulSpeedMMS > prevReverseSpeed))
                             {
-                                var calc = GetRelativeSpeedPercentage(DefaultFullSpeedMMS, prevReverseSpeed, dReverse);
+                                var calc = GetRelativeSpeedPercentage(fulSpeedMMS, prevReverseSpeed, dReverse);
                                 var calculatedMMS = prevReverseSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
 
@@ -1438,29 +1567,24 @@ namespace Shuttler
                     }
 
                 }
-
-
-                //get speed val
-                //divide by 1000 then x by 128
-
             }
             else
             {
-                decimal speed = new decimal(DefaultCrawlMMS);
+                decimal speed = new decimal(crawlMMS);
                 var asPerc1 = speed / 1000;
                 trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
                 trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = trainLog.TrainMotionCfg.ForwardCrawlSpeedStep;
-                trainLog.TrainMotionCfg.ForwardCrawlMMS = DefaultCrawlMMS;
-                trainLog.TrainMotionCfg.ReverseCrawlMMS = DefaultCrawlMMS;
+                trainLog.TrainMotionCfg.ForwardCrawlMMS = crawlMMS;
+                trainLog.TrainMotionCfg.ReverseCrawlMMS = crawlMMS;
 
-                speed = DefaultCautionMMS;
+                speed = cautionMMS;
                 asPerc1 = speed / 1000;
                 trainLog.TrainMotionCfg.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
                 trainLog.TrainMotionCfg.ReverseCautionSpeedStep = trainLog.TrainMotionCfg.ForwardCautionSpeedStep;
-                trainLog.TrainMotionCfg.ForwardCautionMMS = DefaultCautionMMS;
-                trainLog.TrainMotionCfg.ReverseCautionMMS = DefaultCautionMMS;
+                trainLog.TrainMotionCfg.ForwardCautionMMS = cautionMMS;
+                trainLog.TrainMotionCfg.ReverseCautionMMS = cautionMMS;
 
-                speed = DefaultFullSpeedMMS;
+                speed = fulSpeedMMS;
                 asPerc1 = speed / 1000;
                 trainLog.TrainMotionCfg.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
                 trainLog.TrainMotionCfg.ReverseFullSpeedStep = trainLog.TrainMotionCfg.ForwardFullSpeedStep;
@@ -1468,17 +1592,43 @@ namespace Shuttler
                 trainLog.TrainMotionCfg.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
             }
 
-            trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = 3;
-            trainLog.TrainMotionCfg.RampUpIntervalMS = 200;
-            trainLog.TrainMotionCfg.RampDownIntervalMS = 200;
-            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = 3;
+            int rampUpStepIncrease = 3;
+            int rampUpIntervalMS = 200;
+            int rampDownStepDecrease = 3;
+            int rampDownIntervalMS = 200;
 
+            if (rampDownStep != null)
+            {
+                int.TryParse(rampDownStep.Value, out rampDownStepDecrease);
+            }
+
+            if (rampDownInterval != null)
+            {
+                int.TryParse(rampDownInterval.Value, out rampDownIntervalMS);
+            }
+
+            if (rampUpStep != null)
+            {
+                int.TryParse(rampUpStep.Value, out rampUpStepIncrease);
+            }
+
+            if (rampUpInterval != null)
+            {
+                int.TryParse(rampUpInterval.Value, out rampUpIntervalMS);
+            }
+
+            trainLog.TrainMotionCfg.RampUpSpeedStepIncrease = rampUpStepIncrease;
+            trainLog.TrainMotionCfg.RampUpIntervalMS = rampUpIntervalMS;
+            trainLog.TrainMotionCfg.RampDownIntervalMS = rampDownIntervalMS;
+            trainLog.TrainMotionCfg.RampDownSpeedStepDecrease = rampDownStepDecrease;
 
             trainLog.TrainMotionCfg.CurrentSpeedStep = 0;
             trainLog.TrainMotionCfg.TargetSpeedStep = 0;
             trainLog.TrainMotionCfg.IsActive = true;
 
             trainLog.TimeStarted = DateTime.Now;
+            trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
+            trainLog.StatusLastChanged = DateTime.Now;
 
             string mtIndex = c.GetThrottle(rosterIndex);
             var newThrottle = new Throttle();
@@ -2242,8 +2392,9 @@ namespace Shuttler
         {
             if (lbRunningTransits.SelectedIndex >=0)
             {
-                dynamic rt = lbRunningTransits.SelectedItem as dynamic;
-                var dccId = rt.Value;
+                dynamic rt = lbRunningTransits.SelectedItem ;
+                if (rt == null) return;
+                string dccId = rt.Value;
                 var log = _logs.FirstOrDefault(f => f.DCCiD == dccId);
                 if (log == null) return;
 
@@ -2255,12 +2406,13 @@ namespace Shuttler
                 lblSpeedReason.Text = log.AutomatedTrainSpeedReason;
                 lblSpeedStep.Text = log.TrainMotionCfg.CurrentSpeedStep.ToString()+" / "+log.TrainMotionCfg.TargetSpeedStep.ToString();
                 lblSpeedMMS.Text = decimal.Round(log.TrainMotionCfg.CurrentSpeedMMS, 0, MidpointRounding.AwayFromZero).ToString();
-
+                lblTrainStatus.Text = Enum.GetName(typeof(AutomatedTrainRunningStatus), log.AutomatedTrainRunningStatus);
 
                 var logBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
                 if (logBlock != null)
                 {
                     lblBlockLength.Text = logBlock.BlockLengthMM.ToString();
+                    lblCurrentBlock.Text = logBlock.BlockUserName;
                     lblMmCoveredThisBlock.Text = decimal.Round(logBlock.mmCovered,0,MidpointRounding.AwayFromZero).ToString();
                     if (logBlock.BlockLengthMM > 0)
                     {
@@ -2944,6 +3096,8 @@ namespace Shuttler
                 if (log == null) return;
 
                 log.TrainMotionCfg.IsActive = false;
+                log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Cancelled;
+                log.StatusLastChanged = DateTime.Now;
 
                 foreach (var b in log.AllocatedBlocks)
                 {
@@ -2957,8 +3111,8 @@ namespace Shuttler
                     await webClient.AllocateBlock(bl.systemName, "");
                 }
 
-                _logs.Remove(log);
-                lbRunningTransits.Items.Clear();
+                //_logs.Remove(log);
+                //lbRunningTransits.Items.Clear();
                 lblActiveTransitID.Text = "";
                 lblActiveTransitName.Text = "";
                 lblSignalAspect.Text = "";
@@ -2966,14 +3120,14 @@ namespace Shuttler
                 lblSpeed.Text = "";
                 lblSpeedReason.Text = "";
                 lblSpeedStep.Text = "";
-                foreach (var remainingLog in _logs.ToList())
-                {
-                    lbRunningTransits.Items.Add(new
-                    {
-                        Name = remainingLog.TransitName + " (" + remainingLog.DCCiD + ")",
-                        Value = remainingLog.DCCiD
-                    });
-                }
+                //foreach (var remainingLog in _logs.ToList())
+                //{
+                //    lbRunningTransits.Items.Add(new
+                //    {
+                //        Name = remainingLog.TransitName + " (" + remainingLog.DCCiD + ")",
+                //        Value = remainingLog.DCCiD
+                //    });
+                //}
             }
         }
     }

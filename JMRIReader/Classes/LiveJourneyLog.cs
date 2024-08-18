@@ -43,5 +43,7 @@ namespace JMRIReader.Classes
         public DateTime TimeStarted { get; set; }
 
         public TrainMotionConfig TrainMotionCfg { get; set; }
+
+        public int TrainLengthMM { get; set; }
     }
 }

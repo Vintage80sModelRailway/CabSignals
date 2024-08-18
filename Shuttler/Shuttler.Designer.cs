@@ -65,7 +65,6 @@
             this.lblSpeedStep = new System.Windows.Forms.Label();
             this.btnStopTransit = new System.Windows.Forms.Button();
             this.label9 = new System.Windows.Forms.Label();
-            this.lblCurrentBlockName = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
             this.lblBlockLength = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
@@ -74,6 +73,8 @@
             this.lblmmCoveredPercentLabel = new System.Windows.Forms.Label();
             this.lblmmCoveredPercent = new System.Windows.Forms.Label();
             this.lblSpeedName = new System.Windows.Forms.Label();
+            this.lblCurrentBlock = new System.Windows.Forms.Label();
+            this.lblTrainStatus = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -338,7 +339,7 @@
             // 
             // btnMoveTrain
             // 
-            this.btnMoveTrain.Location = new System.Drawing.Point(575, 148);
+            this.btnMoveTrain.Location = new System.Drawing.Point(1164, 231);
             this.btnMoveTrain.Name = "btnMoveTrain";
             this.btnMoveTrain.Size = new System.Drawing.Size(96, 23);
             this.btnMoveTrain.TabIndex = 28;
@@ -409,7 +410,7 @@
             // 
             // btnStopTransit
             // 
-            this.btnStopTransit.Location = new System.Drawing.Point(475, 178);
+            this.btnStopTransit.Location = new System.Drawing.Point(588, 148);
             this.btnStopTransit.Name = "btnStopTransit";
             this.btnStopTransit.Size = new System.Drawing.Size(89, 23);
             this.btnStopTransit.TabIndex = 35;
@@ -426,14 +427,6 @@
             this.label9.Size = new System.Drawing.Size(39, 13);
             this.label9.TabIndex = 36;
             this.label9.Text = "Block";
-            // 
-            // lblCurrentBlockName
-            // 
-            this.lblCurrentBlockName.AutoSize = true;
-            this.lblCurrentBlockName.Location = new System.Drawing.Point(78, 108);
-            this.lblCurrentBlockName.Name = "lblCurrentBlockName";
-            this.lblCurrentBlockName.Size = new System.Drawing.Size(0, 13);
-            this.lblCurrentBlockName.TabIndex = 37;
             // 
             // label10
             // 
@@ -510,11 +503,31 @@
             this.lblSpeedName.TabIndex = 45;
             this.lblSpeedName.Text = "Spd Name";
             // 
+            // lblCurrentBlock
+            // 
+            this.lblCurrentBlock.AutoSize = true;
+            this.lblCurrentBlock.Location = new System.Drawing.Point(79, 108);
+            this.lblCurrentBlock.Name = "lblCurrentBlock";
+            this.lblCurrentBlock.Size = new System.Drawing.Size(34, 13);
+            this.lblCurrentBlock.TabIndex = 46;
+            this.lblCurrentBlock.Text = "Block";
+            // 
+            // lblTrainStatus
+            // 
+            this.lblTrainStatus.AutoSize = true;
+            this.lblTrainStatus.Location = new System.Drawing.Point(145, 85);
+            this.lblTrainStatus.Name = "lblTrainStatus";
+            this.lblTrainStatus.Size = new System.Drawing.Size(37, 13);
+            this.lblTrainStatus.TabIndex = 47;
+            this.lblTrainStatus.Text = "Status";
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 450);
+            this.Controls.Add(this.lblTrainStatus);
+            this.Controls.Add(this.lblCurrentBlock);
             this.Controls.Add(this.lblSpeedName);
             this.Controls.Add(this.lblmmCoveredPercent);
             this.Controls.Add(this.lblmmCoveredPercentLabel);
@@ -523,7 +536,6 @@
             this.Controls.Add(this.label11);
             this.Controls.Add(this.lblBlockLength);
             this.Controls.Add(this.label10);
-            this.Controls.Add(this.lblCurrentBlockName);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.btnStopTransit);
             this.Controls.Add(this.lblSpeedStep);
@@ -607,7 +619,6 @@
         private System.Windows.Forms.Label lblSpeedStep;
         private System.Windows.Forms.Button btnStopTransit;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.Label lblCurrentBlockName;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label lblBlockLength;
         private System.Windows.Forms.Label label11;
@@ -616,5 +627,7 @@
         private System.Windows.Forms.Label lblmmCoveredPercentLabel;
         private System.Windows.Forms.Label lblmmCoveredPercent;
         private System.Windows.Forms.Label lblSpeedName;
+        private System.Windows.Forms.Label lblCurrentBlock;
+        private System.Windows.Forms.Label lblTrainStatus;
     }
 }

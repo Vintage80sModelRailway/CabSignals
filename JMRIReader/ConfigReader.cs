@@ -121,6 +121,7 @@ namespace JMRIReader
             var eb = tr.BlocksInOrder.LastOrDefault();
             if (eb != null)
                 tr.EndBlock = eb.BlockUserName;
+            tr.userName = sb + " - " + eb;
             return tr;
         }
 
