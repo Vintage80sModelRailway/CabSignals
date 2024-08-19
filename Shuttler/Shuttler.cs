@@ -511,11 +511,14 @@ namespace Shuttler
                         log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Complete;
                         log.StatusLastChanged = DateTime.Now;
                     }
-                    else
+                    else if (log.SignalAspect != SignalAspect.Proceed)
                     {
-                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Waiting;
-                        log.StatusLastChanged = DateTime.Now;
+                        {
+                            log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Waiting;
+                            log.StatusLastChanged = DateTime.Now;
+                        }
                     }
+
                 }
 
                 log.TrainMotionCfg.CurrentSpeedMMS = actualSpeedMMSRequired;
@@ -1227,7 +1230,7 @@ namespace Shuttler
                     var prevLiveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == previousBlock.BlockSystemname);
                     if (prevLiveStateBlock != null)
                     {
-                        if (prevLiveStateBlock.data.state == 2)
+                        if (prevLiveStateBlock.data.state == 4)
                         {
                             previousBlockExited = true;
                         }
@@ -1238,6 +1241,11 @@ namespace Shuttler
                 {
                     percentageOfBlockTraversed = (traversedSoFarMM / lengthMM) * 100;
                 }
+
+                //if (numberOfBlocksRemaining == 0)
+                //{
+                //    //WriteToLog("Length " + lengthMM.ToString() + " trainlength " + log.TrainLengthMM.ToString() + " prevBlockClear " + previousBlockExited.ToString()+" prevb "+previousBlock.BlockUserName);
+                //}
 
                 if (numberOfBlocksRemaining == 0 && (lengthMM < shortBlockThresholdMM))
                 {
@@ -1250,7 +1258,7 @@ namespace Shuttler
                     newRunningSpeedReason = "End of journey - train longer than last block - stopping";
                 }
 
-                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM < currentBlockLog.BlockLengthMM && previousBlockExited)
+                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM < lengthMM && previousBlockExited)
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "End of journey - train wholly in last block - stopping";
@@ -1636,7 +1644,7 @@ namespace Shuttler
                                 trainLog.TrainMotionCfg.ReverseCautionMMS = calculatedMMS;
                             }
 
-                            if ((fulSpeedMMS < dForward && fulSpeedMMS > prevForwardSpeed))
+                            if (fulSpeedMMS < dForward && fulSpeedMMS > prevForwardSpeed)
                             {
                                 var calc = GetRelativeSpeedPercentage(fulSpeedMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
@@ -1663,7 +1671,8 @@ namespace Shuttler
 
                 }
             }
-            else
+            if (fullInfo == null || fullInfo.Speedprofile == null || trainLog.TrainMotionCfg.ForwardCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardCautionSpeedStep == 0 
+                || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardFullSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseFullSpeedStep == 0)
             {
                 decimal speed = new decimal(crawlMMS);
                 var asPerc1 = speed / 1000;
@@ -1753,6 +1762,7 @@ namespace Shuttler
             var tName = transitItem.Name;
             var tSysName = transitItem.Value;
             var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
+            transit.Type = TransitType.Scripted;
             if (transit == null) return;
 
             StartAutoTrain(transit);
@@ -3040,6 +3050,7 @@ namespace Shuttler
             string breadcrumbStart = "";
 
             List<Positionablepoint> anchorPoints = new List<Positionablepoint>();
+            List<Layoutturnout> turnouts = new List<Layoutturnout>();
 
             var trackSegments = config.GetTracksegmentsForBlock(blockName).OrderBy(o => o.Ident).ToList();
 
@@ -3055,6 +3066,16 @@ namespace Shuttler
                     var ap = config.GetTrackLayoutAnchorPoint(ts.Connect2name);
                     anchorPoints.Add(ap);
                 }
+                if (ts.Connect1name.StartsWith("TO"))
+                {
+                    var turnout = config.GetLayuoutTurnout(ts.Connect1name);
+                    turnouts.Add(turnout);
+                }
+                if (ts.Connect2name.StartsWith("TO"))
+                {
+                    var turnout = config.GetLayuoutTurnout(ts.Connect2name);
+                    turnouts.Add(turnout);
+                }
             }
 
             List<string> blockNames = new List<string>();
@@ -3066,6 +3087,17 @@ namespace Shuttler
                     blockNames.Add(ts1.Blockname);
                 if (!blockNames.Contains(ts2.Blockname) && ts2.Blockname != blockName)
                     blockNames.Add(ts2.Blockname);
+            }
+
+            if (blockNames.Count == 0)
+            {
+                foreach (var to in turnouts)
+                {
+                    if (!blockNames.Contains(to.Blockname) && to.Blockname != blockName)
+                    {
+                        blockNames.Add(to.Blockname);
+                    }
+                }
             }
 
             return blockNames;
@@ -3084,6 +3116,9 @@ namespace Shuttler
 
             var route = ViableRoutes.ElementAtOrDefault(routeIndex);
             var transit = config.BuildTransitFromBlockList(route.Blocks);
+            transit.Type = TransitType.Generated;
+            ViableRoutes = new List<ViableRouteList>();
+            lbRoute.Items.Clear();
             StartAutoTrain(transit);
         }
 

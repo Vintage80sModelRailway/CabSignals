@@ -120,7 +120,7 @@
             this.lbStartBlocks.FormattingEnabled = true;
             this.lbStartBlocks.Location = new System.Drawing.Point(1015, 39);
             this.lbStartBlocks.Name = "lbStartBlocks";
-            this.lbStartBlocks.Size = new System.Drawing.Size(192, 186);
+            this.lbStartBlocks.Size = new System.Drawing.Size(192, 342);
             this.lbStartBlocks.TabIndex = 4;
             this.lbStartBlocks.SelectedIndexChanged += new System.EventHandler(this.lbStartBlocks_SelectedIndexChanged);
             // 
@@ -129,7 +129,7 @@
             this.lbDestinationBlocks.FormattingEnabled = true;
             this.lbDestinationBlocks.Location = new System.Drawing.Point(1213, 39);
             this.lbDestinationBlocks.Name = "lbDestinationBlocks";
-            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 186);
+            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 342);
             this.lbDestinationBlocks.TabIndex = 5;
             // 
             // cbAvailableTransits
@@ -242,7 +242,7 @@
             this.lbOutput.FormattingEnabled = true;
             this.lbOutput.Location = new System.Drawing.Point(12, 260);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1375, 147);
+            this.lbOutput.Size = new System.Drawing.Size(665, 147);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
@@ -250,7 +250,7 @@
             this.lbRunningTransits.FormattingEnabled = true;
             this.lbRunningTransits.Location = new System.Drawing.Point(857, 39);
             this.lbRunningTransits.Name = "lbRunningTransits";
-            this.lbRunningTransits.Size = new System.Drawing.Size(152, 186);
+            this.lbRunningTransits.Size = new System.Drawing.Size(152, 342);
             this.lbRunningTransits.TabIndex = 18;
             this.lbRunningTransits.SelectedIndexChanged += new System.EventHandler(this.lbRunningTransits_SelectedIndexChanged);
             // 
@@ -339,7 +339,7 @@
             // 
             // btnMoveTrain
             // 
-            this.btnMoveTrain.Location = new System.Drawing.Point(1164, 231);
+            this.btnMoveTrain.Location = new System.Drawing.Point(1157, 384);
             this.btnMoveTrain.Name = "btnMoveTrain";
             this.btnMoveTrain.Size = new System.Drawing.Size(96, 23);
             this.btnMoveTrain.TabIndex = 28;
@@ -352,7 +352,7 @@
             this.lbRoute.FormattingEnabled = true;
             this.lbRoute.Location = new System.Drawing.Point(701, 39);
             this.lbRoute.Name = "lbRoute";
-            this.lbRoute.Size = new System.Drawing.Size(150, 186);
+            this.lbRoute.Size = new System.Drawing.Size(150, 342);
             this.lbRoute.TabIndex = 29;
             // 
             // lblRoute
@@ -368,7 +368,7 @@
             // btnRoutePrev
             // 
             this.btnRoutePrev.Enabled = false;
-            this.btnRoutePrev.Location = new System.Drawing.Point(702, 234);
+            this.btnRoutePrev.Location = new System.Drawing.Point(700, 384);
             this.btnRoutePrev.Name = "btnRoutePrev";
             this.btnRoutePrev.Size = new System.Drawing.Size(33, 23);
             this.btnRoutePrev.TabIndex = 31;
@@ -379,7 +379,7 @@
             // btnRouteNext
             // 
             this.btnRouteNext.Enabled = false;
-            this.btnRouteNext.Location = new System.Drawing.Point(822, 234);
+            this.btnRouteNext.Location = new System.Drawing.Point(820, 384);
             this.btnRouteNext.Name = "btnRouteNext";
             this.btnRouteNext.Size = new System.Drawing.Size(30, 23);
             this.btnRouteNext.TabIndex = 32;
@@ -390,7 +390,7 @@
             // btnRouteAccept
             // 
             this.btnRouteAccept.Enabled = false;
-            this.btnRouteAccept.Location = new System.Drawing.Point(741, 234);
+            this.btnRouteAccept.Location = new System.Drawing.Point(739, 384);
             this.btnRouteAccept.Name = "btnRouteAccept";
             this.btnRouteAccept.Size = new System.Drawing.Size(75, 23);
             this.btnRouteAccept.TabIndex = 33;

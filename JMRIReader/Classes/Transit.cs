@@ -2,6 +2,7 @@
 // NOTE: Generated code may require at least .NET Framework 4.5 or .NET Core/Standard 2.0.
 using JMRIReader.Classes;
 using System.Collections.Generic;
+using static JMRIReader.Classes.Enums;
 /// <remarks/>
 [System.SerializableAttribute()]
 [System.ComponentModel.DesignerCategoryAttribute("code")]
@@ -22,6 +23,7 @@ public partial class transit
     public List<BlockJourneyLog> BlocksInOrder { get; set; }
     public string StartBlock { get; set; }
     public string EndBlock { get; set; }
+    public TransitType  Type { get; set; }
 
     /// <remarks/>
     public string systemName

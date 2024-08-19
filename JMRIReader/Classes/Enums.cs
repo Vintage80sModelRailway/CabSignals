@@ -29,6 +29,12 @@
             Proceed = 1
         }
 
+        public enum TransitType
+        {
+            Scripted,
+            Generated
+        }
+
         public enum AutomatedTrainRunningStatus
         {
             Starting,
