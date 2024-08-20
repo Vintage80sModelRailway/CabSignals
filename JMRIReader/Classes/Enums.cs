@@ -37,13 +37,13 @@
 
         public enum AutomatedTrainRunningStatus
         {
-            Starting,
-            Waiting,
-            PauseBeforeResume,
-            Resuming,
-            Running,
-            Complete,
-            Cancelled
+            Starting = 1,
+            Waiting = 2,
+            PauseBeforeResume = 3,
+            Resuming = 4,
+            Running = 5,
+            Complete = 6,
+            Cancelled = 7
         }
 
         public enum AutomatedTrainRunningSpeed

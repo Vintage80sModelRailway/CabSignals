@@ -628,19 +628,22 @@ namespace Shuttler
                                 prevForwardSpeed = dForward;
                             }
                             log.TrainMotionCfg.CurrentSpeedMMS = mmPerSecond;
-                            if (mmPerSecond > 0.0M)
+                            var speedStep = log.TrainMotionCfg.RequiredSpeedStep;
+                            if (mmPerSecond == 0.0M)
+                                speedStep = 0;
+
+                            var activeBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
+                            if (activeBlock != null)
                             {
-                                var activeBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
-                                if (activeBlock != null)
+                                activeBlock.SpeedLog.Add(new SpeedStepLog()
                                 {
-                                    activeBlock.SpeedLog.Add(new SpeedStepLog()
-                                    {
-                                        SpeedMMS = mmPerSecond,
-                                        start = DateTime.Now,
-                                        SpeedStep = log.TrainMotionCfg.RequiredSpeedStep
-                                    });
-                                }
+                                    SpeedMMS = mmPerSecond,
+                                    start = DateTime.Now,
+                                    SpeedStep = speedStep
+                                });
+                                WriteToLog("Added spd log step " + speedStep.ToString() + " for " + log.DCCiD);
                             }
+
                         }
                     }
                 }
@@ -703,6 +706,7 @@ namespace Shuttler
 
                     foreach (var block in section.Blocks)
                     {
+
                         var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
 
                         if (block.BNL != null)
@@ -722,33 +726,36 @@ namespace Shuttler
                             string issue = "";
                             bool allocationIssueFound = false;
 
-                            var state = liveStateBlock.data.state;
-                            var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-                            if (state == 2 && sectionCounter > 1) //occupied
+                            if (!section.IsAllocated)
                             {
-                                issue = "Occupied";
-                                if (value.Length > 0) issue += " by " + value;
-                                allocationIssueFound = true;
-                            }
-                            else
-                            {
-                                if (value.Length > 0 && value != log.DCCiD)
+                                var state = liveStateBlock.data.state;
+                                var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
+                                if (state == 2 && blockCounter > 1) //occupied
                                 {
-                                    //check for allocation                              
-                                    issue = "Allocated to " + value;
+                                    issue = "Occupied";
+                                    if (value.Length > 0) issue += " by " + value;
                                     allocationIssueFound = true;
                                 }
-                            }
+                                else
+                                {
+                                    if (value.Length > 0 && value != log.DCCiD)
+                                    {
+                                        //check for allocation                              
+                                        issue = "Allocated to " + value;
+                                        allocationIssueFound = true;
+                                    }
+                                }
 
-                            if (!allocationIssueFound)
-                            {
-                                block.ClearToAllocate = true;
-                                block.AllocationIssue = "";
-                            }
-                            else
-                            {
-                                block.ClearToAllocate = false;
-                                block.AllocationIssue = issue;
+                                if (!allocationIssueFound)
+                                {
+                                    block.ClearToAllocate = true;
+                                    block.AllocationIssue = "";
+                                }
+                                else
+                                {
+                                    block.ClearToAllocate = false;
+                                    block.AllocationIssue = issue;
+                                }
                             }
                         }
                         else
@@ -763,9 +770,10 @@ namespace Shuttler
 
                         foreach (var block in section.Blocks)
                         {
+                            blockCounter++;
                             var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
 
-                            if (sectionCounter > 1 && (liveStateBlock.data.value == null || liveStateBlock.data.value.data.userName != log.DCCiD))
+                            if (blockCounter > 1 && (liveStateBlock.data.value == null || liveStateBlock.data.value.data.userName != log.DCCiD))
                             {
                                 if (!section.IsAllocated)
                                 {
@@ -790,7 +798,7 @@ namespace Shuttler
 
                                 }
                             }
-                            else if (sectionCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
+                            else if (blockCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
                             {
                                 //was already allocated so just add the block to allocated blocks
                                 log.AllocatedBlocks.Add(block.userName);
@@ -854,20 +862,18 @@ namespace Shuttler
                     var positionRelative = log.AutomatedSectionList.Count - position;
 
 
-                    if (positionRelative == 2)
-                    {
-                        foreach (var block in section.Blocks)
-                        {
-                            if ((int)block.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || block.BlockSpeed == 0)
-                            {
-                                block.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
-                                block.AutomatedSpeedReason = "Approaching end of journey";
-                            }
-                        }
-                    }
+                    //if (positionRelative == 2)
+                    //{
+                    //    foreach (var block in section.Blocks)
+                    //    {
+                    //        if ((int)block.BlockSpeed >= (int)AutomatedTrainRunningSpeed.Caution || block.BlockSpeed == 0)
+                    //        {
+                    //            block.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                    //            block.AutomatedSpeedReason = "Approaching end of journey";
+                    //        }
+                    //    }
+                    //}
                 }
-
-
 
                 //check blocks for issues
                 List<block> CheckedBlocks = new List<block>();
@@ -884,6 +890,8 @@ namespace Shuttler
                 
                 var currentOccupiedLogSectionBlock = new block();
                 var currentBlockLog = new BlockJourneyLog();
+
+                blockCounter = 0;
 
                 for (int i = log.AutomatedCurrentBlockIndex; i < log.AutomatedCurrentBlockIndex + blocksRemainingIncludingCurrent; i++)
                 {
@@ -1011,7 +1019,7 @@ namespace Shuttler
                                     //check for allocation                              
                                     issue += "; Allocated to " + value;
                                 }
-                                else if (value.Length == 9)
+                                else if (value.Length == 0)
                                 {
                                     issue += "; not allocated";
                                 }
@@ -1081,7 +1089,7 @@ namespace Shuttler
                     CheckedBlocks.Add(thisLogSectionBlock);
                     previousBlockBNL = thisLogSectionBlock.BNL;
 
-                    if (!requiresCustomSpeedValue && thisLogSectionBlock.AutomatedSpeedReason != "Approaching end of journey")
+                    if (!requiresCustomSpeedValue)
                     {
                         thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                         thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
@@ -1173,10 +1181,16 @@ namespace Shuttler
                         break;
 
                     case SignalAspect.Danger:
-                        if ((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0)
+                        if (((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0) && log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Running)
+
                         {
                             newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
                             newRunningSpeedReason = "Signal aspect set to danger";
+                        }
+                        else if (log.AutomatedTrainRunningStatus < AutomatedTrainRunningStatus.Running)
+                        {
+                            newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                            newRunningSpeedReason = "Signal danger, waiting to resume";
                         }
                         else
                         {
@@ -1293,7 +1307,7 @@ namespace Shuttler
                     newRunningSpeedReason = "Danger block, no train length data, time to ramp to stop";
                 }
 
-                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM > currentBlockLog.BlockLengthMM && previousBlockExited
+                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM < currentBlockLog.BlockLengthMM && previousBlockExited
                         && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
@@ -1674,26 +1688,28 @@ namespace Shuttler
             if (fullInfo == null || fullInfo.Speedprofile == null || trainLog.TrainMotionCfg.ForwardCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardCautionSpeedStep == 0 
                 || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardFullSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseFullSpeedStep == 0)
             {
-                decimal speed = new decimal(crawlMMS);
-                var asPerc1 = speed / 1000;
-                trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = trainLog.TrainMotionCfg.ForwardCrawlSpeedStep;
-                trainLog.TrainMotionCfg.ForwardCrawlMMS = crawlMMS;
-                trainLog.TrainMotionCfg.ReverseCrawlMMS = crawlMMS;
+                WriteToLog("Speed profile not complete for this train - can't run it");
+                return;
+                //decimal speed = new decimal(crawlMMS);
+                //var asPerc1 = speed / 1000;
+                //trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                //trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = trainLog.TrainMotionCfg.ForwardCrawlSpeedStep;
+                //trainLog.TrainMotionCfg.ForwardCrawlMMS = crawlMMS;
+                //trainLog.TrainMotionCfg.ReverseCrawlMMS = crawlMMS;
 
-                speed = cautionMMS;
-                asPerc1 = speed / 1000;
-                trainLog.TrainMotionCfg.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                trainLog.TrainMotionCfg.ReverseCautionSpeedStep = trainLog.TrainMotionCfg.ForwardCautionSpeedStep;
-                trainLog.TrainMotionCfg.ForwardCautionMMS = cautionMMS;
-                trainLog.TrainMotionCfg.ReverseCautionMMS = cautionMMS;
+                //speed = cautionMMS;
+                //asPerc1 = speed / 1000;
+                //trainLog.TrainMotionCfg.ForwardCautionSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                //trainLog.TrainMotionCfg.ReverseCautionSpeedStep = trainLog.TrainMotionCfg.ForwardCautionSpeedStep;
+                //trainLog.TrainMotionCfg.ForwardCautionMMS = cautionMMS;
+                //trainLog.TrainMotionCfg.ReverseCautionMMS = cautionMMS;
 
-                speed = fulSpeedMMS;
-                asPerc1 = speed / 1000;
-                trainLog.TrainMotionCfg.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                trainLog.TrainMotionCfg.ReverseFullSpeedStep = trainLog.TrainMotionCfg.ForwardFullSpeedStep;
-                trainLog.TrainMotionCfg.ForwardFullSpeedMMS = DefaultFullSpeedMMS;
-                trainLog.TrainMotionCfg.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
+                //speed = fulSpeedMMS;
+                //asPerc1 = speed / 1000;
+                //trainLog.TrainMotionCfg.ForwardFullSpeedStep = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                //trainLog.TrainMotionCfg.ReverseFullSpeedStep = trainLog.TrainMotionCfg.ForwardFullSpeedStep;
+                //trainLog.TrainMotionCfg.ForwardFullSpeedMMS = DefaultFullSpeedMMS;
+                //trainLog.TrainMotionCfg.ReverseFullSpeedMMS = DefaultFullSpeedMMS;
             }
 
             int rampUpStepIncrease = 3;
