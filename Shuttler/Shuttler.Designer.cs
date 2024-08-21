@@ -469,7 +469,7 @@
             // lblSpeedMMS
             // 
             this.lblSpeedMMS.AutoSize = true;
-            this.lblSpeedMMS.Location = new System.Drawing.Point(186, 212);
+            this.lblSpeedMMS.Location = new System.Drawing.Point(498, 212);
             this.lblSpeedMMS.Name = "lblSpeedMMS";
             this.lblSpeedMMS.Size = new System.Drawing.Size(66, 13);
             this.lblSpeedMMS.TabIndex = 42;
