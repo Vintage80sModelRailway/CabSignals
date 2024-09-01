@@ -37,6 +37,7 @@
 
         public enum AutomatedTrainRunningStatus
         {
+            Scheduled = 0,
             Starting = 1,
             Waiting = 2,
             PauseBeforeResume = 3,
@@ -66,6 +67,48 @@
             Queued,
             Active,
             Traversed
+        }
+
+        public enum transitsectionwhen
+        {
+             SELECTWHEN = 0,
+             ENTRY = 1,   // On entry to Section
+             EXIT = 2 , // On exit from Section
+             BLOCKENTRY = 3, // On entry to specified Block in the Section
+             BLOCKEXIT = 4, // On exit from specified Block in the Section
+             TRAINSTOP = 5,  // When train stops
+             TRAINSTART = 6, // When train starts 
+             SENSORACTIVE = 7, // When specified Sensor changes to Active
+             SENSORINACTIVE = 8, // When specified Sensor changtes to Inactive
+             PRESTARTDELAY = 9, // delays the throttle going from 0
+             PRESTARTACTION = 10 // Actions timed of prestartdelay
+        }
+
+        public enum transitsectionwhat
+        {
+             SELECTWHAT = 0,
+             PAUSE = 1,    // pause for the number of fast minutes in mDataWhat (e.g. station stop)
+             SETMAXSPEED = 2, // set maximum train speed to value entered
+             SETCURRENTSPEED = 3, // set current speed to target speed immediately - no ramping
+             RAMPTRAINSPEED = 4, // set current speed to target with ramping
+             TOMANUALMODE = 5, // drop out of automated mode, and allow manual throttle control
+             SETLIGHT = 6, // set light on or off
+             STARTBELL = 7,  // start bell (only works with sound decoder, function 1 ON)
+             STOPBELL = 8,   // stop bell (only works with sound decoder, function 1 OFF)
+             SOUNDHORN = 9,  // sound horn for specified number of milliseconds 
+                                                            // (only works with sound decoder, function 2)
+             SOUNDHORNPATTERN = 10, // sound horn according to specified pattern
+                                                                   // (only works with sound decoder, function 2)
+             LOCOFUNCTION = 11,  // execute the specified decoder function
+             SETSENSORACTIVE = 12, // set specified sensor active (offers access to Logix)
+             SETSENSORINACTIVE = 13, // set specified sensor inactive
+             HOLDSIGNAL = 14,    // set specified signalhead or signalmast to HELD
+             RELEASESIGNAL = 15, // set specified signalhead or signalmast to NOT HELD
+             ESTOP = 16,   // set ESTOP
+             PRESTARTRESUME = 17, // Resume after prestart
+             TERMINATETRAIN = 18, // terminate train
+             LOADTRAININFO = 19, // terminate train and run traininfo file
+             FORCEALLOCATEPASSSAFESECTION = 20,  // attempt to force allocation to safesection beyond next safe section.
         }
     }
 }

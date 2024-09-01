@@ -45,5 +45,10 @@ namespace JMRIReader.Classes
         public TrainMotionConfig TrainMotionCfg { get; set; }
 
         public int TrainLengthMM { get; set; }
+        public DateTime StartTime { get; set; }
+        public bool ReverseWhenDone { get; set; }
+        public int ReverseRestartDelaySeconds { get; set; }
+        public bool RestartWhenDone { get; set; }
+
     }
 }

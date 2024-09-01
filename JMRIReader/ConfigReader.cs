@@ -125,7 +125,7 @@ namespace JMRIReader
             return tr;
         }
 
-        public List<transit> GetTransits()
+        public List<transit> GetTransits(string DispatcherPath = "")
         {
             List<transit> trs = new List<transit>();
             var transits = config.Descendants("transit");
@@ -150,15 +150,73 @@ namespace JMRIReader
                     newSection.Section = s;
                     newSection.TransitSection = transitsection;
                     newSection.Blocks = new List<block>();
+                    List<BlockTrigger> BlockTriggers = new List<BlockTrigger>();
+
+                    if (transitsection.transitsectionaction != null && transitsection.transitsectionaction.Count() > 0)
+                    {
+                        foreach (var a in transitsection.transitsectionaction)
+                        {
+                            BlockTrigger bt = new BlockTrigger();
+                            bt.WhatCode = (transitsectionwhat)a.whatcode;
+                            bt.WhenCode = (transitsectionwhen)a.whencode;
+                            bt.WhenData = a.whendata;
+                            bt.WhenString = a.whenstring;
+                            bt.WhatString = a.whatstring;
+                            bt.Fired = false;
+                            switch (a.whatcode)
+                            {
+                                case 19: //trigger another train
+                                    bt.DelayMilliseconds = int.Parse(a.whendata);
+                                    bt.TriggerBlock = a.whenstring;
+                                    if (DispatcherPath != "")
+                                    {
+                                        try
+                                        {
+                                            var filename = DispatcherPath+  a.whatstring;
+                                            if (File.Exists(filename) && DispatcherPath != "")
+                                            {
+                                                XmlDocument dispatch = new XmlDocument();
+                                                dispatch.Load(filename);
+                                                XmlNode dispatchData = dispatch.DocumentElement.SelectSingleNode("/traininfofile/traininfo");
+                                                if (dispatchData != null)
+                                                {
+                                                    var transitName = dispatchData.Attributes["transitid"];
+                                                    //runinreverse
+                                                    var runInReverse = dispatchData.Attributes["runinreverse"];
+                                                    TrainDirection dir = TrainDirection.Forward;
+                                                    if (runInReverse != null && runInReverse.Value != null &&  runInReverse.Value == "yes")
+                                                    {
+                                                        dir = TrainDirection.Reverse;
+                                                    
+                                                    }
+
+                                                    bt.TransitName = transitName.Value;
+                                                    bt.TrainsitTrainDirection = dir;
+                                                }
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+
+                                        }
+                                    }
+
+                                    break;
+                            }
+                            BlockTriggers.Add(bt);
+                        }
+                    }
 
                     foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                     {
                         blockCounter++;
                         block b = GetBlockBySystemName(blockEntry.sName);
+
                         b.SignalAspect = SignalAspect.Proceed;
                         b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                         newSection.Blocks.Add(b);
                         var logEntry = new BlockJourneyLog();
+                        logEntry.BlockTriggers = new List<BlockTrigger>();
                         logEntry.BlockSystemname = b.systemName;
                         logEntry.BlockUserName = b.userName;
                         logEntry.Traversed = false;
@@ -170,6 +228,8 @@ namespace JMRIReader
                         logEntry.BlockLengthMM = b.length;
                         logEntry.PreviousBlockExited = false;
                         logEntry.SpeedLog = new List<SpeedStepLog>();
+                        var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
+                        logEntry.BlockTriggers = thisBlockTriggers;
                         tr.BlocksInOrder.Add(logEntry);
                     }
 

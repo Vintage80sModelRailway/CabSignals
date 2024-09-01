@@ -1,8 +1,9 @@
 ﻿
 // NOTE: Generated code may require at least .NET Framework 4.5 or .NET Core/Standard 2.0.
 using JMRIReader.Classes;
-using System.Collections.Generic;
 using static JMRIReader.Classes.Enums;
+using System.Collections.Generic;
+using System;
 /// <remarks/>
 [System.SerializableAttribute()]
 [System.ComponentModel.DesignerCategoryAttribute("code")]
@@ -10,20 +11,21 @@ using static JMRIReader.Classes.Enums;
 [System.Xml.Serialization.XmlRootAttribute(Namespace = "", IsNullable = false)]
 public partial class transit
 {
+
     private string systemNameField;
 
     private string userNameField;
+    public List<SectionJourneyLog> Sections { get; set; }
+    public List<BlockJourneyLog> BlocksInOrder { get; set; }
+    public string StartBlock { get; set; }
+    public string EndBlock { get; set; }
+    public TransitType Type { get; set; }
 
     private transitTransitsection[] transitsectionField;
 
     private string systemName1Field;
 
     private string userName1Field;
-    public List<SectionJourneyLog> Sections { get; set; }
-    public List<BlockJourneyLog> BlocksInOrder { get; set; }
-    public string StartBlock { get; set; }
-    public string EndBlock { get; set; }
-    public TransitType  Type { get; set; }
 
     /// <remarks/>
     public string systemName
@@ -101,6 +103,8 @@ public partial class transit
 public partial class transitTransitsection
 {
 
+    private transitTransitsectionTransitsectionaction[] transitsectionactionField;
+
     private string sectionnameField;
 
     private byte sequenceField;
@@ -112,7 +116,20 @@ public partial class transitTransitsection
     private string safeField;
 
     private string stopallocatingsensorField;
-    public List<APIBlock> Blocks { get; set; }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlElementAttribute("transitsectionaction")]
+    public transitTransitsectionTransitsectionaction[] transitsectionaction
+    {
+        get
+        {
+            return this.transitsectionactionField;
+        }
+        set
+        {
+            this.transitsectionactionField = value;
+        }
+    }
 
     /// <remarks/>
     [System.Xml.Serialization.XmlAttributeAttribute()]
@@ -197,7 +214,141 @@ public partial class transitTransitsection
             this.stopallocatingsensorField = value;
         }
     }
+}
 
+/// <remarks/>
+[System.SerializableAttribute()]
+[System.ComponentModel.DesignerCategoryAttribute("code")]
+[System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+public partial class transitTransitsectionTransitsectionaction
+{
 
+    private int whencodeField;
+
+    private int whatcodeField;
+
+    private string whendataField;
+
+    private string whenstringField;
+
+    private string whatdata1Field;
+
+    private string whatdata2Field;
+
+    private string whatstringField;
+
+    private string whatstring2Field;
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public int whencode
+    {
+        get
+        {
+            return this.whencodeField;
+        }
+        set
+        {
+            this.whencodeField = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public int whatcode
+    {
+        get
+        {
+            return this.whatcodeField;
+        }
+        set
+        {
+            this.whatcodeField = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whendata
+    {
+        get
+        {
+            return this.whendataField;
+        }
+        set
+        {
+            this.whendataField = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whenstring
+    {
+        get
+        {
+            return this.whenstringField;
+        }
+        set
+        {
+            this.whenstringField = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whatdata1
+    {
+        get
+        {
+            return this.whatdata1Field;
+        }
+        set
+        {
+            this.whatdata1Field = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whatdata2
+    {
+        get
+        {
+            return this.whatdata2Field;
+        }
+        set
+        {
+            this.whatdata2Field = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whatstring
+    {
+        get
+        {
+            return this.whatstringField;
+        }
+        set
+        {
+            this.whatstringField = value;
+        }
+    }
+
+    /// <remarks/>
+    [System.Xml.Serialization.XmlAttributeAttribute()]
+    public string whatstring2
+    {
+        get
+        {
+            return this.whatstring2Field;
+        }
+        set
+        {
+            this.whatstring2Field = value;
+        }
+    }
 }
 
