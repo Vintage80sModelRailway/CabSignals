@@ -41,7 +41,6 @@ namespace JMRIReader.Classes
         public string TerminatedReason { get; set; }
         public bool ProcessingNewBlock { get; set; }     
         public DateTime TimeStarted { get; set; }
-
         public TrainMotionConfig TrainMotionCfg { get; set; }
 
         public int TrainLengthMM { get; set; }
@@ -49,6 +48,9 @@ namespace JMRIReader.Classes
         public bool ReverseWhenDone { get; set; }
         public int ReverseRestartDelaySeconds { get; set; }
         public bool RestartWhenDone { get; set; }
+        public string NextTransit { get; set; }
+        public TrainDirection NextTransitDirection { get; set; }
+        public int NextTransitDelayMS { get; set; }
 
     }
 }

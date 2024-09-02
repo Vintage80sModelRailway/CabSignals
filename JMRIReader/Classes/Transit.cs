@@ -26,6 +26,11 @@ public partial class transit
     private string systemName1Field;
 
     private string userName1Field;
+    public string NextTransit { get; set; }
+    public TrainDirection NextTransitDirection { get; set; }
+    public int NextTransitDelayMS { get; set; }
+
+    public transit GetCopy() { return (transit)this.MemberwiseClone(); }
 
     /// <remarks/>
     public string systemName

@@ -360,6 +360,14 @@ namespace Shuttler
                 foreach (var done in completeLogs)
                 {
                     _logs.Remove(done);
+
+                    if (!string.IsNullOrEmpty(done.NextTransit))
+                    {
+                        WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " + done.NextTransitDelayMS.ToString());
+
+                        var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
+                        StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(done.NextTransitDelayMS));
+                    }
                 }
 
                 lbRunningTransits.Items.Clear();
@@ -669,6 +677,9 @@ namespace Shuttler
                     log.StatusLastChanged = DateTime.Now;
                 }
 
+                if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Scheduled)
+                    continue;
+
                 if (log.AutomatedCurrentBlockIndex == log.AutomatedBlockList.Count-1 && log.TrainMotionCfg.InRampDown == false 
                     && (log.AutomatedTrainRunningSpeed == AutomatedTrainRunningSpeed.Stop || log.AutomatedTrainRunningSpeed == AutomatedTrainRunningSpeed.EmergencyStop) 
                     && log.TrainMotionCfg.CurrentSpeedStep == 0 && log.TrainMotionCfg.RequiredSpeedStep == 0)
@@ -950,10 +961,10 @@ namespace Shuttler
                                         {
                                             WriteToLog("Found block trigger block " + thisLogBlock.BlockUserName + " transit " + bt.TransitName);
                                             var transit = _transits.FirstOrDefault(f => f.userName == bt.TransitName);
-
-                                            transit.Type = TransitType.Scripted;
+                                            var newTransit = config.GetTransit(bt.TransitName, DispatcherPath);
+                                            newTransit.Type = TransitType.Scripted;
                                             WriteToLog("Starting new triggered transit delay "+bt.DelayMilliseconds.ToString());
-                                            StartAutoTrain(transit, bt.TrainsitTrainDirection, DateTime.Now.AddMilliseconds(bt.DelayMilliseconds));
+                                            StartAutoTrain(newTransit, bt.TrainsitTrainDirection, DateTime.Now.AddMilliseconds(bt.DelayMilliseconds));
                                             bt.Fired = true;
                                         }
                                         break;
@@ -1499,10 +1510,13 @@ namespace Shuttler
             LiveJourneyLog trainLog = new LiveJourneyLog();
             trainLog.TrainMotionCfg = new TrainMotionConfig();
             trainLog.AllocatedBlocks = new List<string>();
-            trainLog.AutomatedSectionList = transit.Sections;
+            trainLog.AutomatedSectionList = transit.Sections.ToList();
             trainLog.AutomatedCurrentSectionIndex = 0;
             trainLog.TrainMotionCfg.TrainDirection = direction;
             trainLog.StartTime = StartTime;
+            trainLog.NextTransit = transit.NextTransit;
+            trainLog.NextTransitDirection = transit.NextTransitDirection;
+            trainLog.NextTransitDelayMS = transit.NextTransitDelayMS;
 
             var startBlock = transit.StartBlock;
 
@@ -1510,11 +1524,11 @@ namespace Shuttler
             if (thisLiveStartBlock == null || thisLiveStartBlock.data.value == null) return;
 
             var thisTrainAlreadyRunning = _logs.Any(a => a.DCCiD == thisLiveStartBlock.data.value.data.userName);
-            //if (thisTrainAlreadyRunning)
-            //{
-            //    WriteToLog("Train " + thisLiveStartBlock.data.value.data.userName + " already associated with an existing journey so can't run now");
-            //    return;
-            //}
+            if (thisTrainAlreadyRunning)
+            {
+                WriteToLog("Train " + thisLiveStartBlock.data.value.data.userName + " already associated with an existing journey so can't run now");
+                return;
+            }
 
             trainLog.DCCiD = thisLiveStartBlock.data.value.data.userName;
             var rosterEntry = c.Roster.FirstOrDefault(f => f.ID == trainLog.DCCiD);
@@ -1529,7 +1543,7 @@ namespace Shuttler
             trainLog.CurrentBlock = transit.StartBlock;
             trainLog.NextBlock = nextBlock;
 
-            trainLog.AutomatedBlockList = transit.BlocksInOrder;
+            trainLog.AutomatedBlockList = transit.BlocksInOrder.ToList();
 
             var firstBlockBNL = GetFirstBNL(trainLog.CurrentBlock, trainLog.NextBlock);
             if (firstBlockBNL == null) return;
@@ -1558,7 +1572,10 @@ namespace Shuttler
             trainLog.AutomatedCurrentBlockIndex = 0;
             trainLog.CurrentBlockBNL = firstBlockBNL;
             trainLog.StatusLastChanged = DateTime.Now;
-            trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
+            if (StartTime > DateTime.Now)
+                trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Scheduled;
+            else
+                trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
 
             //get train roster entry
             var rosterCfG = new RosterReader(RosterPath);
@@ -1628,7 +1645,6 @@ namespace Shuttler
                         {
                             if ((crawlMMS < dForward && crawlMMS > prevForwardSpeed))
                             {
-
                                 var calc = GetRelativeSpeedPercentage(crawlMMS, prevForwardSpeed, dForward);
                                 var calculatedMMS = prevForwardSpeed + calc.speed;
                                 var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
@@ -1736,9 +1752,7 @@ namespace Shuttler
             trainLog.TrainMotionCfg.IsActive = true;
 
             trainLog.TimeStarted = DateTime.Now;
-            trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
             trainLog.StatusLastChanged = DateTime.Now;
-
 
             trainLog.TransitName = transit.userName;
 
@@ -1760,14 +1774,15 @@ namespace Shuttler
             var tName = transitItem.Name;
             var tSysName = transitItem.Value;
             var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
-            transit.Type = TransitType.Scripted;
-            if (transit == null) return;
+            var newTransit = config.GetTransit(transit.userName, DispatcherPath);
+
+            newTransit.Type = TransitType.Scripted;
 
             TrainDirection dir = TrainDirection.Forward;
             if (cbTransitTrainDirection.Text == "Reverse")
                 dir = TrainDirection.Reverse;
 
-            StartAutoTrain(transit, dir, DateTime.Now);
+            StartAutoTrain(newTransit, dir, DateTime.Now);
         }
 
         private (decimal percentage, decimal speed) GetRelativeSpeedPercentage(int targetMMS, decimal prevForwardSpeed, decimal thisForwardSpeed)

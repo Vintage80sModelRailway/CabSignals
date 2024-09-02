@@ -24,7 +24,7 @@ namespace JMRIReader
 
         }
 
-        public transit GetTransit(string name)
+        public transit GetTransitOld(string name)
         {
             transit tr = new transit();
             XmlSerializer serial = new XmlSerializer(typeof(transit));            
@@ -74,6 +74,17 @@ namespace JMRIReader
                 tr.Sections.Add(newSection);
             }
             return tr;
+        }
+
+        public transit GetTransit(string name, string DispatcherPath = "")
+        {
+            transit tr = new transit();
+            XmlSerializer serial = new XmlSerializer(typeof(transit));
+            var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
+            var serializer = new XmlSerializer(typeof(transit));
+            tr = (transit)serializer.Deserialize(transit.CreateReader());            
+
+            return PrepareTransit(tr,DispatcherPath);
         }
 
         public transit BuildTransitFromBlockList(List<ViableRouteBlock> blockList)
@@ -133,124 +144,136 @@ namespace JMRIReader
             foreach (var transit in transits)
             {
                 var tr = (transit)serializer.Deserialize(transit.CreateReader());
-                int sectionCounter = -1;
-                int blockCounter = -1;
+                var newT = PrepareTransit(tr, DispatcherPath);
+                trs.Add(newT);
+            }            
+            return trs;
+        }
 
-                foreach (var transitsection in tr.transitsection)
+        private transit PrepareTransit(transit tr, string DispatcherPath)
+        {
+            int sectionCounter = -1;
+            int blockCounter = -1;
+
+            foreach (var transitsection in tr.transitsection)
+            {
+                var newSection = new SectionJourneyLog();
+                sectionCounter++;
+                var hasAlternate = false;
+                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
+                if (nextSection != null && nextSection.alternate == "yes")
                 {
-                    var newSection = new SectionJourneyLog();
-                    sectionCounter++;
-                    var hasAlternate = false;
-                    var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
-                    if (nextSection != null && nextSection.alternate == "yes")
-                    {
-                        hasAlternate = true;
-                    }
-                    section s = GetSectionBySystemName(transitsection.sectionname);
-                    newSection.Section = s;
-                    newSection.TransitSection = transitsection;
-                    newSection.Blocks = new List<block>();
-                    List<BlockTrigger> BlockTriggers = new List<BlockTrigger>();
+                    hasAlternate = true;
+                }
+                section s = GetSectionBySystemName(transitsection.sectionname);
+                newSection.Section = s;
+                newSection.TransitSection = transitsection;
+                newSection.Blocks = new List<block>();
+                List<BlockTrigger> BlockTriggers = new List<BlockTrigger>();
 
-                    if (transitsection.transitsectionaction != null && transitsection.transitsectionaction.Count() > 0)
+                if (transitsection.transitsectionaction != null && transitsection.transitsectionaction.Count() > 0)
+                {
+                    foreach (var a in transitsection.transitsectionaction)
                     {
-                        foreach (var a in transitsection.transitsectionaction)
+                        BlockTrigger bt = new BlockTrigger();
+                        bt.WhatCode = (transitsectionwhat)a.whatcode;
+                        bt.WhenCode = (transitsectionwhen)a.whencode;
+                        bt.WhenData = a.whendata;
+                        bt.WhenString = a.whenstring;
+                        bt.WhatString = a.whatstring;
+                        bt.Fired = false;
+                        switch (a.whatcode)
                         {
-                            BlockTrigger bt = new BlockTrigger();
-                            bt.WhatCode = (transitsectionwhat)a.whatcode;
-                            bt.WhenCode = (transitsectionwhen)a.whencode;
-                            bt.WhenData = a.whendata;
-                            bt.WhenString = a.whenstring;
-                            bt.WhatString = a.whatstring;
-                            bt.Fired = false;
-                            switch (a.whatcode)
-                            {
-                                case 19: //trigger another train
-                                    bt.DelayMilliseconds = int.Parse(a.whendata);
-                                    bt.TriggerBlock = a.whenstring;
-                                    if (DispatcherPath != "")
+                            case 19: //trigger another train
+                                bt.DelayMilliseconds = int.Parse(a.whendata);
+                                bt.TriggerBlock = a.whenstring;
+                                if (DispatcherPath != "")
+                                {
+                                    try
                                     {
-                                        try
+                                        var filename = DispatcherPath + a.whatstring;
+                                        if (File.Exists(filename) && DispatcherPath != "")
                                         {
-                                            var filename = DispatcherPath+  a.whatstring;
-                                            if (File.Exists(filename) && DispatcherPath != "")
+                                            XmlDocument dispatch = new XmlDocument();
+                                            dispatch.Load(filename);
+                                            XmlNode dispatchData = dispatch.DocumentElement.SelectSingleNode("/traininfofile/traininfo");
+                                            if (dispatchData != null)
                                             {
-                                                XmlDocument dispatch = new XmlDocument();
-                                                dispatch.Load(filename);
-                                                XmlNode dispatchData = dispatch.DocumentElement.SelectSingleNode("/traininfofile/traininfo");
-                                                if (dispatchData != null)
+                                                var transitName = dispatchData.Attributes["transitid"];
+                                                //runinreverse
+                                                var runInReverse = dispatchData.Attributes["runinreverse"];
+                                                TrainDirection dir = TrainDirection.Forward;
+                                                if (runInReverse != null && runInReverse.Value != null && runInReverse.Value == "yes")
                                                 {
-                                                    var transitName = dispatchData.Attributes["transitid"];
-                                                    //runinreverse
-                                                    var runInReverse = dispatchData.Attributes["runinreverse"];
-                                                    TrainDirection dir = TrainDirection.Forward;
-                                                    if (runInReverse != null && runInReverse.Value != null &&  runInReverse.Value == "yes")
-                                                    {
-                                                        dir = TrainDirection.Reverse;
-                                                    
-                                                    }
-
-                                                    bt.TransitName = transitName.Value;
-                                                    bt.TrainsitTrainDirection = dir;
+                                                    dir = TrainDirection.Reverse;
                                                 }
+
+                                                bt.TransitName = transitName.Value;
+                                                bt.TrainsitTrainDirection = dir;
                                             }
                                         }
-                                        catch (Exception ex)
-                                        {
-
-                                        }
                                     }
+                                    catch (Exception ex)
+                                    {
 
-                                    break;
-                            }
+                                    }
+                                }
+
+                                break;
+                        }
+                        if (a.whencode == (int)transitsectionwhen.BLOCKENTRY)
                             BlockTriggers.Add(bt);
+                        else if (a.whencode == (int)transitsectionwhen.TRAINSTOP)
+                        {
+                            tr.NextTransit = bt.TransitName;
+                            tr.NextTransitDirection = bt.TrainsitTrainDirection;
+                            tr.NextTransitDelayMS = bt.DelayMilliseconds;
                         }
                     }
-
-                    foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
-                    {
-                        blockCounter++;
-                        block b = GetBlockBySystemName(blockEntry.sName);
-
-                        b.SignalAspect = SignalAspect.Proceed;
-                        b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
-                        newSection.Blocks.Add(b);
-                        var logEntry = new BlockJourneyLog();
-                        logEntry.BlockTriggers = new List<BlockTrigger>();
-                        logEntry.BlockSystemname = b.systemName;
-                        logEntry.BlockUserName = b.userName;
-                        logEntry.Traversed = false;
-                        logEntry.Sequence = blockCounter;
-                        logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                        logEntry.HasAlternate = hasAlternate;
-                        logEntry.SectionSequenceId = sectionCounter;
-                        logEntry.SequenceState = JourneySequenceState.Queued;
-                        logEntry.BlockLengthMM = b.length;
-                        logEntry.PreviousBlockExited = false;
-                        logEntry.SpeedLog = new List<SpeedStepLog>();
-                        var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
-                        logEntry.BlockTriggers = thisBlockTriggers;
-                        tr.BlocksInOrder.Add(logEntry);
-                    }
-
-                    newSection.SectionkUserName = s.userName;
-                    newSection.SectionSystemname = s.systemName;
-                    newSection.HasAlternate = hasAlternate;
-                    newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                    newSection.Sequence = sectionCounter;
-                    newSection.Traversed = false;
-                    tr.Sections.Add(newSection);
                 }
-                var sb = tr.BlocksInOrder.FirstOrDefault();
-                if (sb != null)
-                    tr.StartBlock = sb.BlockUserName;
-                var eb = tr.BlocksInOrder.LastOrDefault();
-                if (eb != null)
-                    tr.EndBlock = eb.BlockUserName;
-                trs.Add(tr);
+
+                foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
+                {
+                    blockCounter++;
+                    block b = GetBlockBySystemName(blockEntry.sName);
+
+                    b.SignalAspect = SignalAspect.Proceed;
+                    b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
+                    newSection.Blocks.Add(b);
+                    var logEntry = new BlockJourneyLog();
+                    logEntry.BlockTriggers = new List<BlockTrigger>();
+                    logEntry.BlockSystemname = b.systemName;
+                    logEntry.BlockUserName = b.userName;
+                    logEntry.Traversed = false;
+                    logEntry.Sequence = blockCounter;
+                    logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                    logEntry.HasAlternate = hasAlternate;
+                    logEntry.SectionSequenceId = sectionCounter;
+                    logEntry.SequenceState = JourneySequenceState.Queued;
+                    logEntry.BlockLengthMM = b.length;
+                    logEntry.PreviousBlockExited = false;
+                    logEntry.SpeedLog = new List<SpeedStepLog>();
+                    var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
+                    logEntry.BlockTriggers = thisBlockTriggers;
+                    tr.BlocksInOrder.Add(logEntry);
+                }
+
+                newSection.SectionkUserName = s.userName;
+                newSection.SectionSystemname = s.systemName;
+                newSection.HasAlternate = hasAlternate;
+                newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
+                newSection.Sequence = sectionCounter;
+                newSection.Traversed = false;
+                tr.Sections.Add(newSection);
             }
-            
-            return trs;
+            var sb = tr.BlocksInOrder.FirstOrDefault();
+            if (sb != null)
+                tr.StartBlock = sb.BlockUserName;
+            var eb = tr.BlocksInOrder.LastOrDefault();
+            if (eb != null)
+                tr.EndBlock = eb.BlockUserName;
+
+            return tr;
         }
 
         public block GetBlockBySystemName(string systemName)
