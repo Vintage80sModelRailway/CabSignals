@@ -126,7 +126,7 @@ namespace Shuttler
             lbRunningTransits.ValueMember = "Value";
             lbRunningTransits.DisplayMember = "Name";
             cautiomBlockPercentToBeginRampDown = 50;
-            dangerBlockPercentToBeginRampDown = 50;
+            dangerBlockPercentToBeginRampDown = 60;
             shortBlockThresholdMM = 320;
         }
 
@@ -818,6 +818,14 @@ namespace Shuttler
                                         allocateFailedAnywhere = true;
                                     }
 
+                                }
+                                else
+                                {
+                                    //section is allocated - ensure allocation was successful as sometimes itgets missed
+                                    if (liveStateBlock.data.value == null || string.IsNullOrEmpty( liveStateBlock.data.value.data.userName))
+                                    {
+                                        await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                    }
                                 }
                             }
                             else if (blockCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))

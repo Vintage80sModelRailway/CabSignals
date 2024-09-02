@@ -74,14 +74,6 @@
             this.lblmmCoveredPercent = new System.Windows.Forms.Label();
             this.lblCurrentBlock = new System.Windows.Forms.Label();
             this.lblTrainStatus = new System.Windows.Forms.Label();
-            this.ddlOnCompletion = new System.Windows.Forms.ComboBox();
-            this.label12 = new System.Windows.Forms.Label();
-            this.tbRestartDelay = new System.Windows.Forms.TextBox();
-            this.label13 = new System.Windows.Forms.Label();
-            this.tbNextTransitDelay = new System.Windows.Forms.TextBox();
-            this.label14 = new System.Windows.Forms.Label();
-            this.ddlNextTransit = new System.Windows.Forms.ComboBox();
-            this.label15 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -99,7 +91,7 @@
             this.lbRoster.FormattingEnabled = true;
             this.lbRoster.Location = new System.Drawing.Point(1393, 39);
             this.lbRoster.Name = "lbRoster";
-            this.lbRoster.Size = new System.Drawing.Size(202, 394);
+            this.lbRoster.Size = new System.Drawing.Size(202, 342);
             this.lbRoster.TabIndex = 1;
             // 
             // btnStart
@@ -127,7 +119,7 @@
             this.lbStartBlocks.FormattingEnabled = true;
             this.lbStartBlocks.Location = new System.Drawing.Point(1015, 39);
             this.lbStartBlocks.Name = "lbStartBlocks";
-            this.lbStartBlocks.Size = new System.Drawing.Size(192, 472);
+            this.lbStartBlocks.Size = new System.Drawing.Size(192, 342);
             this.lbStartBlocks.TabIndex = 4;
             this.lbStartBlocks.SelectedIndexChanged += new System.EventHandler(this.lbStartBlocks_SelectedIndexChanged);
             // 
@@ -136,7 +128,7 @@
             this.lbDestinationBlocks.FormattingEnabled = true;
             this.lbDestinationBlocks.Location = new System.Drawing.Point(1213, 39);
             this.lbDestinationBlocks.Name = "lbDestinationBlocks";
-            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 472);
+            this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 342);
             this.lbDestinationBlocks.TabIndex = 5;
             // 
             // cbAvailableTransits
@@ -216,7 +208,7 @@
             // 
             // btnStartTransit
             // 
-            this.btnStartTransit.Location = new System.Drawing.Point(585, 358);
+            this.btnStartTransit.Location = new System.Drawing.Point(585, 162);
             this.btnStartTransit.Name = "btnStartTransit";
             this.btnStartTransit.Size = new System.Drawing.Size(92, 23);
             this.btnStartTransit.TabIndex = 14;
@@ -247,7 +239,7 @@
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(12, 397);
+            this.lbOutput.Location = new System.Drawing.Point(12, 238);
             this.lbOutput.Name = "lbOutput";
             this.lbOutput.Size = new System.Drawing.Size(665, 147);
             this.lbOutput.TabIndex = 17;
@@ -257,7 +249,7 @@
             this.lbRunningTransits.FormattingEnabled = true;
             this.lbRunningTransits.Location = new System.Drawing.Point(857, 39);
             this.lbRunningTransits.Name = "lbRunningTransits";
-            this.lbRunningTransits.Size = new System.Drawing.Size(152, 472);
+            this.lbRunningTransits.Size = new System.Drawing.Size(152, 342);
             this.lbRunningTransits.TabIndex = 18;
             this.lbRunningTransits.SelectedIndexChanged += new System.EventHandler(this.lbRunningTransits_SelectedIndexChanged);
             // 
@@ -346,7 +338,7 @@
             // 
             // btnMoveTrain
             // 
-            this.btnMoveTrain.Location = new System.Drawing.Point(1158, 521);
+            this.btnMoveTrain.Location = new System.Drawing.Point(1159, 387);
             this.btnMoveTrain.Name = "btnMoveTrain";
             this.btnMoveTrain.Size = new System.Drawing.Size(96, 23);
             this.btnMoveTrain.TabIndex = 28;
@@ -359,7 +351,7 @@
             this.lbRoute.FormattingEnabled = true;
             this.lbRoute.Location = new System.Drawing.Point(701, 39);
             this.lbRoute.Name = "lbRoute";
-            this.lbRoute.Size = new System.Drawing.Size(150, 472);
+            this.lbRoute.Size = new System.Drawing.Size(150, 342);
             this.lbRoute.TabIndex = 29;
             // 
             // lblRoute
@@ -375,7 +367,7 @@
             // btnRoutePrev
             // 
             this.btnRoutePrev.Enabled = false;
-            this.btnRoutePrev.Location = new System.Drawing.Point(701, 521);
+            this.btnRoutePrev.Location = new System.Drawing.Point(703, 387);
             this.btnRoutePrev.Name = "btnRoutePrev";
             this.btnRoutePrev.Size = new System.Drawing.Size(33, 23);
             this.btnRoutePrev.TabIndex = 31;
@@ -386,7 +378,7 @@
             // btnRouteNext
             // 
             this.btnRouteNext.Enabled = false;
-            this.btnRouteNext.Location = new System.Drawing.Point(821, 521);
+            this.btnRouteNext.Location = new System.Drawing.Point(823, 387);
             this.btnRouteNext.Name = "btnRouteNext";
             this.btnRouteNext.Size = new System.Drawing.Size(30, 23);
             this.btnRouteNext.TabIndex = 32;
@@ -397,7 +389,7 @@
             // btnRouteAccept
             // 
             this.btnRouteAccept.Enabled = false;
-            this.btnRouteAccept.Location = new System.Drawing.Point(740, 521);
+            this.btnRouteAccept.Location = new System.Drawing.Point(742, 387);
             this.btnRouteAccept.Name = "btnRouteAccept";
             this.btnRouteAccept.Size = new System.Drawing.Size(75, 23);
             this.btnRouteAccept.TabIndex = 33;
@@ -519,91 +511,11 @@
             this.lblTrainStatus.TabIndex = 47;
             this.lblTrainStatus.Text = "Status";
             // 
-            // ddlOnCompletion
-            // 
-            this.ddlOnCompletion.FormattingEnabled = true;
-            this.ddlOnCompletion.Items.AddRange(new object[] {
-            "Terminate",
-            "Return then terminate",
-            "Return then trigger new"});
-            this.ddlOnCompletion.Location = new System.Drawing.Point(471, 169);
-            this.ddlOnCompletion.Name = "ddlOnCompletion";
-            this.ddlOnCompletion.Size = new System.Drawing.Size(206, 21);
-            this.ddlOnCompletion.TabIndex = 48;
-            this.ddlOnCompletion.SelectedIndexChanged += new System.EventHandler(this.ddlOnCompletion_SelectedIndexChanged);
-            // 
-            // label12
-            // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(475, 150);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(75, 13);
-            this.label12.TabIndex = 49;
-            this.label12.Text = "On completion";
-            // 
-            // tbRestartDelay
-            // 
-            this.tbRestartDelay.Location = new System.Drawing.Point(576, 197);
-            this.tbRestartDelay.Name = "tbRestartDelay";
-            this.tbRestartDelay.Size = new System.Drawing.Size(100, 20);
-            this.tbRestartDelay.TabIndex = 50;
-            // 
-            // label13
-            // 
-            this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(469, 200);
-            this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(83, 13);
-            this.label13.TabIndex = 51;
-            this.label13.Text = "Restart delay (s)";
-            // 
-            // tbNextTransitDelay
-            // 
-            this.tbNextTransitDelay.Location = new System.Drawing.Point(576, 224);
-            this.tbNextTransitDelay.Name = "tbNextTransitDelay";
-            this.tbNextTransitDelay.Size = new System.Drawing.Size(100, 20);
-            this.tbNextTransitDelay.TabIndex = 52;
-            // 
-            // label14
-            // 
-            this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(469, 227);
-            this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(102, 13);
-            this.label14.TabIndex = 53;
-            this.label14.Text = "Next transit delay (s)";
-            // 
-            // ddlNextTransit
-            // 
-            this.ddlNextTransit.Enabled = false;
-            this.ddlNextTransit.FormattingEnabled = true;
-            this.ddlNextTransit.Location = new System.Drawing.Point(471, 273);
-            this.ddlNextTransit.Name = "ddlNextTransit";
-            this.ddlNextTransit.Size = new System.Drawing.Size(205, 21);
-            this.ddlNextTransit.TabIndex = 54;
-            // 
-            // label15
-            // 
-            this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(471, 254);
-            this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(60, 13);
-            this.label15.TabIndex = 55;
-            this.label15.Text = "Next transit";
-            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1602, 556);
-            this.Controls.Add(this.label15);
-            this.Controls.Add(this.ddlNextTransit);
-            this.Controls.Add(this.label14);
-            this.Controls.Add(this.tbNextTransitDelay);
-            this.Controls.Add(this.label13);
-            this.Controls.Add(this.tbRestartDelay);
-            this.Controls.Add(this.label12);
-            this.Controls.Add(this.ddlOnCompletion);
+            this.ClientSize = new System.Drawing.Size(1602, 422);
             this.Controls.Add(this.lblTrainStatus);
             this.Controls.Add(this.lblCurrentBlock);
             this.Controls.Add(this.lblmmCoveredPercent);
@@ -705,13 +617,5 @@
         private System.Windows.Forms.Label lblmmCoveredPercent;
         private System.Windows.Forms.Label lblCurrentBlock;
         private System.Windows.Forms.Label lblTrainStatus;
-        private System.Windows.Forms.ComboBox ddlOnCompletion;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.TextBox tbRestartDelay;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.TextBox tbNextTransitDelay;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.ComboBox ddlNextTransit;
-        private System.Windows.Forms.Label label15;
     }
 }
