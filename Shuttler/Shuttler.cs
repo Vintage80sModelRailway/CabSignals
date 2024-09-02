@@ -1379,11 +1379,6 @@ namespace Shuttler
         {
             if (_startBlocks == null) return;
             var transits = config.GetTransits(DispatcherPath).OrderBy(o => o.userName);
-            ddlNextTransit.Items.Clear();
-            foreach (var t in transits)
-            {
-                ddlNextTransit.Items.Add(t.userName);
-            }
 
             _transits = transits.Where(w => lbStartBlocks.Items.Contains(w.StartBlock)).ToList();
             _transits = transits.Where(w => _startBlocks.Any(a => a.data.userName == w.StartBlock)).ToList();
@@ -3280,25 +3275,5 @@ namespace Shuttler
             }
         }
 
-        private void ddlOnCompletion_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            //Terminate
-            //Return then terminate
-            //Return then trigger new
-
-            switch (ddlOnCompletion.Text)
-            {
-                case "Terminate":
-                    break;
-                case "Return then terminate":
-                    tbRestartDelay.Enabled = true;
-                    break;
-                case "Return then trigger new":
-                    tbRestartDelay.Enabled = true;
-                    tbNextTransitDelay.Enabled = true;
-                    ddlNextTransit.Enabled = true;
-                    break;
-            }
-        }
     }
 }
