@@ -2071,15 +2071,42 @@ namespace LayoutMonitor
                     {
                         alert.BNL = checkAlert;
                     }
-                    
+
                     var checkAlertLiveBlock = await webClient.GetBlock(alert.BNL.BlockChecked);
+                    string currentAlertReason = string.Empty;
+
                     var alertStillActive = false;
-                    if (!string.IsNullOrEmpty(checkAlert.LikelyIssue)) alertStillActive = true;
-                    if (checkAlertLiveBlock.data.state == 2) alertStillActive = true;
-                    if (TrackAllocation && checkAlertLiveBlock.data.value != null && log != null && checkAlertLiveBlock.data.value.data.userName != log.Name) alertStillActive = true;
-                    if (log.CurrentBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null && log.TwoBlocksBNL.LikelyIssue == null)
+                    if (!string.IsNullOrEmpty(checkAlert.LikelyIssue))
                     {
-                        alertStillActive = false;
+                        currentAlertReason = checkAlert.LikelyIssue;
+                        alertStillActive = true;
+                    }
+                    if (checkAlertLiveBlock.data.state == 2)
+                    {
+                        currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " occupied";
+                        alertStillActive = true;
+                    }
+
+                    if (TrackAllocation && checkAlertLiveBlock.data.value != null && log != null && checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
+                    {
+                        currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " allocated to "+ checkAlertLiveBlock.data.value.data.userName;
+                        alertStillActive = true;
+                    }
+
+                    if (log.CurrentBlockBNL.LikelyIssue != null)
+                    {
+                        currentAlertReason += "; " + log.CurrentBlockBNL.LikelyIssue;
+                        alertStillActive = true;
+                    }
+                    if (log.NextBlockBNL.LikelyIssue != null)
+                    {
+                        currentAlertReason += "; " + log.NextBlockBNL.LikelyIssue;
+                        alertStillActive = true;
+                    } 
+                    if  (log.TwoBlocksBNL.LikelyIssue == null)
+                    {
+                        currentAlertReason += "; " + log.TwoBlocksBNL.LikelyIssue;
+                        alertStillActive = true;
                     }
 
                     if (!alertStillActive)
@@ -2088,6 +2115,8 @@ namespace LayoutMonitor
                         DeactivateAlert(alert,true); 
                         continue;
                     }
+
+                    alert.LikelyIssue = currentAlertReason;
 
                     if (alert.Severity == AlertSeverity.Danger)
                     {
