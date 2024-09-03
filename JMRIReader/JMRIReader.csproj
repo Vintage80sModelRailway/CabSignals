@@ -52,6 +52,7 @@
     <Compile Include="Class1.cs" />
     <Compile Include="Classes\APIAllocationBlock.cs" />
     <Compile Include="Classes\APIBlock.cs" />
+    <Compile Include="Classes\APIMemory.cs" />
     <Compile Include="Classes\APISignalMast.cs" />
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
@@ -65,6 +66,7 @@
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\LayoutEditor2.cs" />
     <Compile Include="Classes\LiveJourneyLog.cs" />
+    <Compile Include="Classes\Memory.cs" />
     <Compile Include="Classes\OtherTransit.cs" />
     <Compile Include="Classes\Roster.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />

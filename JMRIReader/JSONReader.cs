@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -47,6 +48,55 @@ namespace JMRIReader
                 var test = ex.Message;
             }
             return blocks;
+        }
+
+        public async Task<Memory> GetMemory(string userName)
+        {
+            Memory mem = new Memory();
+
+            var response = await client.GetAsync("/json/memory/" + userName);
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            try
+            {
+                mem = JsonConvert.DeserializeObject<Memory>(jsonResponse);
+            }
+            catch (Exception ex)
+            {
+                var test = ex.Message;
+            }
+            return mem;
+        }
+
+        public async Task UpdateMemory(string userName, string value)
+        {
+            APIMemory mem = new APIMemory();
+            mem.value = value;
+
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/memory/" + userName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+            // string blockString = new JavaScriptSerializer().Serialize(block);
+
+            var memString = JsonConvert.SerializeObject(mem, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
+            {
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(memString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
+
         }
 
         public BlockRootObject InitialBlockToAPIBlock(BlockRootObjectInitial b)
@@ -105,14 +155,24 @@ namespace JMRIReader
             return bro;
         }
 
-        public async Task AllocateBlock(string systemName, string allocatedValue)
+        public async Task<BlockRootObject> AllocateBlock(string systemName, string allocatedValue, bool isAutomated = false)
         {
             APIAllocationBlock block = new APIAllocationBlock();
             block.value = allocatedValue;
+            var responseBlock = new BlockRootObject();
+
+            //var bd = new BlockValueData();
+            //bd.userName = "Testname";
+            //bd.comment = "Testcomment";
+            //var bv = new BlockValue();
+            //bv.data = bd;
+            //bv.type = "IdTag";
+
+            //block.value = bv;
+
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer+"/json/block/"+systemName);
             httpWebRequest.ContentType = "application/json";
             httpWebRequest.Method = "POST";
-           // string blockString = new JavaScriptSerializer().Serialize(block);
 
             var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
@@ -126,47 +186,15 @@ namespace JMRIReader
                 using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
                 {
                     var result = streamReader.ReadToEnd();
+                    var initBlock = JsonConvert.DeserializeObject<BlockRootObjectInitial>(result);
+                   responseBlock = InitialBlockToAPIBlock(initBlock);
                 }
             }
             catch (Exception ex)
             {
                 var m = ex.Message;
             }
-
-
-
-        }
-
-        public void AllocateBlockOld(string systemName, string allocatedValue)
-        {
-            APIAllocationBlock block = new APIAllocationBlock();
-            block.value = allocatedValue;
-            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/block/" + systemName);
-            httpWebRequest.ContentType = "application/json";
-            httpWebRequest.Method = "POST";
-            // string blockString = new JavaScriptSerializer().Serialize(block);
-
-            var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-
-            try
-            {
-                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
-                {
-                    streamWriter.WriteAsync(blockString);
-                }
-            }
-            catch (Exception ex)
-            {
-                var m = ex.Message;
-            }
-
-            //var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            //using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-            //{
-            //    var result = streamReader.ReadToEnd();
-            //}
-
-
+            return responseBlock;
         }
 
         public async Task<BlockRootObject> GetBlock(string UserName)

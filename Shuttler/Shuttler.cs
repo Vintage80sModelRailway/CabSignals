@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
 using System.Threading.Tasks;
@@ -41,6 +42,7 @@ namespace Shuttler
         private int cautiomBlockPercentToBeginRampDown;
         private int dangerBlockPercentToBeginRampDown;
         private int shortBlockThresholdMM;
+        private string memoryAllocatedTrainsName;
 
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
@@ -102,6 +104,12 @@ namespace Shuttler
                 BlockReleaseTopic = cfgBlockReleaseTopic.ToString();
             }
 
+            var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedTrainsName"];
+            if (cfgMemName != null)
+            {
+                memoryAllocatedTrainsName = cfgMemName.ToString();
+            }
+
             var cfgdefaultCrawlMMS = ConfigurationManager.AppSettings["DefaultCrawlMMS"];
             if (cfgdefaultCrawlMMS != null)
             {
@@ -130,24 +138,32 @@ namespace Shuttler
             shortBlockThresholdMM = 320;
         }
 
-        private void btnTest_Click(object sender, EventArgs e)
+        private async void btnTest_Click(object sender, EventArgs e)
         {
-            //c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
-            //if (webClient == null && c != null && c.WebServerPort > -1)
-            //{
-            //    var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
-            //    webClient = new JSONReader(serverAddress);
-            //    LoadStartBlocks();
-            //    _allBlocks = await webClient.GetBlocks();
-            //}
-            //LoadConfig();
+            c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
+            if (webClient == null && c != null && c.WebServerPort > -1)
+            {
+                var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
+                webClient = new JSONReader(serverAddress);
+                LoadStartBlocks();
+                _allBlocks = await webClient.GetBlocks();
+            }
+            var test = await webClient.AllocateBlock("IB:AUTO:0069", "66");
+            var mem = await webClient.GetMemory("RunningAutomatedTrains");
+
+            if (mem != null)
+            {
+                var val = mem.data.value;
+                var newVal = val + ";test";
+                await webClient.UpdateMemory("RunningAutomatedTrains", newVal);
+            }
+            LoadConfig();
 
             //var emptyBC = new List<List<string>>();
             //var bnl = GetFirstBNL("Yard AC Line 1 Block 1", "AC Yard Exit");
             //var result = SearchForBlock("Yard AC Line 1 Block 1", "UD-AC Station Bay Platform", emptyBC, bnl.EdgeConnector, bnl.EdgeConnectorDirectionConnector,"",0);
 
-            var test = SignalAspect.Proceed;
-            var test2 = test.ToString();
+
         }
 
         private async void RunShuttles()
@@ -174,6 +190,7 @@ namespace Shuttler
                 {
                     var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
                     webClient = new JSONReader(serverAddress);
+                    await webClient.UpdateMemory(memoryAllocatedTrainsName, "");
                     LoadStartBlocks();
                     _allBlocks = await webClient.GetBlocks();
                 }
@@ -228,7 +245,7 @@ namespace Shuttler
 
                         if (nab.data.value == null || existingLog.DCCiD != nab.data.value.data.userName)
                         {
-                            await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD);
+                            var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
                             string prevValue = nab.data.value != null ? nab.data.value.data.userName : "";
                             WriteToLog("Corrected " + nab.data.userName + " block value from " + prevValue + " to " + existingLog.DCCiD);
                         }
@@ -371,7 +388,7 @@ namespace Shuttler
                 }
 
                 lbRunningTransits.Items.Clear();
-                foreach (var log in _logs.OrderBy(o => o.TimeStarted))
+                foreach (var log in _logs.OrderBy(o => o.TimeStarted).ToList())
                 {
                     lbRunningTransits.Items.Add(new
                     {
@@ -693,6 +710,26 @@ namespace Shuttler
                     c.SetThrottleSpeedStep(rosterIndex, 0);
                     c.ReleaseThrottle(rosterIndex);
                     log.Terminated = true;
+
+                    var mem = await webClient.GetMemory(memoryAllocatedTrainsName);
+                    if (mem != null)
+                    {
+                        var idList = mem.data.value.Split(';').ToList();
+                        var instances = idList.Where(f => f ==  log.DCCiD).ToList();
+                        foreach (var instance in instances)
+                        {
+                            idList.Remove(instance);
+                        }
+
+                        var updateString = "";
+                        foreach (var id in idList)
+                        {
+                            if (!string.IsNullOrEmpty(id))
+                                updateString += id + ";";
+                        }
+                        await webClient.UpdateMemory(memoryAllocatedTrainsName, updateString);
+                    }
+                                        
                     WriteToLog("Terminated train " + log.Name);
                     continue;
                 }
@@ -808,9 +845,20 @@ namespace Shuttler
                                             BlockUserName = block.userName,
                                             Position = log.AutomatedBlockList.IndexOf(correspondingLogBlock)
                                         });
-                                        await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                        var responseBlock = await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                        if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
+                                        {
+                                            allocateFailedAnywhere = true;
+                                            WriteToLog("Allocation failure for block " + block.userName);
+                                        }
+
                                         //WriteToLog("Allocated block " + block.userName + " to " + log.Name);
-                                        log.AllocatedBlocks.Add(block.userName);
+                                        else
+                                        {
+                                            WriteToLog("Successful allocation for block " + block.userName + " value " + responseBlock.data.value.data.userName);
+                                            log.AllocatedBlocks.Add(block.userName);
+                                        }
+
                                     }
                                     catch (Exception ex)
                                     {
@@ -819,14 +867,20 @@ namespace Shuttler
                                     }
 
                                 }
-                                else
-                                {
-                                    //section is allocated - ensure allocation was successful as sometimes itgets missed
-                                    if (liveStateBlock.data.value == null || string.IsNullOrEmpty( liveStateBlock.data.value.data.userName))
-                                    {
-                                        await webClient.AllocateBlock(block.systemName, log.DCCiD);
-                                    }
-                                }
+                                //else
+                                //{
+                                //    //section is allocated - ensure allocation was successful as sometimes itgets missed
+                                //    if (liveStateBlock.data.value == null || string.IsNullOrEmpty( liveStateBlock.data.value.data.userName))
+                                //    {
+                                //        var correspondingLogBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                                //        if (correspondingLogBlock.SequenceState == JourneySequenceState.Queued)
+                                //        {
+                                //            WriteToLog("Block allocation failure - " + liveStateBlock.data.userName + " section index " + i.ToString()+" section name "+section.SectionkUserName+" - "+log.DCCiD);
+                                //            await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                //        }
+                                            
+                                //    }
+                                //}
                             }
                             else if (blockCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
                             {
@@ -951,9 +1005,16 @@ namespace Shuttler
                         var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.userName == thisLogBlock.BlockUserName);
                         if (liveStateBlock.data.value == null || liveStateBlock.data.value.data.userName != log.DCCiD)
                         {
-                            await webClient.AllocateBlock(thisLogBlock.BlockSystemname, log.DCCiD);
-                            string prevValue = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-                            WriteToLog("Corrected " + thisLogBlock.BlockUserName + " block value from " + prevValue + " to " + log.DCCiD);
+                            var responseBlock = await webClient.AllocateBlock(thisLogBlock.BlockSystemname, log.DCCiD, true);
+                            if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
+                            {
+                                WriteToLog("Attempted block contents correction failed - " + thisLogBlock.BlockUserName);
+                            }
+                            else
+                            {
+                                string prevValue = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
+                                WriteToLog("Corrected " + thisLogBlock.BlockUserName + " block value from " + prevValue + " to " + log.DCCiD);
+                            }
                         }
 
                         if (thisLogBlock.BlockTriggers != null && thisLogBlock.BlockTriggers.Count > 0)
@@ -1063,6 +1124,11 @@ namespace Shuttler
                                 else if (value.Length == 0)
                                 {
                                     issue += "; not allocated";
+                                    if (thisLogSection.IsAllocated)
+                                    {
+                                        WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
+                                        thisLogSection.IsAllocated = false;
+                                    }
                                 }
                             }
                         }
@@ -1508,7 +1574,7 @@ namespace Shuttler
             }
         }
 
-        private void StartAutoTrain(transit transit, TrainDirection direction, DateTime StartTime)
+        private async void StartAutoTrain(transit transit, TrainDirection direction, DateTime StartTime)
         {
             LiveJourneyLog trainLog = new LiveJourneyLog();
             trainLog.TrainMotionCfg = new TrainMotionConfig();
@@ -1766,6 +1832,35 @@ namespace Shuttler
                 Name = transit.userName + " (" + trainLog.DCCiD + ")",
                 Value = trainLog.DCCiD
             });
+
+            var currentMem = await webClient.GetMemory(memoryAllocatedTrainsName);
+            if (currentMem != null)
+            {
+                string updateVal = string.Empty;
+                var currentVal = currentMem.data.value;
+                if (currentVal != null)
+                {
+                    var currentList = currentVal.Split(';').ToList();
+                    if (!currentList.Contains(trainLog.DCCiD))
+                    {
+                        updateVal = currentVal + ";" + trainLog.DCCiD;
+                    }
+                    else
+                    {
+                        updateVal = currentVal;
+                    }
+                }
+                else
+                {
+                    updateVal = trainLog.DCCiD+";";
+                }
+                await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
+            }
+            else
+            {
+                var updateVal = trainLog.DCCiD + ";";
+                await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
+            }
 
             WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection));
         }

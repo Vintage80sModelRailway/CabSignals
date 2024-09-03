@@ -10,7 +10,9 @@ namespace JMRIReader.Classes
     public class LiveJourneyLog
     {
         public string Name { get; set; }
+        public string OriginalName { get; set; }
         public string DCCiD { get; set; }
+        public string OriginalDCCiD { get; set; }
 
         public string TransitName { get; set; }
         public string PreviousBlock { get; set; }
