@@ -65,3 +65,11 @@ JMRIReader/obj/Debug/JMRIReader.pdb
 /WiiThrottleClient/bin/Release
 /WiiThrottleClient/obj/Release
 /JMRIReader/obj/Release/JMRIReader.csproj.CoreCompileInputs.cache
+/JMRIDebugOutput/obj/Release/DesignTimeResolveAssemblyReferences.cache
+/JMRIDebugOutput/obj/Release/DesignTimeResolveAssemblyReferencesInput.cache
+/JMRIDebugOutput/obj/Release/JMRIDebugOutput.csproj.AssemblyReference.cache
+/JMRIReader/obj/Debug/JMRIReader.csproj.AssemblyReference.cache
+/LayoutMonitor/bin/Debug/LayoutMonitor.exe.config
+/LayoutMonitor/bin/Release/LayoutMonitor.exe.config
+/LayoutMonitor/obj/Debug/LayoutMonitor.csproj.CoreCompileInputs.cache
+/LayoutMonitor/obj/Release/LayoutMonitor.csproj.CoreCompileInputs.cache
