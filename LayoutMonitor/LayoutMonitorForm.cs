@@ -386,7 +386,7 @@ namespace LayoutMonitor
                         //If a train has stopped, remove its log. A new one will be created when it restarts
                         //Stops erroneous alerts when next block of a stopped train becomes active
                         var secondsSinceLastUpdate = DateTime.Now - log.LastUpdated;
-                        if (secondsSinceLastUpdate.TotalSeconds > 120 && !log.IsAutomated && log.SignalAspect != SignalAspect.Danger)
+                        if (secondsSinceLastUpdate.TotalSeconds > 900 && !log.IsAutomated && log.SignalAspect != SignalAspect.Danger)
                         {
                             log.TerminatedReason = "Dormant for 300 seconds";
                             log.Terminated = true;
@@ -485,8 +485,86 @@ namespace LayoutMonitor
                         issueThisBlockDetails = currentBlockRoute.LikelyIssue;
                         if (nextBlock != null) issueNextBlockDetails = nextBlock.LikelyIssue;
                         if (twoBlock != null) issueTwoBlockDetails = twoBlock.LikelyIssue;
+                        string nextBlockCurrentAllocation = string.Empty;
+                        string twoBlockCurrentAllocation = string.Empty;
 
                         var currentBlockcfg = config.GetBlockByUserName(currentBlockRoute.BlockChecked);
+                        if (nextBlock != null)
+                        {
+                            var liveNextBlock = newBlockStates.FirstOrDefault(f => f.data.userName == nextBlock.BlockChecked);
+                            if (liveNextBlock != null)
+                            {
+                                if (liveNextBlock.data.state == 2)
+                                {
+                                    issueFoundNextBlock = true;
+                                    if (liveNextBlock.data.value != null)
+                                    {
+                                        issueNextBlockDetails += "; Occupied by " + liveNextBlock.data.value.data.userName;
+                                    }
+                                    else
+                                    {
+                                        issueNextBlockDetails += "; Occupied";
+                                    }
+
+                                }
+                                else
+                                {
+                                    if (liveNextBlock.data.value != null && !string.IsNullOrEmpty(liveNextBlock.data.value.data.userName))
+                                    {
+                                        nextBlockCurrentAllocation = liveNextBlock.data.value.data.userName;
+                                        if (nextBlockCurrentAllocation != log.DCCiD && nextBlockCurrentAllocation != log.OriginalDCCiD)
+                                        {
+                                            issueFoundNextBlock = true;
+                                            issueNextBlockDetails += "; Allocated to " + liveNextBlock.data.value.data.userName;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        allocateNextBlock = true;
+                                    }
+                                }
+                            }
+                        }
+
+
+                        if (twoBlock != null)
+                        {
+                            var liveTwoBlocks = newBlockStates.FirstOrDefault(f => f.data.userName == twoBlock.BlockChecked);
+                            if (liveTwoBlocks != null)
+                            {
+                                if (liveTwoBlocks.data.state == 2)
+                                {
+                                    issueFoundTwoBlocks = true;
+                                    if (liveTwoBlocks.data.value != null)
+                                    {
+                                        issueTwoBlockDetails += "; Occupied by " + liveTwoBlocks.data.value.data.userName;
+                                    }
+                                    else
+                                    {
+                                        issueTwoBlockDetails += "; Occupied";
+                                    }
+
+                                }
+                                else
+                                {
+                                    if (liveTwoBlocks.data.value != null && !string.IsNullOrEmpty(liveTwoBlocks.data.value.data.userName))
+                                    {
+                                        twoBlockCurrentAllocation = liveTwoBlocks.data.value.data.userName;
+                                        if (twoBlockCurrentAllocation != log.DCCiD && twoBlockCurrentAllocation != log.OriginalDCCiD)
+                                        {
+                                            issueFoundTwoBlocks = true;
+                                            issueTwoBlockDetails += "; Allocated to " + liveTwoBlocks.data.value.data.userName;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        allocateTwoBlocks = true;
+                                    }
+                                }
+                            }
+                        }
+
+
                         //this train could be stopped in a station platform that feeds to a mainline
                         //its next block could be through a turnout that's closed against it
                         //so only check live block allocation if the train has an active path to the next block
@@ -494,7 +572,7 @@ namespace LayoutMonitor
 
                         //only check live blocks every second or two?
                         /*
-                        var timeSinceLastLiveUpdate = DateTime.Now - newLog.LastUpdated;
+                        var timeSinceLastLiveUpdate = DateTime.Now - log.LastUpdated;
                         var liveCurrentBlock = newActiveBlocks.FirstOrDefault(f => f.data.userName == log.CurrentBlock);
 
                         //if (nextBlock != null && !issueFoundNextBlock && timeSinceLastLiveUpdate.Milliseconds > 500)
@@ -623,11 +701,11 @@ namespace LayoutMonitor
                         }
                         else
                         {
-                            if (allocateNextBlock && !issueFoundThisBlock && AllocateBlocks)
+                            if (allocateNextBlock && !issueFoundThisBlock && AllocateBlocks && log.DCCiD != nextBlockCurrentAllocation)
                             {
                                 var nbConfig = config.GetBlockByUserName(currentBlockRoute.BlockFound);
                                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + nbConfig.userName, nbConfig.userName, false);
-                                await webClient.AllocateBlock(nbConfig.userName, "");
+                                await webClient.AllocateBlock(nbConfig.userName, log.DCCiD);
                                 if (!log.AllocatedBlocks.Contains(currentBlockRoute.BlockFound))
                                     log.AllocatedBlocks.Add(currentBlockRoute.BlockFound);
 
@@ -660,13 +738,13 @@ namespace LayoutMonitor
                                         TrainName = log.Name,
                                         TrainId = log.DCCiD
 
-                                    }); ;
+                                    });
                                 }
                             }
                         }
                         else
                         {
-                            if (allocateTwoBlocks && !issueFoundNextBlock && !issueFoundThisBlock && AllocateBlocks)
+                            if (allocateTwoBlocks && !issueFoundNextBlock && !issueFoundThisBlock && AllocateBlocks && log.DCCiD != twoBlockCurrentAllocation)
                             {
                                 var tbConfig = config.GetBlockByUserName(nextBlock.BlockFound);
                                 await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + tbConfig.userName, tbConfig.userName, false);
@@ -772,23 +850,47 @@ namespace LayoutMonitor
             BlockRootObject previousBlock = new BlockRootObject();
 
             LiveJourneyLog existingLog = null;
+            string prevBlockAllocatedId = string.Empty;
 
             var potentialLogs = Log.Where(w => w.NextBlock == block.data.userName);
+            var prevBlockState = allBlocks.FirstOrDefault(f => f.data.name == block.data.name);
+            if (prevBlockState != null && prevBlockState.data.value != null)
+            {
+                prevBlockAllocatedId = prevBlockState.data.value.data.userName;
+            }
+            //lbOutput.Items.Add("New block " + block.data.userName + " previous allocation - " + prevBlockAllocatedId);
             if (potentialLogs != null)
             {
                 if (potentialLogs.Count() == 1)
                 {
                     existingLog = potentialLogs.First();
+                    //lbOutput.Items.Add("Single matching log for " + existingLog.DCCiD);
                 }
-                else
+                else if (potentialLogs.Count() > 1)
                 {
                     var logs = "";
-                    foreach (var log in Log)
+                    foreach (var log in potentialLogs)
                     {
-                        logs += "; " + log.Name;
+                        logs += "; " + log.Name+" - "+log.DCCiD;
                     }
                     lbOutput.Items.Add("More than one potential log for block " + block.data.userName+ " - "+logs);
-                    if (block.data.value != null)
+                    if (prevBlockState != null && prevBlockState.data.value != null)
+                    {
+                        lbOutput.Items.Add("Block previously allocated to " + prevBlockState.data.value.data.userName);
+                        existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName);
+                        if (existingLog != null)
+                            lbOutput.Items.Add("Matched on previous allocation - " + existingLog.DCCiD);
+                        else
+                        {
+                            existingLog = Log.FirstOrDefault(f => f.OriginalDCCiD == prevBlockState.data.value.data.userName);
+                            if (existingLog != null)
+                            {
+                                lbOutput.Items.Add("Matched on previous allocation, original DCC ID - " + existingLog.DCCiD);
+                            }
+                        }
+                    }
+
+                    if (existingLog == null && block.data.value != null)
                     {
                         var potentialsWithThisId = potentialLogs.Where(w => w.DCCiD == block.data.value.data.userName);
                         if (potentialsWithThisId != null && potentialsWithThisId.Count() == 1)
@@ -796,13 +898,13 @@ namespace LayoutMonitor
                             lbOutput.Items.Add("Found by matching id");
                             existingLog = potentialsWithThisId.First();
                         }
-                        else
-                        {
-                            var sorted = potentialLogs.OrderByDescending(o => o.LastUpdated);
-                            existingLog = sorted.FirstOrDefault();
-                            lbOutput.Items.Add("Had to match on most recently updated");
-                        }
-                    }                    
+                    }
+                    if (existingLog == null)
+                    {
+                        var sorted = potentialLogs.OrderByDescending(o => o.LastUpdated);
+                        existingLog = sorted.FirstOrDefault();
+                        lbOutput.Items.Add("Had to match on most recently updated");
+                    }
                 }
             }
 
@@ -2065,7 +2167,7 @@ namespace LayoutMonitor
                             if (!alert.LikelyIssue.Contains(checkAlert.LikelyIssue))
                                 alert.LikelyIssue += checkAlert.LikelyIssue;
                         }
-                        lbOutput.Items.Add("Alert - still active - " + log.Name + " - " + alert.AffectedBlockUserName + " - " + alert.LikelyIssue);
+                        //lbOutput.Items.Add("Alert - still active - " + log.Name + " - " + alert.AffectedBlockUserName + " - " + alert.LikelyIssue);
                     }
                     if (!alertWasFromADifferentPath)
                     {
@@ -2093,17 +2195,17 @@ namespace LayoutMonitor
                         alertStillActive = true;
                     }
 
-                    if (log.CurrentBlockBNL.LikelyIssue != null)
+                    if (!string.IsNullOrEmpty( log.CurrentBlockBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.CurrentBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     }
-                    if (log.NextBlockBNL.LikelyIssue != null)
+                    if (!string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.NextBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     } 
-                    if  (log.TwoBlocksBNL.LikelyIssue == null)
+                    if (!string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.TwoBlocksBNL.LikelyIssue;
                         alertStillActive = true;
