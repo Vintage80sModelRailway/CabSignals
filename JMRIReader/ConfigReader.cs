@@ -92,25 +92,24 @@ namespace JMRIReader
             transit tr = new transit();
             tr.BlocksInOrder = new List<BlockJourneyLog>();
             tr.Sections = new List<SectionJourneyLog>();
+            var onlySection = new SectionJourneyLog();
+            onlySection.Blocks = new List<block>();
+            onlySection.SectionkUserName = "Dynamic transit only section";
+            onlySection.SectionSystemname = "DTS";
+            onlySection.HasAlternate = false;
+            onlySection.PossibleAlternate = false;
+            onlySection.Sequence = 0;
+            onlySection.Traversed = false;
             int counter = -1;
             foreach (var block in blockList)
             {
                 counter++;
                 var configBlock = GetBlockByUserName(block.Blockname);
-                var sec = new section();
-                var secLog = new SectionJourneyLog();
-                secLog.Blocks = new List<block>();
+                //var secLog = new SectionJourneyLog();
+
                 configBlock.SignalAspect = SignalAspect.Proceed;
                 configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
-                secLog.Blocks.Add(configBlock);
-
-                secLog.SectionkUserName = block.Blockname;
-                secLog.SectionSystemname = block.Blockname;
-                secLog.HasAlternate = false;
-                secLog.PossibleAlternate = false;
-                secLog.Sequence = counter;
-                secLog.Traversed = false;
-                tr.Sections.Add(secLog);
+                onlySection.Blocks.Add(configBlock);
 
                 var logEntry = new BlockJourneyLog();
                 logEntry.BlockSystemname = configBlock.systemName;
@@ -119,13 +118,17 @@ namespace JMRIReader
                 logEntry.Sequence = counter;
                 logEntry.PossibleAlternate = false;
                 logEntry.HasAlternate = false;
-                logEntry.SectionSequenceId = counter;
+                logEntry.SectionSequenceId = 0;
                 logEntry.SequenceState = JourneySequenceState.Queued;
                 logEntry.BlockLengthMM = configBlock.length;
                 logEntry.PreviousBlockExited = false;
                 logEntry.SpeedLog = new List<SpeedStepLog>();
                 tr.BlocksInOrder.Add(logEntry);
             }
+            tr.Sections = new List<SectionJourneyLog>
+            {
+                onlySection
+            };
             var sb = tr.BlocksInOrder.FirstOrDefault();
             if (sb != null)
                 tr.StartBlock = sb.BlockUserName;
@@ -158,6 +161,7 @@ namespace JMRIReader
             foreach (var transitsection in tr.transitsection)
             {
                 var newSection = new SectionJourneyLog();
+                newSection.AllocationStatus = AllocationStatus.NotAllocated;
                 sectionCounter++;
                 var hasAlternate = false;
                 var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);

@@ -136,6 +136,10 @@ namespace Shuttler
             cautiomBlockPercentToBeginRampDown = 50;
             dangerBlockPercentToBeginRampDown = 60;
             shortBlockThresholdMM = 320;
+
+            pbBlockProgress.Maximum = 100;
+            pbBlockProgress.Step = 1;
+            pbBlockProgress.Value = 0;
         }
 
         private async void btnTest_Click(object sender, EventArgs e)
@@ -237,9 +241,11 @@ namespace Shuttler
                         {
                             allocatedTo = previousBlockState.data.value.data.userName;
                         }
-                        var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName && f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
+                        //var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName && f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
+                        var existingLog = _logs.FirstOrDefault(f => f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
                         if (existingLog == null)
                         {
+                            WriteToLog("Log lookup failure for block " + nab.data.userName);
                             continue;
                         }
 
@@ -323,6 +329,9 @@ namespace Shuttler
                         logBlock.SequenceState = JourneySequenceState.Active;
                         logBlock.SpeedLog = new List<SpeedStepLog>();
 
+                        if (existingLog.AutomatedBlockList.ElementAt(0).SequenceState == JourneySequenceState.Queued)
+                            existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
+
                         //log the speed the train was going at as it entered the block - for mm covered so far calculations
                         var previousLogBlock = existingLog.AutomatedBlockList.ElementAtOrDefault(existingLog.AutomatedCurrentBlockIndex - 1);
                         if (previousLogBlock != null)
@@ -337,10 +346,9 @@ namespace Shuttler
 
                         existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
 
-                        var allocatedBlockToRemove= existingLog.AllocatedBlocks.FirstOrDefault(w => w == logBlock.BlockUserName);
-                        if (allocatedBlockToRemove != null)
+                        if (existingLog.AllocatedBlocks.Contains(nab.data.userName))
                         {
-                            existingLog.AllocatedBlocks.Remove(allocatedBlockToRemove);
+                            existingLog.AllocatedBlocks.Remove(nab.data.userName);
                         }
 
                         var newBlockBNL = NavigateThroughBlockItems(nab.data.userName, nextBlockName, existingLog.CurrentBlockBNL.EdgeConnector, existingLog.CurrentBlockBNL.EdgeConnectorDirectionConnector, "");
@@ -745,14 +753,13 @@ namespace Shuttler
                 }
 
                 int sectionCounter = 0;
-                int blockCounter = 0;
                 var previousBlockBNL = log.PreviousBlockBNL;
 
 
                 //check sections for allocation and turnout setting
 
                 bool previousSectionAllocated = true;
-                int sectionBlockCounter = log.AutomatedCurrentBlockIndex;
+                int sectionBlockCounter = 0;
 
                 for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + _sectionsAhead; i++)
                 {
@@ -763,6 +770,18 @@ namespace Shuttler
 
                     foreach (var block in section.Blocks)
                     {
+                        var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                        var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
+
+                        if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued)
+                        {
+                            //this block is already active or traversed - just set the flags to not cause any trouble as it won't need to be allocated
+                            block.ClearToAllocate = true;
+                            block.AllocationIssue = "";
+                            sectionBlockCounter++;
+                            continue;
+                        }
+
                         var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
 
                         if (block.BNL != null)
@@ -781,13 +800,12 @@ namespace Shuttler
                         {
                             string issue = "";
                             bool allocationIssueFound = false;
+                            var state = liveStateBlock.data.state;
+                            var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
 
                             if (!section.IsAllocated)
                             {
-                                var state = liveStateBlock.data.state;
-                                var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-
-                                if (state == 2 && sectionBlockCounter > log.AutomatedCurrentBlockIndex) //occupied
+                                if (state == 2 && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
                                 {
                                     issue = block.userName+ " occupied";
                                     if (value.Length > 0) issue += " by " + value;
@@ -801,6 +819,7 @@ namespace Shuttler
                                         issue = block.userName + " allocated to " + value;
                                         allocationIssueFound = true;
                                     }
+                                    
                                 }
 
                                 if (!allocationIssueFound)
@@ -813,6 +832,12 @@ namespace Shuttler
                                     block.ClearToAllocate = false;
                                     block.AllocationIssue = issue;
                                 }
+                            }
+                            else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
+                            {
+                                WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
+                                section.IsAllocated = false;
+                                section.AllocationStatus = AllocationStatus.LostAllocation;
                             }
                         }
                         else
@@ -829,10 +854,31 @@ namespace Shuttler
 
                         foreach (var block in section.Blocks)
                         {
-                            blockCounter++;
-                            var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                            //first block of a transit has to be treated differently as it's already active, so is never triggered as a new block and never gets processed as one
+                            var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                            var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
+                            //if (sectionBlockCounter <= log.AutomatedCurrentBlockIndex)
+                            if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued || indexOfSequenceBlock == 0)
+                            {
+                                //block is already active or traversed, so it's fine that it's not allocated - do nothing
+                                sectionBlockCounter++;
+                                continue;
+                            }
 
-                            if (blockCounter > 1 && (liveStateBlock.data.value == null || liveStateBlock.data.value.data.userName != log.DCCiD))
+                            var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                            if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
+                            {
+                                //was already allocated so just add the block to allocated blocks
+                                log.AllocatedBlocks.Add(block.userName);
+                                blocksToDecorate.Add(new BlockToDecorate
+                                {
+                                    SetToAlternate = true,
+                                    BlockUserName = block.userName,
+                                    Position = 10
+                                });
+                            }
+
+                            else
                             {
                                 if (!section.IsAllocated)
                                 {
@@ -856,7 +902,8 @@ namespace Shuttler
                                         else
                                         {
                                             WriteToLog("Successful allocation for block " + block.userName + " value " + responseBlock.data.value.data.userName);
-                                            log.AllocatedBlocks.Add(block.userName);
+                                            if (!log.AllocatedBlocks.Contains(block.userName))
+                                                log.AllocatedBlocks.Add(block.userName);
                                         }
 
                                     }
@@ -867,32 +914,8 @@ namespace Shuttler
                                     }
 
                                 }
-                                //else
-                                //{
-                                //    //section is allocated - ensure allocation was successful as sometimes itgets missed
-                                //    if (liveStateBlock.data.value == null || string.IsNullOrEmpty( liveStateBlock.data.value.data.userName))
-                                //    {
-                                //        var correspondingLogBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
-                                //        if (correspondingLogBlock.SequenceState == JourneySequenceState.Queued)
-                                //        {
-                                //            WriteToLog("Block allocation failure - " + liveStateBlock.data.userName + " section index " + i.ToString()+" section name "+section.SectionkUserName+" - "+log.DCCiD);
-                                //            await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
-                                //        }
-                                            
-                                //    }
-                                //}
                             }
-                            else if (blockCounter > 1 && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
-                            {
-                                //was already allocated so just add the block to allocated blocks
-                                log.AllocatedBlocks.Add(block.userName);
-                                blocksToDecorate.Add(new BlockToDecorate
-                                {
-                                    SetToAlternate = true,
-                                    BlockUserName = block.userName,
-                                    Position = 10
-                                });
-                            }
+
 
                             if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD)
                             {
@@ -932,14 +955,45 @@ namespace Shuttler
                                 }
 
                             }
+                            sectionBlockCounter++;
                         }
                         if (!allocateFailedAnywhere)
+                        {
                             section.IsAllocated = true;
+                            section.AllocationStatus = AllocationStatus.Allocated;
+                            previousSectionAllocated = true;
+                        }
+                            
                         else
+                        {
                             previousSectionAllocated = false;
+                            section.AllocationStatus = AllocationStatus.NotAllocated;
+                        }
+                            
                     }
                     else
+                    {
+                        if (sectionContainsUnallocatableBlock)
+                        {
+                            section.AllocationStatus = AllocationStatus.NotAvailable;
+                            section.AllocationStatusReason = "Section contains unallocatable block";
+                            //WriteToLog("Section " + section.SectionkUserName + " unallocatable due to unallocatable block");
+                        }
+                        if (errorDuringBlockChecking)
+                        {
+                            section.AllocationStatus = AllocationStatus.NotAllocated;
+                            section.AllocationStatusReason = "Error during block checking";
+                            WriteToLog("Section " + section.SectionkUserName + " unallocatable due to error during block checking");
+                        }
+                        if (!previousSectionAllocated)
+                        {
+                            section.AllocationStatus = AllocationStatus.NotAllocated;
+                            section.AllocationStatusReason = "Previous section unallocated";
+                            WriteToLog("Section " + section.SectionkUserName + " unallocatable due to previous section being unallocated");
+                        }
                         previousSectionAllocated = false;
+                    }
+                        
 
                     //Go down to caution in penultimate section
                     var position = log.AutomatedSectionList.IndexOf(section);
@@ -962,7 +1016,7 @@ namespace Shuttler
                 var currentOccupiedLogSectionBlock = new block();
                 var currentBlockLog = new BlockJourneyLog();
 
-                blockCounter = 0;
+                int blockCounter = 0;
 
                 for (int i = log.AutomatedCurrentBlockIndex; i < log.AutomatedCurrentBlockIndex + blocksRemainingIncludingCurrent; i++)
                 {
@@ -1124,11 +1178,11 @@ namespace Shuttler
                                 else if (value.Length == 0)
                                 {
                                     issue += "; not allocated";
-                                    if (thisLogSection.IsAllocated)
-                                    {
-                                        WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
-                                        thisLogSection.IsAllocated = false;
-                                    }
+                                    //if (thisLogSection.IsAllocated)
+                                    //{
+                                    //    WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
+                                    //    thisLogSection.IsAllocated = false;
+                                    //}
                                 }
                             }
                         }
@@ -2644,7 +2698,12 @@ namespace Shuttler
                     if (logBlock.BlockLengthMM > 0)
                     {
                         var perc = (logBlock.mmCovered / logBlock.BlockLengthMM) * 100;
-                        lblmmCoveredPercent.Text = decimal.Round(perc,0,MidpointRounding.AwayFromZero).ToString();
+                        var percRounded = decimal.Round(perc, 0, MidpointRounding.AwayFromZero);
+                        lblmmCoveredPercent.Text = percRounded.ToString();
+                        int pbVal = (int)percRounded;
+                        if (pbVal > 100) pbVal = 100;
+                        if (pbVal < 0) pbVal = 0;
+                        pbBlockProgress.Value = pbVal;
                     }
                     else
                     {

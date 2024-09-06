@@ -13,7 +13,6 @@ namespace JMRIReader.Classes
         public string OriginalName { get; set; }
         public string DCCiD { get; set; }
         public string OriginalDCCiD { get; set; }
-
         public string TransitName { get; set; }
         public string PreviousBlock { get; set; }
         public string CurrentBlock { get; set; }
@@ -23,6 +22,8 @@ namespace JMRIReader.Classes
         public int AutomatedCurrentSectionIndex { get; set; }
         public List<SectionJourneyLog> AutomatedSectionList { get; set; }
         public SignalAspect SignalAspect { get; set; }
+        public AllocationStatus NextSectionAllocationStatus { get; set; }
+        public string NextSectionAllocationStatusReason { get; set; }
         public string SignalAspectReason { get; set; }
         public AutomatedTrainRunningStatus AutomatedTrainRunningStatus { get; set; }
         public string AutomatedTrainStatusReason { get; set; }

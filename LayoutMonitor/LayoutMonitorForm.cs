@@ -252,7 +252,7 @@ namespace LayoutMonitor
 
             if (newActiveThisTimeBlocks.Count() > 1)
             {
-                lbOutput.Items.Add("Multi block");
+               // lbOutput.Items.Add("Multi block");
                 List<int> p1Logs = new List<int>();
                 foreach (var nnab in newActiveThisTimeBlocks)
                 {
@@ -262,7 +262,7 @@ namespace LayoutMonitor
                     var matchingLog = Log.FirstOrDefault(f => f.NextBlock == nnab.data.userName);
                     if (matchingLog != null)
                     {
-                        lbOutput.Items.Add("Added p1 "+nnab.data.userName);
+                        //lbOutput.Items.Add("Added p1 "+nnab.data.userName);
                         nnab.MultiBlockLogIndex = Log.IndexOf(matchingLog);
                         nnab.MultiBlockPriority = 1;
                         nnab.HasMultiBlockSuccessor = false;
@@ -301,7 +301,7 @@ namespace LayoutMonitor
                                             if (pathBlock.block == nnab.data.name)
                                             {
                                                 foundConnection = true;
-                                                lbOutput.Items.Add("matched p2 " + nnab.data.userName + " via path block matching to log " + el.Name);
+                                                //lbOutput.Items.Add("matched p2 " + nnab.data.userName + " via path block matching to log " + el.Name);
                                             }
                                         }
                                         if (foundConnection)
@@ -318,7 +318,7 @@ namespace LayoutMonitor
                         }
                         if (!foundConnection)
                         {
-                            lbOutput.Items.Add("Added p2 with no index " + nnab.data.userName);
+                            //lbOutput.Items.Add("Added p2 with no index " + nnab.data.userName);
                         }
                         nnab.MultiBlockPriority = 2;
                         newBlocksToProcess.Add(nnab);
@@ -337,14 +337,6 @@ namespace LayoutMonitor
             }
 
             bool foundNewActiveBlock = false;
-
-            //Pick up newly allocated blocks to automated trains and clean them up
-            //var allocatedBlocks = newBlockStates.Where(w => w.data.value != null && w.data.value.type == "rosterEntry");
-            //foreach (var ab in allocatedBlocks)
-            //{
-            //    //lbOutput.Items.Add("New allocated block detected - cleaning up - " + ab.data.value.data.userName);
-            //    await webClient.AllocateBlock(ab.data.name, ab.data.value.data.userName);
-            //}
 
             foreach (var nab in newBlocksToProcess.OrderBy(o => o.MultiBlockPriority).ToList())
             {
@@ -387,29 +379,25 @@ namespace LayoutMonitor
                         //If a train has stopped, remove its log. A new one will be created when it restarts
                         //Stops erroneous alerts when next block of a stopped train becomes active
                         var secondsSinceLastUpdate = DateTime.Now - log.LastUpdated;
-                        if (secondsSinceLastUpdate.TotalSeconds > 900 && !log.IsAutomated && log.SignalAspect != SignalAspect.Danger)
+                        if (secondsSinceLastUpdate.TotalSeconds > 240 && !log.IsAutomated && log.SignalAspect != SignalAspect.Danger)
                         {
-                            log.TerminatedReason = "Dormant for 300 seconds";
+                            log.TerminatedReason = "Dormant for 240 seconds";
                             log.Terminated = true;
 
                         }
 
-                        //Is the block this train is supposed to be in still active?
-                        //If this and the next block are inactive it can be terminated
-                        /*
-                        var thisLiveBlock = newBlockStates.FirstOrDefault(f => f.data.userName == log.CurrentBlock);
-                        var nexLivetBlock = newBlockStates.FirstOrDefault(f => f.data.userName == log.NextBlock);
-                        if (thisLiveBlock.data.state == 4 && nexLivetBlock.data.state == 4) //4 = innactive
-                        {
-                            log.Terminated = true;
-                            log.TerminatedReason = "No occupancy in currently tracked blocks";
-                        }
-                        */
+                        //in case it's needed - could refresh memory variable for automated trains and if the log DCC ID is no longer in it, terminate the log
 
+                        //if (existingLog.IsAutomated && !automatedIDs.Contains(existingLog.DCCiD))
+                        //{
+                        //    lbOutput.Items.Add("Detected end of journey for " + existingLog.DCCiD);
+                        //    existingLog.Terminated = true;
+                        //    existingLog.TerminatedReason = "Detected end of automated train journey";
+                        //    return (true, "End of automated train journey");
+                        //}
 
                         if (log.CurrentBlockBNL == null || log.NextBlockBNL == null || log.TwoBlocksBNL == null) continue;
                         else if (log.IsAutomated) continue;
-
 
                         var issueFoundThisBlock = false;
                         var issueFoundNextBlock = false;
@@ -780,16 +768,31 @@ namespace LayoutMonitor
             blockLog.History = new List<string>();
             blockLog.AllocatedBlocks = new List<string>();
             BlockRootObject previousBlock = new BlockRootObject();
+            bool okToRenameLog = true;
 
             LiveJourneyLog existingLog = null;
             string prevBlockAllocatedId = string.Empty;
 
             var potentialLogs = Log.Where(w => w.NextBlock == block.data.userName);
             var prevBlockState = allBlocks.FirstOrDefault(f => f.data.name == block.data.name);
+
+            var automatedIDs = new List<string>();
+
+            var automatedMem = await webClient.GetMemory(memoryAllocatedTrainsName);
+            if (automatedMem != null)
+            {
+                var currentVal = automatedMem.data.value;
+                if (currentVal != null)
+                {
+                    automatedIDs = automatedMem.data.value.Split(';').ToList();
+                }
+            }
+
             if (prevBlockState != null && prevBlockState.data.value != null)
             {
                 prevBlockAllocatedId = prevBlockState.data.value.data.userName;
                 //lbOutput.Items.Add("Block previously allocated to " + prevBlockState.data.value.data.userName);
+
                 existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName);
                 if (existingLog == null)
                 {
@@ -798,6 +801,42 @@ namespace LayoutMonitor
 
                 if (existingLog != null)
                 {
+                    if (prevBlockState.data.state == 2)
+                    {
+                        lbOutput.Items.Add("Previous block state was active so might not be reliable as an allocation");
+                    }
+
+                    var blockIsForAutomatedTrain = automatedIDs.Contains(prevBlockAllocatedId);
+
+                    if (existingLog.IsAutomated != blockIsForAutomatedTrain)
+                    {
+                        lbOutput.Items.Add("Automation mismatch " + prevBlockAllocatedId + " - automated =  " + blockIsForAutomatedTrain.ToString() + " log isAutomated = " + existingLog.IsAutomated.ToString()+ " for "+block.data.userName);
+                    }
+
+                    if (block.data.value == null)
+                    {
+                        lbOutput.Items.Add("Null data value for " + prevBlockAllocatedId + " - potentially a late update for block "+block.data.userName);
+                    }
+                    else
+                    {
+                        if (block.data.value.data.userName != existingLog.DCCiD)
+                        {
+                            int testId = -1;
+                            var newIdIsInt = int.TryParse(block.data.value.data.userName, out testId);
+                            if (existingLog.Name.StartsWith("M-") && newIdIsInt)
+                            {
+                                lbOutput.Items.Add("Potentially correct rename from original manual name, new ID " + block.data.value.data.userName + " old " + existingLog.DCCiD + " block " + block.data.userName);
+                            }
+                            else
+                            {
+                                //lbOutput.Items.Add("Possible incorrect block value - " + block.data.value.data.userName + " - block " + block.data.userName + " - should remain as " + prevBlockAllocatedId);
+                                lbOutput.Items.Add("Potential incorrect block value - log value " + existingLog.DCCiD + " new block value " + block.data.value.data.userName + " block " + block.data.userName);
+                                okToRenameLog = false;
+                            }
+
+                        }
+                    }
+
                     //JMRI can get the ID wrong after a double slip so worth checking
                     if (existingLog.NextBlock == block.data.userName)
                     {
@@ -805,17 +844,44 @@ namespace LayoutMonitor
                     }
                     else
                     {
-                        //possible wrong assignment of ID
-                        var remainingPotentialLogs = potentialLogs.Where(w => w.DCCiD != prevBlockState.data.value.data.userName);
-                        lbOutput.Items.Add("Potential incorrect ID - remaining logs = " + remainingPotentialLogs.Count().ToString());
-                        if (remainingPotentialLogs.Count() == 1 )
+                        //this could be the resumption of an auto train which could be heading in the opposite direction so would confuse next block etc.
+                        if (existingLog.IsAutomated)
                         {
-                            existingLog = remainingPotentialLogs.First();
-                            lbOutput.Items.Add("Remapped log on assumption of late / incorrect ID assignment - " + block.data.userName + " to " + existingLog.DCCiD);
+                            if (automatedIDs.Contains(existingLog.DCCiD))
+                            {
+                                lbOutput.Items.Add("Probably the resumption of an auto train");
+                            }
                         }
-                        else
+
+                        //possible wrong assignment of ID
+                        if (!string.IsNullOrEmpty(existingLog.NextBlock))
                         {
-                            lbOutput.Items.Add("not able to match on previous allocation due to ID error, resorting to default");
+                            if (automatedIDs.Contains(prevBlockAllocatedId))
+                            {
+                                var automatedLogs = Log.Where(w => w.IsAutomated == true && w.DCCiD == prevBlockAllocatedId);
+                                lbOutput.Items.Add("Allocation was for an automated train ID " + prevBlockAllocatedId + " - number of logs found for automated train = " + automatedLogs.Count().ToString());
+                                if (automatedLogs.Count() == 1)
+                                {
+                                    existingLog = automatedLogs.First();
+                                }
+                                else
+                                {
+                                    lbOutput.Items.Add("Still no luck, referring to default");
+                                }
+                            }
+                            else
+                            {
+                                var manualLogs = Log.Where(w => w.IsAutomated == false && w.DCCiD == prevBlockAllocatedId);
+                                lbOutput.Items.Add("Not an automated train ID = " + prevBlockAllocatedId + " - number of logs found for automated train = " + manualLogs.Count().ToString());
+                                if (manualLogs.Count() == 1)
+                                {
+                                    existingLog = manualLogs.First();
+                                }
+                                else
+                                {
+                                    lbOutput.Items.Add("Still no luck, referring to default");
+                                }
+                            }
                         }
                     }
                 }
@@ -865,33 +931,6 @@ namespace LayoutMonitor
                     lbOutput.Items.Add("ID matched by pure ID - maybe an automated train " + block.data.userName + " to " + existingLog.DCCiD);
             }
 
-            //if (block.data.value != null)
-            //{
-            //    existingLog = Log.FirstOrDefault(f => f.DCCiD == block.data.value.data.userName && f.NextBlock == block.data.userName);
-            //}
-
-            //if (existingLog == null)
-            //{
-            //    if (block.MultiBlockLogIndex >=0)
-            //    {
-            //        existingLog = Log.ElementAtOrDefault(block.MultiBlockLogIndex);
-            //    }
-            //}
-
-            //if (existingLog == null)
-            //{
-            //   existingLog = Log.OrderByDescending(o => o.LastUpdated).FirstOrDefault(f => f.NextBlock == block.data.userName);
-            //}
-
-            //if (existingLog == null)
-            //{
-            //    //in exceptional circumstances - short block and late value addition by JMRI, we can end up processing the second of two active blocks - try to link them up anyway
-            //    if (block.data.value == null)
-            //    {
-            //        existingLog = Log.OrderByDescending(o => o.LastUpdated).FirstOrDefault(f => f.NextNextBlock == block.data.userName);
-            //    }
-            //}
-
             if (existingLog == null)
             {
                 handlingNewTrain = true;
@@ -912,49 +951,27 @@ namespace LayoutMonitor
                         blockLog.OriginalName = block.data.value.data.userName;
                         blockLog.OriginalDCCiD = block.data.value.data.comment;
                     }
-                    //else
-                    //{
-                    //    //blockLog.Name = "NK";
-                    //    var index = block.data.userName.IndexOf(' ');
-                    //    var prefix = block.data.userName.Substring(0, index);
-                    //    blockLog.Name = prefix;
-                    //    blockLog.DCCiD = prefix;
-                    //    blockLog.OriginalName = prefix;
-                    //    blockLog.OriginalDCCiD = prefix;
-                    //}
                 }
                 else
                 {
                     var index = block.data.userName.IndexOf(' ');
                     var prefix = block.data.userName.Substring(0, index);
-                    blockLog.Name = prefix;
+                    blockLog.Name = "M-"+prefix;
                     blockLog.DCCiD = prefix;
-                    blockLog.OriginalName = prefix;
+                    blockLog.OriginalName = "M-"+prefix;
                     blockLog.OriginalDCCiD = prefix;
                 }
 
-                var automatedMem = await webClient.GetMemory(memoryAllocatedTrainsName);
-                if (automatedMem != null)
+                if (automatedIDs.Contains(blockLog.DCCiD))
                 {
-                    string updateVal = string.Empty;
-                    var currentVal = automatedMem.data.value;
-                    if (currentVal != null)
-                    {
-                        var idList = automatedMem.data.value.Split(';').ToList();
-                        if (idList.Contains(blockLog.DCCiD))
-                        {
-                            blockLog.IsAutomated = true;
-                            ListViewItem aItem = new ListViewItem();
-                            aItem.Text = blockLog.Name + " - automated train - not tracking";
-                            aItem.BackColor = Color.LimeGreen;
+                    blockLog.IsAutomated = true;
+                    ListViewItem aItem = new ListViewItem();
+                    aItem.Text = blockLog.Name + " - automated train - not tracking";
+                    aItem.BackColor = Color.LimeGreen;
 
-                            lvUpdates.Items.Add(aItem);
-                            lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                            lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-                            //Log.Add(blockLog);
-                            //return (false, "Automated train");
-                        }
-                    }
+                    lvUpdates.Items.Add(aItem);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
 
                 if (!blockLog.IsAutomated)
@@ -979,27 +996,28 @@ namespace LayoutMonitor
                 if (block.data.value != null && !string.IsNullOrEmpty(block.data.value.data.userName) && !string.IsNullOrEmpty(block.data.value.data.comment) && 
                     (block.data.value.data.userName != blockLog.DCCiD || block.data.value.data.comment != blockLog.Name))
                 {
-                    lbOutput.Items.Add("Name change on value acquisition - " + blockLog.Name + " & " + blockLog.DCCiD + " - to " + block.data.value.data.comment + " & " + block.data.value.data.userName);
-                    if (blockLog != null && blockLog.Name != null && blockLog.Name != "" && ddlTrainSelector.Items.Contains(blockLog.Name))
+                    if (okToRenameLog)
                     {
-                        ddlTrainSelector.Items.Remove(blockLog.Name);
-                    }
-                    if (!string.IsNullOrEmpty(block.data.value.data.comment))
-                        blockLog.Name = block.data.value.data.comment;
-                    else
-                        blockLog.Name = block.data.value.data.userName;
+                        lbOutput.Items.Add("Name change on value acquisition - " + blockLog.Name + " & " + blockLog.DCCiD + " - to " + block.data.value.data.comment + " & " + block.data.value.data.userName);
+                        if (blockLog != null && blockLog.Name != null && blockLog.Name != "" && ddlTrainSelector.Items.Contains(blockLog.Name))
+                        {
+                            ddlTrainSelector.Items.Remove(blockLog.Name);
+                        }
+                        if (!string.IsNullOrEmpty(block.data.value.data.comment))
+                            blockLog.Name = block.data.value.data.comment;
+                        else
+                            blockLog.Name = block.data.value.data.userName;
 
-                    blockLog.DCCiD = block.data.value.data.userName;
-                    ddlTrainSelector.Items.Add(blockLog.Name);
+                        blockLog.DCCiD = block.data.value.data.userName;
+                        ddlTrainSelector.Items.Add(blockLog.Name);
+                    }
+                    else
+                    {
+                        lbOutput.Items.Add("Ignored rename, bad block value? Sending "+existingLog.DCCiD+" to replace it");
+                        await webClient.AllocateBlock(block.data.name, existingLog.DCCiD, false);
+                    }                        
                 }
             }
-
-            //if (blockLog.IsAutomated)
-            //{
-            //    blockLog.LastUpdated = DateTime.Now;
-            //    return (false, "Automated train");
-            //}
-            //lbOutput.Items.Add("New block " + block.data.userName + " for " + blockLog.DCCiD);
 
             if (ddlTrainSelector.Text == blockLog.Name)
                 lbJourneyLog.Items.Add(block.data.userName);
@@ -1120,14 +1138,6 @@ namespace LayoutMonitor
                 }
             }
 
-
-            //if (!string.IsNullOrEmpty(blockLog.CurrentBlock)) //&& thisBlock.path.Any(a => a.block == blockLog.NextNextBlock))
-            //{
-            //    likelyPreviousBlock = blockLog.CurrentBlock;
-            //}
-            //else
-            //{
-            //get from log?
             if (!string.IsNullOrEmpty(blockLog.CurrentBlock))
             {
                 likelyPreviousBlock = blockLog.CurrentBlock;
@@ -1148,8 +1158,6 @@ namespace LayoutMonitor
                     }
                 }
             }
-            //}
-
 
             if (likelyPreviousBlock == "")
             {
@@ -1203,6 +1211,13 @@ namespace LayoutMonitor
                     if (handlingNewTrain)
                     {
                         Log.Add(blockLog);
+                    }
+
+                    if (BNLThisBlock.NoMoreBlocksFound)
+                    {
+                        lbOutput.Items.Add("No more blocks found - " + existingLog.DCCiD);
+                        existingLog.Terminated = true;
+                        existingLog.TerminatedReason = "No more blocks found for automated train";
                     }
                     return (true, "Automated processing successful");
                 }
@@ -1320,49 +1335,6 @@ namespace LayoutMonitor
                     }
                 }
             }
-            //if (handlingNewTrain)
-            //{
-            //    //if future blocks assigned to non-manual block value then this is an auto train
-            //    bool isAutomated = true;
-            //    if (BNLNextBlock.BlockCheckedAllocatedTo != null)
-            //    {
-            //        if (BNLNextBlock.BlockCheckedAllocatedTo.Contains("Manual"))
-            //        {
-            //            isAutomated = false;
-            //        }
-            //        else
-            //        {
-            //            if (BNLTwoBlocks.BlockCheckedAllocatedTo == null)
-            //            {
-            //                isAutomated = false;
-            //            }
-            //            else
-            //            {
-            //                if (BNLTwoBlocks.BlockCheckedAllocatedTo.Contains("Manual"))
-            //                {
-            //                    isAutomated = false;
-            //                }
-            //            }
-            //        }
-            //    }
-            //    else
-            //    {
-            //        isAutomated = false;
-            //    }
-            //    if (isAutomated)
-            //    {
-            //        blockLog.Name = "Automated train " + TrainCounter.ToString();
-            //        blockLog.Name = BNLNextBlock.BlockCheckedAllocatedTo + " (A)";
-            //        blockLog.IsAutomated = true;
-            //    }
-            //    else
-            //    {
-            //        blockLog.IsAutomated = false;
-            //    }
-
-            //    ddlTrainSelector.Items.Add(blockLog.Name);
-            //    TrainCounter++;
-            //}
 
             if (issueFoundThisBlock)
             {
@@ -2051,9 +2023,9 @@ namespace LayoutMonitor
             var currentVisibleAlert = alerts.FirstOrDefault(f => f.Visible == true);
             List<Alert> alertsToRemove = new List<Alert>();
 
-            try
+            foreach (var alert in alerts.OrderBy(o => o.Severity).ToList())
             {
-                foreach (var alert in alerts.OrderBy(o => o.Severity).ToList())
+                try
                 {
                     if (alert.Deactivated) continue;
                     if (alert.Acknowledged) continue;
@@ -2107,19 +2079,6 @@ namespace LayoutMonitor
                         lbOutput.Items.Add("Alert deactivated - no issue or BNL found - 1982 - "+alert.LikelyIssue);
                     }
 
-                    //if (!string.IsNullOrEmpty(checkAlert.LikelyIssue))
-                    //{
-                    //    if (!alert.LikelyIssue.Contains("Collision"))
-                    //    {
-                    //        alert.LikelyIssue = checkAlert.LikelyIssue;
-                    //    }
-                    //    else
-                    //    {
-                    //        if (!alert.LikelyIssue.Contains(checkAlert.LikelyIssue))
-                    //            alert.LikelyIssue += checkAlert.LikelyIssue;
-                    //    }
-                    //    //lbOutput.Items.Add("Alert - still active - " + log.Name + " - " + alert.AffectedBlockUserName + " - " + alert.LikelyIssue);
-                    //}
                     if (!alertWasFromADifferentPath)
                     {
                         alert.BNL = checkAlert;
@@ -2138,7 +2097,7 @@ namespace LayoutMonitor
                     {
                         if (checkAlertLiveBlock.data.value != null && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value.data.userName))
                         {
-                            if (checkAlertLiveBlock.data.value.data.userName != log.DCCiD && checkAlertLiveBlock.data.value.data.userName != log.OriginalDCCiD)
+                            if (checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
                             {
                                 if (!currentAlertReason.Contains("occupied"))
                                     currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " occupied by "+ checkAlertLiveBlock.data.value.data.userName;
@@ -2160,17 +2119,17 @@ namespace LayoutMonitor
                         alertStillActive = true;
                     }
 
-                    if (!string.IsNullOrEmpty( log.CurrentBlockBNL.LikelyIssue))
+                    if (!string.IsNullOrEmpty( log.CurrentBlockBNL.LikelyIssue) && !currentAlertReason.Contains(log.CurrentBlockBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.CurrentBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     }
-                    if (!string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue))
+                    if (!string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue) && !currentAlertReason.Contains(log.NextBlockBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.NextBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     } 
-                    if (!string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue))
+                    if (!string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue) && !currentAlertReason.Contains(log.TwoBlocksBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.TwoBlocksBNL.LikelyIssue;
                         alertStillActive = true;
@@ -2227,12 +2186,15 @@ namespace LayoutMonitor
                         SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
                         signalBeep.Play();
                     }
+
+                }
+                catch (Exception ex)
+                {
+                    //lbOutput.Items.Add("Alert processing exception "+ex.Message);
+                    alert.Deactivated = true;
                 }
             }
-            catch (Exception ex)
-            {
-                lbOutput.Items.Add("Alert processing exception "+ex.Message);
-            }
+
 
             try
             {

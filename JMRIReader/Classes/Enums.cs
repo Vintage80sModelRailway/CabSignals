@@ -29,6 +29,15 @@
             Proceed = 1
         }
 
+        public enum AllocationStatus
+        {
+            NotAllocated = 0,
+            NotAvailable = 1,
+            Allocated = 2,
+            LostAllocation = 3,
+            Occupied = 4
+        }
+
         public enum TransitType
         {
             Scripted,
@@ -64,9 +73,9 @@
 
         public enum JourneySequenceState
         {
-            Queued,
-            Active,
-            Traversed
+            Queued = 0,
+            Active = 1,
+            Traversed = 2
         }
 
         public enum transitsectionwhen
