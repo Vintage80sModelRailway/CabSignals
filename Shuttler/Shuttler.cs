@@ -144,6 +144,8 @@ namespace Shuttler
 
         private async void btnTest_Click(object sender, EventArgs e)
         {
+
+            var s = await webClient.GetSensor("CD UD-UL Yard Pi End");
             c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
             if (webClient == null && c != null && c.WebServerPort > -1)
             {
@@ -245,7 +247,7 @@ namespace Shuttler
                         var existingLog = _logs.FirstOrDefault(f => f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
                         if (existingLog == null)
                         {
-                            WriteToLog("Log lookup failure for block " + nab.data.userName);
+                            //WriteToLog("Log lookup failure for block " + nab.data.userName);
                             continue;
                         }
 
@@ -1397,6 +1399,7 @@ namespace Shuttler
                 decimal percentageOfBlockTraversed = 100.0M;
                 var mmRemaining = lengthMM - traversedSoFarMM;
                 bool previousBlockExited = false;
+                bool stopBlockHasStoppingSensor = !string.IsNullOrEmpty(currentBlockLog.ForwardStoppingSensor);
                 var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
                 if (previousBlock != null)
                 {
@@ -1415,18 +1418,31 @@ namespace Shuttler
                     percentageOfBlockTraversed = (traversedSoFarMM / lengthMM) * 100;
                 }
 
-                if (numberOfBlocksRemaining == 0 && (lengthMM < shortBlockThresholdMM))
+                if (stopBlockHasStoppingSensor && (numberOfBlocksRemaining == 0 || log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                {
+                    var sensor = await webClient.GetSensor(currentBlockLog.ForwardStoppingSensor);
+                    if (sensor != null)
+                    {
+                        if (sensor.data.state == 2) //active
+                        {
+                            newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                            newRunningSpeedReason = "Last block or danger and stopping sensor activated - stopping";
+                        }
+                    }
+                }
+
+                else if (numberOfBlocksRemaining == 0 && lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor)
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "End of journey - short block - stopping";
                 }
-                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM))
+                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "End of journey - train longer than last block - stopping";
                 }
 
-                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM < lengthMM && previousBlockExited)
+                else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && lengthMM > 0 && log.TrainLengthMM < lengthMM && previousBlockExited)
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "End of journey - train wholly in last block - stopping";
@@ -1442,7 +1458,7 @@ namespace Shuttler
                     }
                 }
 
-                else if (lengthMM < shortBlockThresholdMM && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                else if (lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
                     newRunningSpeedReason = "Short block, stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
@@ -1454,14 +1470,14 @@ namespace Shuttler
                     newRunningSpeedReason = "Dangerously close to end of block - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + mmRemaining.ToString();
                 }
 
-                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM)
+                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && lengthMM > 0 && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM)
                         && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "Danger block, no train length data, time to ramp to stop";
                 }
 
-                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && lengthMM > 0 && log.TrainLengthMM < currentBlockLog.BlockLengthMM && previousBlockExited
+                else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && lengthMM > 0 && log.TrainLengthMM < currentBlockLog.BlockLengthMM && previousBlockExited
                         && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;

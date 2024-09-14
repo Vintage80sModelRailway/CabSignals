@@ -67,6 +67,23 @@ namespace JMRIReader
             return mem;
         }
 
+        public async Task<SensorRootobject> GetSensor(string userName)
+        {
+            SensorRootobject sensor = new SensorRootobject();
+
+            var response = await client.GetAsync("/json/sensor/" + userName);
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            try
+            {
+                sensor = JsonConvert.DeserializeObject<SensorRootobject>(jsonResponse);
+            }
+            catch (Exception ex)
+            {
+                var test = ex.Message;
+            }
+            return sensor;
+        }
+
         public async Task UpdateMemory(string userName, string value)
         {
             APIMemory mem = new APIMemory();

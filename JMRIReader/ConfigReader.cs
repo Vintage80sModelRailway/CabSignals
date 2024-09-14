@@ -172,6 +172,7 @@ namespace JMRIReader
                 section s = GetSectionBySystemName(transitsection.sectionname);
                 newSection.Section = s;
                 newSection.TransitSection = transitsection;
+
                 newSection.Blocks = new List<block>();
                 List<BlockTrigger> BlockTriggers = new List<BlockTrigger>();
 
@@ -236,6 +237,11 @@ namespace JMRIReader
                     }
                 }
 
+                var lastBlockInSection = string.Empty;
+                var lb = s.blockentry.ElementAtOrDefault(s.blockentry.Count() - 1);
+                if (lb != null)
+                    lastBlockInSection = lb.sName;
+
                 foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                 {
                     blockCounter++;
@@ -259,6 +265,10 @@ namespace JMRIReader
                     logEntry.SpeedLog = new List<SpeedStepLog>();
                     var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
                     logEntry.BlockTriggers = thisBlockTriggers;
+                    if (blockEntry.sName == lastBlockInSection && !string.IsNullOrEmpty(s.forwardStoppingSensor))
+                    {
+                        logEntry.ForwardStoppingSensor = s.forwardStoppingSensor;
+                    }
                     tr.BlocksInOrder.Add(logEntry);
                 }
 

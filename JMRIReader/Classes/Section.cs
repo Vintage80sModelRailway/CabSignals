@@ -23,6 +23,8 @@ public partial class section
     private string userName1Field;
 
     private string creationtypeField;
+
+    private string fStoppingSensor;
     public List<block> Blocks { get; set; }
 
     /// <remarks/>
@@ -118,6 +120,19 @@ public partial class section
         set
         {
             this.creationtypeField = value;
+        }
+    }
+
+    [System.Xml.Serialization.XmlAttributeAttribute("fstopsensorname")]
+    public string forwardStoppingSensor
+    {
+        get
+        {
+            return this.fStoppingSensor;
+        }
+        set
+        {
+            this.fStoppingSensor = value;
         }
     }
 }

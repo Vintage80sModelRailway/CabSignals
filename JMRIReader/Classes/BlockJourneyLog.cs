@@ -24,6 +24,7 @@ namespace JMRIReader.Classes
         public decimal mmCovered { get; set; }
         public bool PreviousBlockExited { get; set; }
         public List<BlockTrigger> BlockTriggers { get; set; }
+        public string ForwardStoppingSensor { get; set; }
 
     }
 }

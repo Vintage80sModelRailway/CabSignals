@@ -70,6 +70,7 @@
     <Compile Include="Classes\OtherTransit.cs" />
     <Compile Include="Classes\Roster.cs" />
     <Compile Include="Classes\SectionJourneyLog.cs" />
+    <Compile Include="Classes\Sensor.cs" />
     <Compile Include="Classes\SpeedStepLog.cs" />
     <Compile Include="Classes\Test.cs" />
     <Compile Include="Classes\TrainMotionConfig.cs" />
