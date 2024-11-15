@@ -353,6 +353,21 @@ namespace JMRIReader
             return s;
         }
 
+        public List<section> GetYardSections()
+        {
+            var ys = new List<section>();
+
+            var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(f => f.Attribute("userName").Value.Contains("Yard Line"));
+            var sectionSerializer = new XmlSerializer(typeof(section));
+            foreach (var s in configSections)
+            {
+                section cs = (section)sectionSerializer.Deserialize(s.CreateReader());
+                ys.Add(cs);
+            }
+
+            return ys;
+        }
+
         public signalmast GetSignalMastByUserName(string userName)
         {
             var smXML = config.Elements("layout-config").Elements("signalmasts").Elements("signalmast").FirstOrDefault(f => f.Element("userName").Value.Equals(userName));

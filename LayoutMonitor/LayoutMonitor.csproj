@@ -93,6 +93,10 @@
       <Project>{35f34cd9-e9ba-4376-ba55-3e324a74dfa7}</Project>
       <Name>JMRIReader</Name>
     </ProjectReference>
+    <ProjectReference Include="..\WiiThrottleClient\WiThrottleClient.csproj">
+      <Project>{A8094D8F-15D7-40B6-A1F8-424463E59A84}</Project>
+      <Name>WiThrottleClient</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\cabsig_ico2.ico">

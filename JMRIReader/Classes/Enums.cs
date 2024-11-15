@@ -75,7 +75,8 @@
         {
             Queued = 0,
             Active = 1,
-            Traversed = 2
+            EnteredNextBlock = 2,
+            Traversed = 3
         }
 
         public enum transitsectionwhen

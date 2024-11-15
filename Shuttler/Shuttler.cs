@@ -144,7 +144,55 @@ namespace Shuttler
 
         private async void btnTest_Click(object sender, EventArgs e)
         {
+            var yardSections = config.GetYardSections();
+            foreach (var sec in yardSections)
+            {
+                int blockCounter = 0;
+                ViableRouteList tr = new ViableRouteList();
+                var trainToMoveDCCId = string.Empty;
+                for (int i = 0; i < sec.blockentry.Count(); i++)
+                {
+                    var liveBlock = await webClient.GetBlock(sec.blockentry[i].sName);
+                    if (liveBlock.data.state == 4)
+                    {
+                        var vrb = new ViableRouteBlock();
+                        vrb.Blockname = sec.blockentry[i].sName;
+                        vrb.Displayname = liveBlock.data.userName;
+                        tr.Blocks.Add(vrb);
 
+                        //if unoccupied check block behind for an identifiable loco
+                        var backCounter = i+1;
+                        bool nextTrainFound = false;
+                        while (backCounter < sec.blockentry.Count() && !nextTrainFound)
+                        {
+                            var liveBlockBehind = await webClient.GetBlock(sec.blockentry[i].sName);
+                            var nextVrb = new ViableRouteBlock();
+                            nextVrb.Blockname = sec.blockentry[blockCounter].sName;
+                            nextVrb.Displayname = liveBlockBehind.data.userName;
+                            tr.Blocks.Add(nextVrb);
+
+                            if (liveBlockBehind.data.state == 2)
+                            {
+                                //if it's occupied can we get an ID?
+                                nextTrainFound = true;
+                                if (liveBlockBehind.data.value != null && !string.IsNullOrEmpty(liveBlockBehind.data.value.data.userName))
+                                {
+                                    //create a transit made of blocks checked so far including this one
+                                    trainToMoveDCCId = liveBlockBehind.data.value.data.userName;
+                                }
+                            }
+
+                            backCounter++;
+                        }
+                        //if block behind empty, keep going back
+                    }
+                }
+                if (!string.IsNullOrEmpty(trainToMoveDCCId))
+                {
+                    //create and submit transit
+                }
+
+            }
             var s = await webClient.GetSensor("CD UD-UL Yard Pi End");
             c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
             if (webClient == null && c != null && c.WebServerPort > -1)
@@ -376,6 +424,12 @@ namespace Shuttler
                 await Task.Delay(200);
             }
 
+        }
+
+        private void ManageYardLines()
+        {
+            if (!cbManageYard.Checked) return;
+            var yardSections = config.GetYardSections();
         }
 
         private void CleanUpListBoxes()

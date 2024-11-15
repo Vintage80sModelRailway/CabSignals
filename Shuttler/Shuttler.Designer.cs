@@ -75,6 +75,7 @@
             this.lblCurrentBlock = new System.Windows.Forms.Label();
             this.lblTrainStatus = new System.Windows.Forms.Label();
             this.pbBlockProgress = new System.Windows.Forms.ProgressBar();
+            this.cbManageYard = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // btnTest
@@ -519,11 +520,22 @@
             this.pbBlockProgress.Size = new System.Drawing.Size(665, 23);
             this.pbBlockProgress.TabIndex = 48;
             // 
+            // cbManageYard
+            // 
+            this.cbManageYard.AutoSize = true;
+            this.cbManageYard.Location = new System.Drawing.Point(587, 15);
+            this.cbManageYard.Name = "cbManageYard";
+            this.cbManageYard.Size = new System.Drawing.Size(90, 17);
+            this.cbManageYard.TabIndex = 49;
+            this.cbManageYard.Text = "Manage Yard";
+            this.cbManageYard.UseVisualStyleBackColor = true;
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 422);
+            this.Controls.Add(this.cbManageYard);
             this.Controls.Add(this.pbBlockProgress);
             this.Controls.Add(this.lblTrainStatus);
             this.Controls.Add(this.lblCurrentBlock);
@@ -627,5 +639,6 @@
         private System.Windows.Forms.Label lblCurrentBlock;
         private System.Windows.Forms.Label lblTrainStatus;
         private System.Windows.Forms.ProgressBar pbBlockProgress;
+        private System.Windows.Forms.CheckBox cbManageYard;
     }
 }

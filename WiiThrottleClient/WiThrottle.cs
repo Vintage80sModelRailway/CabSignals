@@ -181,9 +181,16 @@ namespace WiThrottleClient
             return success;
         }
 
+        public Throttle GetThrottleInfoByDCCID(string dccID)
+        {
+            Throttle throttle = _throttles.FirstOrDefault(f => f.ID == dccID);
+            return throttle;
+        }
+
         public void ProcessMessage(string message)
         {
             if (message.Length <= 0) return;
+            
             var messages = message.Split(new string[] { "\r\n\r\n" }, StringSplitOptions.None);
             foreach (var update in messages)
             {
