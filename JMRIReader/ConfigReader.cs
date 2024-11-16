@@ -263,6 +263,8 @@ namespace JMRIReader
                     logEntry.BlockLengthMM = b.length;
                     logEntry.PreviousBlockExited = false;
                     logEntry.SpeedLog = new List<SpeedStepLog>();
+                    //if (!string.IsNullOrEmpty(b.occupancysensor))
+                    logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
                     var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
                     logEntry.BlockTriggers = thisBlockTriggers;
                     if (blockEntry.sName == lastBlockInSection && !string.IsNullOrEmpty(s.forwardStoppingSensor))

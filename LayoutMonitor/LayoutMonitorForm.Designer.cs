@@ -325,7 +325,7 @@
             this.Controls.Add(this.lbOutput);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "LayoutMonitorForm";
-            this.Text = "JMRI Danger Early Warning System v0.1";
+            this.Text = "JMRI Danger Early Warning System v0.2";
             this.ResumeLayout(false);
             this.PerformLayout();
 

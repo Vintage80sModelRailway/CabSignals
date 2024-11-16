@@ -225,7 +225,7 @@ namespace LayoutMonitor
                 await ProcessAlerts();
                 ProcessDeoccupiedBlocks();
                 await wt.CheckForMessages();
-                await Task.Delay(200);
+                await Task.Delay(100);
 
                 //await MonitorAutomation();
             }
@@ -457,37 +457,71 @@ namespace LayoutMonitor
                         }
 
                         var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
+                        
                         foreach (var pbso in previousBlocksStillOccupied)
                         {
                             var indexOfpbso = log.AutomatedBlockList.IndexOf(pbso);
+                            var debugDiff = log.AutomatedBlockList.Count - 1 - indexOfpbso;
+                            bool debugOutput = false;
+                            if (debugDiff > 1)
+                            {
+                                debugOutput = true;
+                            }
+                            decimal totalMMCoveredSinceExitingPBSO = 0M;
                             if (indexOfpbso != -1)
                             {
-                                decimal totalMMCoveredSinceExitingPBSO = 0M;
-                                for (int i = indexOfpbso+1; i <log.AutomatedBlockList.Count; i++)
+                                var speedLogList = new List<SpeedStepLog>();
+                                for (int i = indexOfpbso + 1; i < log.AutomatedBlockList.Count; i++)
                                 {
-                                    decimal mmCoveredSoFarThisBlock = 0.0M;
                                     var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
                                     if (thisLogBlock != null)
                                     {
-                                        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
-                                        {
-                                            var dateTimeTo = DateTime.Now;
-                                            if (b + 1 < thisLogBlock.SpeedLog.Count)
-                                            {
-                                                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
-                                            }
+                                        speedLogList.AddRange(thisLogBlock.SpeedLog);
+                                    }
+                                }
 
-                                            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
-                                            mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                                            thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
-                                            totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
-                                        }
+                                for (int b = 0; b < speedLogList.Count; b++)
+                                {
+                                    var dateTimeTo = DateTime.Now;
+                                    if (b + 1 < speedLogList.Count)
+                                    {
+                                        dateTimeTo = speedLogList.ElementAt(b + 1).start;
                                     }
 
+                                    var timeDiff = dateTimeTo - speedLogList.ElementAt(b).start;
+
+                                    totalMMCoveredSinceExitingPBSO += speedLogList.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                    if (debugOutput)
+                                    {
+                                        //lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName);
+                                    }
                                 }
+                                
+                                //for (int i = indexOfpbso+1; i <log.AutomatedBlockList.Count; i++)
+                                //{
+                                //    decimal mmCoveredSoFarThisBlock = 0.0M;
+                                //    var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
+                                //    if (thisLogBlock != null)
+                                //    {
+                                //        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
+                                //        {
+                                //            var dateTimeTo = DateTime.Now;
+                                //            if (b + 1 < thisLogBlock.SpeedLog.Count)
+                                //            {
+                                //                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                                //            }
+
+                                //            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                                //            mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                //            thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
+                                //            totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
+                                //        }
+                                //    }
+
+                                //}
                                 if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                                 {
-                                    lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                    lbOutput.Items.Add(DateTime.Now.ToString()+ " Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
                                     pbso.SequenceState = JourneySequenceState.Traversed;
                                     await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
                                 }
@@ -1294,7 +1328,6 @@ namespace LayoutMonitor
             bjl.SequenceState = JourneySequenceState.Active;
             bjl.OccupationSensorSystemName = block.data.sensor.Substring(2); ;
             lbOutput.Items.Add("Sensor for new block " + bjl.OccupationSensorSystemName);
-            await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + block.data.sensor.Substring(2), "1", false);
             bjl.SpeedLog = new List<SpeedStepLog>();
 
 
@@ -1323,6 +1356,7 @@ namespace LayoutMonitor
                 if (previousBlockLog != null)
                 {
                     previousBlockLog.SequenceState = JourneySequenceState.EnteredNextBlock;
+                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousBlockLog.OccupationSensorSystemName, "1", false);
                 }
             }
 

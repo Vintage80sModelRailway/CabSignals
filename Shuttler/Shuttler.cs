@@ -43,6 +43,7 @@ namespace Shuttler
         private int dangerBlockPercentToBeginRampDown;
         private int shortBlockThresholdMM;
         private string memoryAllocatedTrainsName;
+        private string SensorHoldTopic;
 
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
@@ -102,6 +103,12 @@ namespace Shuttler
             if (cfgBlockReleaseTopic != null)
             {
                 BlockReleaseTopic = cfgBlockReleaseTopic.ToString();
+            }
+
+            var cfgSensorHoldTopic = ConfigurationManager.AppSettings["SensorHoldTopic"];
+            if (cfgSensorHoldTopic != null)
+            {
+                SensorHoldTopic = cfgSensorHoldTopic;
             }
 
             var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedTrainsName"];
@@ -268,7 +275,7 @@ namespace Shuttler
                         var sequenceBlock = relatedLog.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == gib.data.name && f.SequenceState == JourneySequenceState.Active);
                         if (sequenceBlock != null)
                         {
-                            sequenceBlock.SequenceState = JourneySequenceState.Traversed;
+                            //sequenceBlock.SequenceState = JourneySequenceState.Traversed;
                             //WriteToLog("Block " + sequenceBlock.BlockUserName + " exited");
                             var posInSequence = relatedLog.AutomatedBlockList.IndexOf(sequenceBlock);
                             if (posInSequence > -1)
@@ -392,6 +399,8 @@ namespace Shuttler
                                 lastSpeedLogEntry.start = DateTime.Now;
                                 logBlock.SpeedLog.Add(lastSpeedLogEntry);
                             }
+                            previousLogBlock.SequenceState = JourneySequenceState.EnteredNextBlock;
+                            await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousLogBlock.OccupationSensorSystemName, "1", false);
                         }
 
                         existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
@@ -414,6 +423,7 @@ namespace Shuttler
                     CalculateSpeedForTrains();
                     SetTrainSpeeds();
                     ProcessBlocksToDecorate();
+                    await ManageExitedBlockHolds();
 
                     UpdateLogPanel();
                     CleanUpListBoxes();
@@ -426,6 +436,49 @@ namespace Shuttler
 
         }
 
+        private async Task ManageExitedBlockHolds()
+        {
+            foreach (var log in _logs)
+            {
+                var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
+                foreach (var pbso in previousBlocksStillOccupied)
+                {
+                    var indexOfpbso = log.AutomatedBlockList.IndexOf(pbso);
+                    if (indexOfpbso != -1)
+                    {
+                        decimal totalMMCoveredSinceExitingPBSO = 0M;
+                        for (int i = indexOfpbso + 1; i <= log.AutomatedCurrentBlockIndex;)
+                        {
+                            decimal mmCoveredSoFarThisBlock = 0.0M;
+                            var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
+                            if (thisLogBlock != null)
+                            {
+                                for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
+                                {
+                                    var dateTimeTo = DateTime.Now;
+                                    if (b + 1 < thisLogBlock.SpeedLog.Count)
+                                    {
+                                        dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                                    }
+
+                                    var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                                    mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                    thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
+                                    totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
+                                }
+                            }
+
+                        }
+                        if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
+                        {
+                            lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                            pbso.SequenceState = JourneySequenceState.Traversed;
+                            await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
+                        }
+                    }
+                }
+            }
+        }
         private void ManageYardLines()
         {
             if (!cbManageYard.Checked) return;
