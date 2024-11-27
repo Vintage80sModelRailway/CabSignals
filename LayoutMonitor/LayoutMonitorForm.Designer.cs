@@ -52,6 +52,7 @@
             this.btnClearOutputLog = new System.Windows.Forms.Button();
             this.lbJourneyLog = new System.Windows.Forms.ListBox();
             this.btnClearJourneyListBox = new System.Windows.Forms.Button();
+            this.btnUnattendedToggle = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -294,12 +295,24 @@
             this.btnClearJourneyListBox.UseVisualStyleBackColor = true;
             this.btnClearJourneyListBox.Click += new System.EventHandler(this.btnClearJourneyListBox_Click);
             // 
+            // btnUnattendedToggle
+            // 
+            this.btnUnattendedToggle.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnUnattendedToggle.Location = new System.Drawing.Point(1560, 264);
+            this.btnUnattendedToggle.Name = "btnUnattendedToggle";
+            this.btnUnattendedToggle.Size = new System.Drawing.Size(321, 61);
+            this.btnUnattendedToggle.TabIndex = 25;
+            this.btnUnattendedToggle.Text = "Unattended";
+            this.btnUnattendedToggle.UseVisualStyleBackColor = true;
+            this.btnUnattendedToggle.Click += new System.EventHandler(this.btnUnattendedToggle_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(2079, 771);
+            this.Controls.Add(this.btnUnattendedToggle);
             this.Controls.Add(this.btnClearJourneyListBox);
             this.Controls.Add(this.lbJourneyLog);
             this.Controls.Add(this.btnClearOutputLog);
@@ -356,6 +369,7 @@
         private System.Windows.Forms.Button btnClearOutputLog;
         private System.Windows.Forms.ListBox lbJourneyLog;
         private System.Windows.Forms.Button btnClearJourneyListBox;
+        private System.Windows.Forms.Button btnUnattendedToggle;
     }
 }
 

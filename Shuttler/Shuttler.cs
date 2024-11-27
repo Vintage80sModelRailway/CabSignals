@@ -447,7 +447,7 @@ namespace Shuttler
                     if (indexOfpbso != -1)
                     {
                         decimal totalMMCoveredSinceExitingPBSO = 0M;
-                        for (int i = indexOfpbso + 1; i <= log.AutomatedCurrentBlockIndex;)
+                        for (int i = indexOfpbso + 1; i <= log.AutomatedCurrentBlockIndex; i++)
                         {
                             decimal mmCoveredSoFarThisBlock = 0.0M;
                             var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
@@ -1287,11 +1287,13 @@ namespace Shuttler
                                 else if (value.Length == 0)
                                 {
                                     issue += "; not allocated";
-                                    //if (thisLogSection.IsAllocated)
-                                    //{
-                                    //    WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
-                                    //    thisLogSection.IsAllocated = false;
-                                    //}
+                                    if (thisLogSection.IsAllocated)
+                                    {
+                                        WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
+                                        //Or just try to reallocate this block?
+                                        //If all other blocks have values it might cause an issue
+                                        thisLogSection.IsAllocated = false;
+                                    }
                                 }
                             }
                         }

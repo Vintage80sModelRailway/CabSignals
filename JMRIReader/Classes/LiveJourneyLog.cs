@@ -58,5 +58,7 @@ namespace JMRIReader.Classes
         public TrainDirection NextTransitDirection { get; set; }
         public int NextTransitDelayMS { get; set; }
 
+        public bool HasSpeedProfile { get; set; }
+
     }
 }

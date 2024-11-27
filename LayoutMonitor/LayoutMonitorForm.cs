@@ -25,13 +25,12 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using WiThrottleClient;
+using WiThrottleClient.Classes;
 using static JMRIReader.Classes.Enums;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
-
-
-
+using RosterEntry = JMRIReader.Classes.DTO.RosterEntry;
 
 namespace LayoutMonitor
 {
@@ -68,6 +67,10 @@ namespace LayoutMonitor
         private string memoryAllocatedTrainsName;
         private WiThrottle wt;
         private int _WiThrottlePort;
+        private bool UnattendedMode = false;
+        private int DefaultCautionMMS;
+        private int DefaultCrawlMMS;
+        private int DefaultFullSpeedMMS;
 
         // Create a MQTT client instance
         MqttClient mqttClient;
@@ -188,6 +191,27 @@ namespace LayoutMonitor
                 CabSignalTopic = cfgCabSignalTOpic.ToString();
             }
 
+            var cfgdefaultCrawlMMS = ConfigurationManager.AppSettings["DefaultCrawlMMS"];
+            if (cfgdefaultCrawlMMS != null)
+            {
+                var dcmms = cfgdefaultCrawlMMS.ToString();
+                DefaultCrawlMMS = int.Parse(dcmms);
+            }
+
+            var cfgDefaultCautionMMS = ConfigurationManager.AppSettings["DefaultCautionMMS"];
+            if (cfgDefaultCautionMMS != null)
+            {
+                var dcams = cfgDefaultCautionMMS.ToString();
+                DefaultCautionMMS = int.Parse(dcams);
+            }
+
+            var cfgFullSpeedMMS = ConfigurationManager.AppSettings["DefaultFullSpeedMMS"];
+            if (cfgFullSpeedMMS != null)
+            {
+                var dfs = cfgFullSpeedMMS.ToString();
+                DefaultFullSpeedMMS = int.Parse(dfs);
+            }
+
 
         }
 
@@ -257,6 +281,202 @@ namespace LayoutMonitor
             }
 
             return bytes;
+        }
+
+        private void CalculateSpeedForTrains()
+        {
+            foreach (var log in Log.ToList())
+            {
+                if (log.TrainMotionCfg == null) continue;
+
+                if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Resuming)
+                {
+                    continue;
+                    var timeSinceStarted = DateTime.Now - log.StatusLastChanged;
+                    if (timeSinceStarted.TotalSeconds < 5)
+                    {
+                        log.TrainMotionCfg.CurrentSpeedStep = 0;
+                        log.TrainMotionCfg.TargetSpeedStep = 0;
+                        //WriteToLog("Start delay " + log.Name + " - " + timeSinceStarted.TotalSeconds.ToString()+" - "+log.AutomatedTrainRunningStatus.ToString());
+                        continue;
+                    }
+                    else
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
+                        log.StatusLastChanged = DateTime.Now;
+
+                        var rosterEntry = wt.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
+                        var rosterIndex = wt.Roster.IndexOf(rosterEntry);
+
+                        string mtIndex = wt.GetThrottle(rosterIndex);
+                        var newThrottle = new Throttle();
+                        newThrottle.mtIndex = mtIndex;
+                        newThrottle.RosterIndex = rosterIndex;
+                        newThrottle.ID = log.DCCiD;
+
+                        wt.SetThrottleDirection(rosterIndex, ((int)log.TrainMotionCfg.TrainDirection).ToString());
+                    }
+                }
+
+                if (log.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.Running)
+                    continue;
+
+                bool emergencyStopRequired = false;
+                bool speedChangeRequired = false;
+
+                int targetSpeedRequired = 0;
+                switch (log.AutomatedTrainRunningSpeed)
+                {
+                    case AutomatedTrainRunningSpeed.EmergencyStop:
+                        emergencyStopRequired = true;
+                        speedChangeRequired = true;
+                        break;
+                    case AutomatedTrainRunningSpeed.Stop:
+                        targetSpeedRequired = 0;
+                        speedChangeRequired = true;
+                        break;
+                    case AutomatedTrainRunningSpeed.Crawl:
+                        targetSpeedRequired = log.TrainMotionCfg.TrainDirection == TrainDirection.Forward
+                            ? log.TrainMotionCfg.ForwardCrawlSpeedStep : log.TrainMotionCfg.ReverseCrawlSpeedStep;
+                        speedChangeRequired = true;
+                        break;
+                    case AutomatedTrainRunningSpeed.Caution:
+                        targetSpeedRequired = log.TrainMotionCfg.TrainDirection == TrainDirection.Forward
+                            ? log.TrainMotionCfg.ForwardCautionSpeedStep : log.TrainMotionCfg.ReverseCautionSpeedStep;
+                        speedChangeRequired = true;
+                        break;
+                }
+
+                if (targetSpeedRequired < log.TrainMotionCfg.CurrentSpeedStep && !emergencyStopRequired)
+                {
+                    log.TrainMotionCfg.InRampDown = true;
+                }
+
+                if (log.TrainMotionCfg.TargetSpeedStep > targetSpeedRequired)
+                {
+                    log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
+                    int actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep;
+
+                    if (targetSpeedRequired != log.TrainMotionCfg.CurrentSpeedStep)
+                    {
+                        var timeSinceLastChange = DateTime.Now - log.TrainMotionCfg.RampSpeedLastSet;
+
+                        if (log.TrainMotionCfg.InRampDown)
+                        {
+                            if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampDownIntervalMS)
+                            {
+                                actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep - log.TrainMotionCfg.RampDownSpeedStepDecrease;
+                                // WriteToLog(log.Name + " ramp down from " + actualSpeedRequired.ToString() + " step " + log.TrainMotionCfg.RampUpSpeedStepIncrease.ToString());
+                                if (actualSpeedRequired < 0)
+                                    actualSpeedRequired = 0;
+                                if (actualSpeedRequired <= targetSpeedRequired)
+                                {
+                                    actualSpeedRequired = targetSpeedRequired;
+                                    log.TrainMotionCfg.InRampDown = false;
+                                    //WriteToLog("Ramp down complete speed = "+actualSpeedRequired.ToString());
+                                }
+                                log.TrainMotionCfg.RampSpeedLastSet = DateTime.Now;
+                            }
+                        }
+                    }
+
+                    log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
+                    log.TrainMotionCfg.RequiredSpeedStep = actualSpeedRequired;
+
+                    if (emergencyStopRequired && (log.TrainMotionCfg.TargetSpeedStep == 0 || log.TrainMotionCfg.RequiredSpeedStep == 0))
+                    {
+                        log.TrainMotionCfg.TargetSpeedStep = 0;
+                        log.TrainMotionCfg.RequiredSpeedStep = 0;
+                        log.TrainMotionCfg.InRampDown = false;
+                        log.TrainMotionCfg.InRampUp = false;
+                        lbOutput.Items.Add("Emergency stop executed for " + log.Name);
+                    }
+
+                    if (log.TrainMotionCfg.TargetSpeedStep == 0 && log.TrainMotionCfg.RequiredSpeedStep == 0)
+                    {
+                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Waiting;
+                    }
+                } 
+            }
+        }
+
+        private void SetTrainSpeeds()
+        {
+            //if current speed < target speed and not ramping up, set ramp up
+            foreach (var log in Log.ToList())
+            {
+                if (log.TrainMotionCfg.RequiredSpeedStep != log.TrainMotionCfg.CurrentSpeedStep)
+                {
+                    var re = wt.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
+                    var rosterIndex = wt.Roster.IndexOf(re);
+                    wt.SetThrottleSpeedStep(rosterIndex, log.TrainMotionCfg.RequiredSpeedStep);
+                    log.TrainMotionCfg.CurrentSpeedStep = log.TrainMotionCfg.RequiredSpeedStep;
+
+                    //get relative position of new speed step
+                    var rosterCfG = new RosterReader(RosterPath);
+                    var roster = rosterCfG.GetRoster();
+                    var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
+
+                    if (fullInfo != null && fullInfo.Speedprofile != null)
+                    {
+                        decimal prevForwardSpeed = 0.0M;
+                        decimal prevReverseSpeed = 0.0M;
+                        decimal prevStep = 0.0M;
+                        var mmPerSecond = 0.0M;
+
+                        foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
+                        {
+                            var tStep = step.Step;
+                            var speed = step.Forward;
+                            decimal dForward = 0.0M;
+                            decimal dReverse = 0.0M;
+                            decimal dStep = 0.0M;
+
+                            bool fSuccess = decimal.TryParse(step.Forward, out dForward);
+                            bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
+                            bool dSuccess = decimal.TryParse(step.Step, out dStep);
+                            var asPerc1 = dStep / 1000;
+                            var beforeRound = asPerc1 * 128;
+                            int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+                            var actualSpeedStep = dSS;
+
+                            if (fSuccess && rSuccess)
+                            {
+                                if ((log.TrainMotionCfg.CurrentSpeedStep < actualSpeedStep && log.TrainMotionCfg.CurrentSpeedStep >= prevStep))
+                                {
+                                    var percent = GetRelativeSpeedStepPosition(log.TrainMotionCfg.CurrentSpeedStep, prevStep, actualSpeedStep);
+                                    if (log.TrainMotionCfg.TrainDirection == TrainDirection.Forward)
+                                    {
+                                        mmPerSecond = GetRelativeSpeedMM(percent, dForward, prevForwardSpeed);
+                                    }
+                                    else
+                                    {
+                                        mmPerSecond = GetRelativeSpeedMM(percent, dReverse, prevReverseSpeed);
+                                    }
+                                    break;
+                                }
+                            }
+                            prevStep = actualSpeedStep;
+                            prevReverseSpeed = dReverse;
+                            prevForwardSpeed = dForward;
+                        }
+
+                        log.TrainMotionCfg.CurrentSpeedMMS = mmPerSecond;
+                        var speedStep = log.TrainMotionCfg.RequiredSpeedStep;
+
+                        var activeBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
+                        if (activeBlock != null)
+                        {
+                            activeBlock.SpeedLog.Add(new SpeedStepLog()
+                            {
+                                SpeedMMS = mmPerSecond,
+                                start = DateTime.Now,
+                                SpeedStep = speedStep
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         private async Task<bool> MonitorLayout()
@@ -389,6 +609,11 @@ namespace LayoutMonitor
 
             //Check current journeys for re-routing
 
+            if (UnattendedMode)
+            {
+
+            }
+
             if (!foundNewActiveBlock)
             {
                 try
@@ -456,77 +681,89 @@ namespace LayoutMonitor
                             }
                         }
 
-                        var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
-                        
-                        foreach (var pbso in previousBlocksStillOccupied)
+                        if (log.TrainLengthMM > 0 && log.HasSpeedProfile)
                         {
-                            var indexOfpbso = log.AutomatedBlockList.IndexOf(pbso);
-                            var debugDiff = log.AutomatedBlockList.Count - 1 - indexOfpbso;
-                            bool debugOutput = false;
-                            if (debugDiff > 1)
+                            var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
+
+                            foreach (var pbso in previousBlocksStillOccupied)
                             {
-                                debugOutput = true;
-                            }
-                            decimal totalMMCoveredSinceExitingPBSO = 0M;
-                            if (indexOfpbso != -1)
-                            {
-                                var speedLogList = new List<SpeedStepLog>();
-                                for (int i = indexOfpbso + 1; i < log.AutomatedBlockList.Count; i++)
+                                var indexOfpbso = log.AutomatedBlockList.IndexOf(pbso);
+                                var debugDiff = log.AutomatedBlockList.Count - 1 - indexOfpbso;
+                                bool debugOutput = false;
+                                if (debugDiff > 1)
                                 {
-                                    var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
-                                    if (thisLogBlock != null)
-                                    {
-                                        speedLogList.AddRange(thisLogBlock.SpeedLog);
-                                    }
+                                    debugOutput = true;
                                 }
-
-                                for (int b = 0; b < speedLogList.Count; b++)
+                                decimal totalMMCoveredSinceExitingPBSO = 0M;
+                                if (indexOfpbso != -1)
                                 {
-                                    var dateTimeTo = DateTime.Now;
-                                    if (b + 1 < speedLogList.Count)
+                                    var speedLogList = new List<SpeedStepLog>();
+                                    for (int i = indexOfpbso + 1; i < log.AutomatedBlockList.Count; i++)
                                     {
-                                        dateTimeTo = speedLogList.ElementAt(b + 1).start;
+                                        var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
+                                        if (thisLogBlock != null)
+                                        {
+                                            speedLogList.AddRange(thisLogBlock.SpeedLog);
+                                        }
                                     }
 
-                                    var timeDiff = dateTimeTo - speedLogList.ElementAt(b).start;
-
-                                    totalMMCoveredSinceExitingPBSO += speedLogList.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                                    if (debugOutput)
+                                    for (int b = 0; b < speedLogList.Count; b++)
                                     {
-                                        //lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName);
+                                        var dateTimeTo = DateTime.Now;
+                                        if (b + 1 < speedLogList.Count)
+                                        {
+                                            dateTimeTo = speedLogList.ElementAt(b + 1).start;
+                                        }
+
+                                        var timeDiff = dateTimeTo - speedLogList.ElementAt(b).start;
+
+                                        totalMMCoveredSinceExitingPBSO += speedLogList.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                        if (debugOutput)
+                                        {
+                                            //lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName);
+                                        }
                                     }
-                                }
-                                
-                                //for (int i = indexOfpbso+1; i <log.AutomatedBlockList.Count; i++)
-                                //{
-                                //    decimal mmCoveredSoFarThisBlock = 0.0M;
-                                //    var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
-                                //    if (thisLogBlock != null)
-                                //    {
-                                //        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
-                                //        {
-                                //            var dateTimeTo = DateTime.Now;
-                                //            if (b + 1 < thisLogBlock.SpeedLog.Count)
-                                //            {
-                                //                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
-                                //            }
 
-                                //            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
-                                //            mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                                //            thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
-                                //            totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
-                                //        }
-                                //    }
+                                    //for (int i = indexOfpbso+1; i <log.AutomatedBlockList.Count; i++)
+                                    //{
+                                    //    decimal mmCoveredSoFarThisBlock = 0.0M;
+                                    //    var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
+                                    //    if (thisLogBlock != null)
+                                    //    {
+                                    //        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
+                                    //        {
+                                    //            var dateTimeTo = DateTime.Now;
+                                    //            if (b + 1 < thisLogBlock.SpeedLog.Count)
+                                    //            {
+                                    //                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                                    //            }
 
-                                //}
-                                if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
-                                {
-                                    lbOutput.Items.Add(DateTime.Now.ToString()+ " Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
-                                    pbso.SequenceState = JourneySequenceState.Traversed;
-                                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
+                                    //            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                                    //            mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                    //            thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
+                                    //            totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
+                                    //        }
+                                    //    }
+
+                                    //}
+                                    if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
+                                    {
+                                        lbOutput.Items.Add(DateTime.Now.ToString() + " Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                        pbso.SequenceState = JourneySequenceState.Traversed;
+                                        await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
+                                    }
+                                    else
+                                    {
+                                        lbOutput.Items.Add("totalMM " + totalMMCoveredSinceExitingPBSO.ToString()+" - length"+log.TrainLengthMM.ToString());
+                                    }
                                 }
                             }
                         }
+                        else
+                        {
+                            //lbOutput.Items.Add("Train length issue - " + log.TrainLengthMM.ToString());
+                        }
+
 
 
                         //in case it's needed - could refresh memory variable for automated trains and if the log DCC ID is no longer in it, terminate the log
@@ -731,6 +968,7 @@ namespace LayoutMonitor
                             var alertExists = alerts.Any(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme && a.Deactivated == false);
                             var existingAlert = alerts.FirstOrDefault(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme && a.Deactivated == false && a.Deactivated == false);
                             log.SignalAspect = SignalAspect.Danger;
+                            log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                             if (existingAlert == null)
                             {
                                 AddAlert(new Alert()
@@ -756,6 +994,7 @@ namespace LayoutMonitor
                         {
                             //Danger alert
                             log.SignalAspect = SignalAspect.Danger;
+                            log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                             var alertExists = alerts.Any(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.Deactivated == false);
                             var existingAlert = alerts.FirstOrDefault(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.Deactivated == false);
                             if (existingAlert == null)
@@ -797,6 +1036,7 @@ namespace LayoutMonitor
                             var existingAlert = alerts.FirstOrDefault(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked && a.Severity == AlertSeverity.Caution && a.Deactivated == false);
                             var dangerAlertExistsForNextBlock = alerts.Any(a => a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.TrainName == log.Name);
                             log.SignalAspect = SignalAspect.Caution;
+                            log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                             if (existingAlert == null)
                             {
                                 if (!dangerAlertExistsForNextBlock)
@@ -834,7 +1074,20 @@ namespace LayoutMonitor
                         }
                         if (!issueFoundThisBlock && !issueFoundNextBlock && !issueFoundTwoBlocks)
                         {
+                            if (log.SignalAspect != SignalAspect.Proceed)
+                            {
+                                //resuming?
+                                log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Resuming;
+                                lbOutput.Items.Add("Resume mid-block detected for " + log.Name);
+                                SoundPlayer signalBeep = new SoundPlayer("./Assets/Proceed.wav");
+                                signalBeep.Play();
+                            }
+                            else
+                            {
+                                log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
+                            }
                             log.SignalAspect = SignalAspect.Proceed;
+                            log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Full;
                         }
 
                     }
@@ -858,12 +1111,238 @@ namespace LayoutMonitor
                     lvUpdates.Items.Add(item);
                     lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
                     lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                    var thisThrottle = wt.GetThrottleInfoByDCCID(log.DCCiD);
+                    wt.ReleaseThrottle(thisThrottle.RosterIndex);
                 }
             }
 
             allBlocks = newBlockStates;
             activeBlocks = newActiveBlocks;
             return true;
+        }
+
+        private TrainMotionConfig GetTrainMotionConfig(string trainName, string DCCId)
+        {
+            TrainMotionConfig config = new TrainMotionConfig();
+            var rosterCfG = new RosterReader(RosterPath);
+            var roster = rosterCfG.GetRoster();
+            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == DCCId);
+
+            var fullSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerFullMMS");
+            var cautionSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerCautionMMS");
+            var crawlSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerCrawlMMS");
+            var rampDownInterval = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampDownIntervalMS");
+            var rampUpInterval = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpIntervalMS");
+            var rampDownStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampDownStep");
+            var rampUpStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpStep");
+            var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+
+            int fulSpeedMMS = DefaultFullSpeedMMS;
+            int cautionMMS = DefaultCautionMMS;
+            int crawlMMS = DefaultCrawlMMS;
+
+            if (fullSpeed != null)
+            {
+                int.TryParse(fullSpeed.Value, out fulSpeedMMS);
+            }
+            if (cautionSpeed != null)
+            {
+                int.TryParse(cautionSpeed.Value, out cautionMMS);
+            }
+            if (crawlSpeed != null)
+            {
+                int.TryParse(crawlSpeed.Value, out crawlMMS);
+            }
+
+            int trainLengthMM = 0;
+
+            if (trainLength != null)
+            {
+                int.TryParse(trainLength.Value, out trainLengthMM);
+            }
+
+            config.Name = trainName;
+            config.DCCID = DCCId;
+
+            if (fullInfo != null && fullInfo.Speedprofile != null)
+            {
+                var firstSpeed = fullInfo.Speedprofile.Speeds.Speed.FirstOrDefault();
+                if (firstSpeed != null)
+                {
+                    decimal prevForwardSpeed = 0.0M;
+                    decimal prevReverseSpeed = 0.0M;
+                    decimal prevStep = 0.0M;
+
+                    foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
+                    {
+                        var tStep = step.Step;
+                        var speed = step.Forward;
+                        decimal dForward = 0.0M;
+                        decimal dReverse = 0.0M;
+                        decimal dStep = 0.0M;
+
+                        bool fSuccess = decimal.TryParse(step.Forward, out dForward);
+                        bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
+                        bool dSuccess = decimal.TryParse(step.Step, out dStep);
+
+
+                        if (fSuccess && rSuccess)
+                        {
+                            if ((crawlMMS < dForward && crawlMMS > prevForwardSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(crawlMMS, prevForwardSpeed, dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ForwardCrawlSpeedStep = calculatedSpeedStep;
+                                config.ForwardCrawlMMS = calculatedMMS;
+                            }
+                            if ((crawlMMS < dReverse && crawlMMS > prevReverseSpeed))
+                            {
+
+                                var calc = GetRelativeSpeedPercentage(crawlMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ReverseCrawlSpeedStep = calculatedSpeedStep;
+                                config.ReverseCrawlMMS = calculatedMMS;
+                            }
+
+
+                            if ((cautionMMS < dForward && cautionMMS > prevForwardSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(cautionMMS, prevForwardSpeed, dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ForwardCautionSpeedStep = calculatedSpeedStep;
+                                config.ForwardCautionMMS = calculatedMMS;
+                            }
+                            if ((cautionMMS < dReverse && cautionMMS > prevReverseSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(cautionMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ReverseCautionSpeedStep = calculatedSpeedStep;
+                                config.ReverseCautionMMS = calculatedMMS;
+                            }
+
+                            if (fulSpeedMMS < dForward && fulSpeedMMS > prevForwardSpeed)
+                            {
+                                var calc = GetRelativeSpeedPercentage(fulSpeedMMS, prevForwardSpeed, dForward);
+                                var calculatedMMS = prevForwardSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ForwardFullSpeedStep = calculatedSpeedStep;
+                                config.ForwardFullSpeedMMS = calculatedMMS;
+                            }
+                            if ((fulSpeedMMS < dReverse && fulSpeedMMS > prevReverseSpeed))
+                            {
+                                var calc = GetRelativeSpeedPercentage(fulSpeedMMS, prevReverseSpeed, dReverse);
+                                var calculatedMMS = prevReverseSpeed + calc.speed;
+                                var calculatedSpeedStep = GetRelativeSpeedStep(calc.percentage, prevStep, dStep);
+
+                                config.ReverseFullSpeedStep = calculatedSpeedStep;
+                                config.ReverseFullSpeedMMS = calculatedMMS;
+                            }
+
+                        }
+                        prevForwardSpeed = dForward;
+                        prevReverseSpeed = dReverse;
+                        prevStep = dStep;
+                    }
+
+                }
+            }
+            if (fullInfo == null || fullInfo.Speedprofile == null || config.ForwardCrawlSpeedStep == 0 || config.ReverseCrawlSpeedStep == 0 || config.ForwardCautionSpeedStep == 0
+                || config.ReverseCrawlSpeedStep == 0 || config.ForwardFullSpeedStep == 0 || config.ReverseFullSpeedStep == 0)
+            {
+                //WriteToLog("Speed profile not complete for this train - can't run it");
+                return null;
+            }
+
+            int rampUpStepIncrease = 3;
+            int rampUpIntervalMS = 200;
+            int rampDownStepDecrease = 3;
+            int rampDownIntervalMS = 200;
+
+            if (rampDownStep != null)
+            {
+                int.TryParse(rampDownStep.Value, out rampDownStepDecrease);
+            }
+
+            if (rampDownInterval != null)
+            {
+                int.TryParse(rampDownInterval.Value, out rampDownIntervalMS);
+            }
+
+            if (rampUpStep != null)
+            {
+                int.TryParse(rampUpStep.Value, out rampUpStepIncrease);
+            }
+
+            if (rampUpInterval != null)
+            {
+                int.TryParse(rampUpInterval.Value, out rampUpIntervalMS);
+            }
+
+            config.RampUpSpeedStepIncrease = rampUpStepIncrease;
+            config.RampUpIntervalMS = rampUpIntervalMS;
+            config.RampDownIntervalMS = rampDownIntervalMS;
+            config.RampDownSpeedStepDecrease = rampDownStepDecrease;
+
+            config.CurrentSpeedStep = 0;
+            config.TargetSpeedStep = 0;
+            config.IsActive = true;
+            return config;
+        }
+
+        private (decimal percentage, decimal speed) GetRelativeSpeedPercentage(int targetMMS, decimal prevForwardSpeed, decimal thisForwardSpeed)
+        {
+            decimal a = targetMMS - prevForwardSpeed;
+            decimal b = thisForwardSpeed - prevForwardSpeed;
+            decimal frac = 0.0M;
+            if (b == 0)
+            {
+                frac = 100;
+            }
+            else
+                frac = (a / b) * 100;
+
+            //frac now equals percentage
+            //get that percentage of the full forward speed for relative speed
+            var scale = thisForwardSpeed - prevForwardSpeed;
+            decimal perc = 0.0M;
+            if (scale == 0)
+                perc = scale;
+            else
+                perc = (frac / 100) * scale;
+            return (frac, perc);
+        }
+
+        private int GetRelativeSpeedStep(decimal percentage, decimal prevStep, decimal thisStep)
+        {
+            //work out percentage position between prevStep and Step
+            decimal pos = 0.0M;
+
+            var scale = thisStep - prevStep;
+            if (scale == 0)
+                pos = scale;
+            else
+                pos = (percentage / 100) * scale;
+
+            //then add the pos to the ... step?
+            var requiredStep = prevStep + pos;
+            var asPerc1 = requiredStep / 1000;
+            var beforeRound = asPerc1 * 128;
+            int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
+            return dSS;
+        }
+
+        private void CheckRunningTrainsForUnattendedSpeedChanges()
+        {
+
         }
 
         private void btnStopMonitoring_Click(object sender, EventArgs e)
@@ -1131,6 +1610,31 @@ namespace LayoutMonitor
                     ddlTrainSelector.Items.Add(blockLog.Name);
                 }
                 blockLog.AutomatedBlockList = new List<BlockJourneyLog>();
+                blockLog.TrainMotionCfg = GetTrainMotionConfig(blockLog.Name,blockLog.DCCiD);
+
+                blockLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
+                var rosterCfG = new RosterReader(RosterPath);
+                var roster = rosterCfG.GetRoster();
+                var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == blockLog.DCCiD);
+                blockLog.HasSpeedProfile = false;
+                if (fullInfo != null)
+                {
+                    var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+                    int trainLengthMM = 0;
+
+                    if (trainLength != null)
+                    {
+                        int.TryParse(trainLength.Value, out trainLengthMM);
+                    }
+
+                    blockLog.TrainLengthMM = trainLengthMM;
+                    lbOutput.Items.Add("Train length " + blockLog.TrainLengthMM.ToString());
+                    if (fullInfo.Speedprofile != null && fullInfo.Speedprofile.Speeds.Speed.Count > 0)
+                    {
+                        blockLog.HasSpeedProfile = true;
+                        lbOutput.Items.Add("Speed profile found - steps "+fullInfo.Speedprofile.Speeds.Speed.Count.ToString());
+                    }
+                }
             }
             else
             {
@@ -1320,6 +1824,7 @@ namespace LayoutMonitor
             blockLog.PreviousBlock = likelyPreviousBlock;
             blockLog.History.Add(block.data.userName);
             blockLog.CurrentBlock = block.data.userName;
+            blockLog.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
 
             BlockJourneyLog bjl = new BlockJourneyLog();
             bjl.BlockSystemname = block.data.name;
@@ -1350,10 +1855,10 @@ namespace LayoutMonitor
 
             blockLog.AutomatedBlockList.Add(bjl);
             var indexOfBJL = blockLog.AutomatedBlockList.IndexOf(bjl);
-            if (indexOfBJL > 0)
+            if (indexOfBJL > 0 && blockLog.TrainLengthMM > 0 && blockLog.HasSpeedProfile)
             {
                 var previousBlockLog = blockLog.AutomatedBlockList.ElementAtOrDefault(indexOfBJL - 1);
-                if (previousBlockLog != null)
+                if (previousBlockLog != null && blockLog.TrainLengthMM > 0)
                 {
                     previousBlockLog.SequenceState = JourneySequenceState.EnteredNextBlock;
                     await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousBlockLog.OccupationSensorSystemName, "1", false);
@@ -1368,7 +1873,8 @@ namespace LayoutMonitor
 
             if (!issueFoundNextBlock)
             {
-                var bnl = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector, firstBoundary.EdgeConnector);
+                //var bnl = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector, firstBoundary.EdgeConnector);
+                var bnl = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnector, firstBoundary.EdgeConnectorDirectionConnector,  firstBoundary.EdgeConnector);
                 if (bnl.BlockFound == likelyPreviousBlock)
                 {
                     BNLThisBlock = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
@@ -1532,6 +2038,7 @@ namespace LayoutMonitor
             {
                 var alertExists = alerts.Any(a => a.BlockSystemName == block.data.name && a.Severity == AlertSeverity.Extreme);
                 blockLog.SignalAspect = SignalAspect.Danger;
+                blockLog.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                 if (!alertExists)
                 {
                     //lbOutput.Items.Add("Add alert caution");
@@ -1559,6 +2066,7 @@ namespace LayoutMonitor
                 //Danger alert
                 var alertExists = alerts.Any(a => a.BlockSystemName == block.data.name && a.Severity == AlertSeverity.Danger);
                 blockLog.SignalAspect = SignalAspect.Danger;
+                blockLog.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                 //lbOutput.Items.Add("Add alert danger pre-check");
                 if (!alertExists)
                 {
@@ -1587,6 +2095,7 @@ namespace LayoutMonitor
                 var alertExists = alerts.Any(a => a.BlockSystemName == block.data.name && a.Severity == AlertSeverity.Caution);
                 var dangerAlertExistsForNextBlock = alerts.Any(a => a.BNL.BlockChecked == BNLNextBlock.BlockChecked && a.Severity == AlertSeverity.Danger);
                 blockLog.SignalAspect = SignalAspect.Caution;
+                blockLog.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                 //lbOutput.Items.Add("Add alert caution pre-check");
 
                 if (!alertExists && !dangerAlertExistsForNextBlock)
@@ -1623,7 +2132,21 @@ namespace LayoutMonitor
             {
                 //lbOutput.Items.Add(("Proceed " + blockUserName));
                 // lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                if (blockLog.SignalAspect != SignalAspect.Proceed)
+                {
+                    //resuming?
+                    blockLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Resuming;
+                    lbOutput.Items.Add("Resume detected for " + blockLog.Name);
+                    SoundPlayer signalBeep = new SoundPlayer("./Assets/Proceed.wav");
+                    signalBeep.Play();
+                }
+                else
+                {
+                    blockLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
+                }
+                blockLog.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Full;
                 blockLog.SignalAspect = SignalAspect.Proceed;
+
                 if (ShowProceedMessages)
                 {
                     ListViewItem item = new ListViewItem();
@@ -2546,10 +3069,14 @@ namespace LayoutMonitor
             if (log == null) return;
 
             var heldBlocks = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock || w.SequenceState == JourneySequenceState.Active);
-            foreach (var hb in heldBlocks)
+            if (log.HasSpeedProfile && log.TrainLengthMM > 0)
             {
-                await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + hb.OccupationSensorSystemName, "0", false);
+                foreach (var hb in heldBlocks)
+                {
+                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + hb.OccupationSensorSystemName, "0", false);
+                }
             }
+
             var alertsToDeactivate = alerts.Where(w => w.TrainName == trainName);
             foreach (var atd in alertsToDeactivate)
             {
@@ -2565,6 +3092,7 @@ namespace LayoutMonitor
                     await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
                 }
             }
+            log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Cancelled;
             Log.Remove(log);
 
             var topic = CabSignalTopic + log.DCCiD;
@@ -2718,6 +3246,22 @@ namespace LayoutMonitor
 
             return frac;
 
+        }
+
+        private void btnUnattendedToggle_Click(object sender, EventArgs e)
+        {
+            if (!UnattendedMode)
+            {
+                UnattendedMode = true;
+                btnUnattendedToggle.BackColor = Color.LimeGreen;
+                btnUnattendedToggle.ForeColor = Color.White;
+            }
+            else
+            {
+                UnattendedMode = false;
+                btnUnattendedToggle.BackColor = Color.White;
+                btnUnattendedToggle.ForeColor = Color.Black;
+            }
         }
     }
 }
