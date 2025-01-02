@@ -76,6 +76,8 @@
             this.lblTrainStatus = new System.Windows.Forms.Label();
             this.pbBlockProgress = new System.Windows.Forms.ProgressBar();
             this.cbManageYard = new System.Windows.Forms.CheckBox();
+            this.tbAdditionalTriggerDelay = new System.Windows.Forms.TextBox();
+            this.lblAdditionalTriggerDelay = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnTest
@@ -530,11 +532,29 @@
             this.cbManageYard.Text = "Manage Yard";
             this.cbManageYard.UseVisualStyleBackColor = true;
             // 
+            // tbAdditionalTriggerDelay
+            // 
+            this.tbAdditionalTriggerDelay.Location = new System.Drawing.Point(509, 13);
+            this.tbAdditionalTriggerDelay.Name = "tbAdditionalTriggerDelay";
+            this.tbAdditionalTriggerDelay.Size = new System.Drawing.Size(63, 20);
+            this.tbAdditionalTriggerDelay.TabIndex = 50;
+            // 
+            // lblAdditionalTriggerDelay
+            // 
+            this.lblAdditionalTriggerDelay.AutoSize = true;
+            this.lblAdditionalTriggerDelay.Location = new System.Drawing.Point(435, 15);
+            this.lblAdditionalTriggerDelay.Name = "lblAdditionalTriggerDelay";
+            this.lblAdditionalTriggerDelay.Size = new System.Drawing.Size(68, 13);
+            this.lblAdditionalTriggerDelay.TabIndex = 51;
+            this.lblAdditionalTriggerDelay.Text = "Trigger delay";
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 422);
+            this.Controls.Add(this.lblAdditionalTriggerDelay);
+            this.Controls.Add(this.tbAdditionalTriggerDelay);
             this.Controls.Add(this.cbManageYard);
             this.Controls.Add(this.pbBlockProgress);
             this.Controls.Add(this.lblTrainStatus);
@@ -640,5 +660,7 @@
         private System.Windows.Forms.Label lblTrainStatus;
         private System.Windows.Forms.ProgressBar pbBlockProgress;
         private System.Windows.Forms.CheckBox cbManageYard;
+        private System.Windows.Forms.TextBox tbAdditionalTriggerDelay;
+        private System.Windows.Forms.Label lblAdditionalTriggerDelay;
     }
 }

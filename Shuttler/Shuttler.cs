@@ -306,11 +306,18 @@ namespace Shuttler
                             continue;
                         }
 
+                        WriteToLog("NAB " + nab.data.userName + " next block in log " + existingLog.NextBlock);
+
                         if (nab.data.value == null || existingLog.DCCiD != nab.data.value.data.userName)
                         {
-                            var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
-                            string prevValue = nab.data.value != null ? nab.data.value.data.userName : "";
-                            WriteToLog("Corrected " + nab.data.userName + " block value from " + prevValue + " to " + existingLog.DCCiD);
+                            if (existingLog.NextBlock == nab.data.userName)
+                            {
+                                var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
+                                string prevValue = nab.data.value != null ? nab.data.value.data.userName : "";
+                                WriteToLog("Corrected " + nab.data.userName + " block value from " + prevValue + " to " + existingLog.DCCiD);
+                            }
+                            else
+                                WriteToLog("Didn't correct " + nab.data.userName + " for " + existingLog.DCCiD+" as not the next block");
                         }
 
                         var activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex);
@@ -497,10 +504,12 @@ namespace Shuttler
 
                     if (!string.IsNullOrEmpty(done.NextTransit))
                     {
-                        WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " + done.NextTransitDelayMS.ToString());
-
                         var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
-                        StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(done.NextTransitDelayMS));
+                        newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
+
+                        var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
+                        WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " +fullDelay.ToString());
+                        StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(fullDelay));
                     }
                 }
 
@@ -1098,7 +1107,7 @@ namespace Shuttler
                         {
                             section.AllocationStatus = AllocationStatus.NotAllocated;
                             section.AllocationStatusReason = "Previous section unallocated";
-                            WriteToLog("Section " + section.SectionkUserName + " unallocatable due to previous section being unallocated");
+                            //WriteToLog("Section " + section.SectionkUserName + " unallocatable due to previous section being unallocated");
                         }
                         previousSectionAllocated = false;
                     }
@@ -1189,14 +1198,16 @@ namespace Shuttler
                                 {
                                     case transitsectionwhat.LOADTRAININFO:
 
-                                        if (!bt.Fired)
+                                        if (!bt.Fired && bt.WhenCode == transitsectionwhen.BLOCKENTRY)
                                         {
                                             WriteToLog("Found block trigger block " + thisLogBlock.BlockUserName + " transit " + bt.TransitName);
                                             var transit = _transits.FirstOrDefault(f => f.userName == bt.TransitName);
                                             var newTransit = config.GetTransit(bt.TransitName, DispatcherPath);
                                             newTransit.Type = TransitType.Scripted;
-                                            WriteToLog("Starting new triggered transit delay "+bt.DelayMilliseconds.ToString());
-                                            StartAutoTrain(newTransit, bt.TrainsitTrainDirection, DateTime.Now.AddMilliseconds(bt.DelayMilliseconds));
+                                            //newTransit.NextTransitDelayMS = log.NextTransitDelayMS;
+                                            newTransit.NextTransitAdditionalDelayMS = log.NextTransitAdditionalDelayMS;
+                                            WriteToLog("Starting new triggered BLOCKENTRY transit passing on delay "+(newTransit.NextTransitAdditionalDelayMS+newTransit.NextTransitDelayMS).ToString());
+                                            StartAutoTrain(newTransit, bt.TrainsitTrainDirection, DateTime.Now);
                                             bt.Fired = true;
                                         }
                                         break;
@@ -1623,6 +1634,7 @@ namespace Shuttler
         private void LoadAvailableTransits()
         {
             if (_startBlocks == null) return;
+
             var transits = config.GetTransits(DispatcherPath).OrderBy(o => o.userName);
 
             _transits = transits.Where(w => lbStartBlocks.Items.Contains(w.StartBlock)).ToList();
@@ -1765,6 +1777,8 @@ namespace Shuttler
             trainLog.NextTransit = transit.NextTransit;
             trainLog.NextTransitDirection = transit.NextTransitDirection;
             trainLog.NextTransitDelayMS = transit.NextTransitDelayMS;
+            trainLog.NextTransitAdditionalDelayMS = transit.NextTransitAdditionalDelayMS;
+            WriteToLog("Next transit delay " + trainLog.NextTransitDelayMS.ToString()+" - additional "+trainLog.NextTransitAdditionalDelayMS.ToString());
 
             var startBlock = transit.StartBlock;
 
@@ -2041,7 +2055,7 @@ namespace Shuttler
                 await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
             }
 
-            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection));
+            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +" starting at "+trainLog.StartTime.TimeOfDay.ToString());
         }
 
         private void btnStartTransit_Click(object sender, EventArgs e)
@@ -2050,10 +2064,18 @@ namespace Shuttler
             if (transitItem == null) return;
             var tName = transitItem.Name;
             var tSysName = transitItem.Value;
+            var additionalDelayMS = 0;
+            if (!string.IsNullOrEmpty(tbAdditionalTriggerDelay.Text))
+            {
+                var success = int.TryParse(tbAdditionalTriggerDelay.Text, out additionalDelayMS);
+            }
+
             var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
             var newTransit = config.GetTransit(transit.userName, DispatcherPath);
 
             newTransit.Type = TransitType.Scripted;
+            //newTransit.NextTransitDelayMS = newTransit.NextTransitDelayMS + additionalDelayMS;
+            newTransit.NextTransitAdditionalDelayMS = additionalDelayMS * 1000;
 
             TrainDirection dir = TrainDirection.Forward;
             if (cbTransitTrainDirection.Text == "Reverse")
@@ -2812,7 +2834,14 @@ namespace Shuttler
                 lblSpeedReason.Text = log.AutomatedTrainSpeedReason;
                 lblSpeedStep.Text = log.TrainMotionCfg.CurrentSpeedStep.ToString()+" / "+log.TrainMotionCfg.TargetSpeedStep.ToString();
                 lblSpeedMMS.Text = decimal.Round(log.TrainMotionCfg.CurrentSpeedMMS, 0, MidpointRounding.AwayFromZero).ToString();
-                lblTrainStatus.Text = Enum.GetName(typeof(AutomatedTrainRunningStatus), log.AutomatedTrainRunningStatus);
+
+                if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Scheduled)
+                {
+                    var timeUntilStart = log.StartTime - DateTime.Now;
+                    lblTrainStatus.Text = "Starting in " + timeUntilStart.TotalSeconds.ToString() + " seconds";
+                }
+                else
+                    lblTrainStatus.Text = Enum.GetName(typeof(AutomatedTrainRunningStatus), log.AutomatedTrainRunningStatus);
 
                 var logBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
                 if (logBlock != null)

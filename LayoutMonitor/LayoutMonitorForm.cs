@@ -675,7 +675,7 @@ namespace LayoutMonitor
                                 if (currentBlock != null)
                                 {
                                     currentBlock.SpeedLog.Add(ssl);
-                                    lbOutput.Items.Add("Speed change detected for " + log.DCCiD+" prev "+log.CurrentSpeedStep.ToString()+" now "+throttle.Speed.ToString()+" dir "+dir.ToString());
+                                    //lbOutput.Items.Add("Speed change detected for " + log.DCCiD+" prev "+log.CurrentSpeedStep.ToString()+" now "+throttle.Speed.ToString()+" dir "+dir.ToString());
                                 }
                                 log.CurrentSpeedStep = throttle.Speed;
                             }
@@ -754,7 +754,7 @@ namespace LayoutMonitor
                                     }
                                     else
                                     {
-                                        lbOutput.Items.Add("totalMM " + totalMMCoveredSinceExitingPBSO.ToString()+" - length"+log.TrainLengthMM.ToString());
+                                        //lbOutput.Items.Add("totalMM " + totalMMCoveredSinceExitingPBSO.ToString()+" - length"+log.TrainLengthMM.ToString());
                                     }
                                 }
                             }

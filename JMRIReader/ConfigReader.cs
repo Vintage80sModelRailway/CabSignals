@@ -84,7 +84,7 @@ namespace JMRIReader
             var serializer = new XmlSerializer(typeof(transit));
             tr = (transit)serializer.Deserialize(transit.CreateReader());            
 
-            return PrepareTransit(tr,DispatcherPath);
+            return PrepareTransit(tr, DispatcherPath);
         }
 
         public transit BuildTransitFromBlockList(List<ViableRouteBlock> blockList)
@@ -227,7 +227,11 @@ namespace JMRIReader
                                 break;
                         }
                         if (a.whencode == (int)transitsectionwhen.BLOCKENTRY)
+                        {
+                            tr.NextTransitDelayMS = bt.DelayMilliseconds;
                             BlockTriggers.Add(bt);
+                        }
+
                         else if (a.whencode == (int)transitsectionwhen.TRAINSTOP)
                         {
                             tr.NextTransit = bt.TransitName;
