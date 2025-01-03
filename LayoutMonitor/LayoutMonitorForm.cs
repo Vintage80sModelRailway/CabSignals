@@ -592,7 +592,7 @@ namespace LayoutMonitor
                     var justDeactivated = DeoccupiedBlocks.Any(a => a.BlockName == nab.data.name);
                     if (!alreadyExists && !justDeactivated)
                     {
-                        if (nab.data == null) continue;
+                        //if (nab.data == null) continue;
                         var (success,reason) = await ProcessNewActiveBlock(nab,activeBlocks);
                         foundNewActiveBlock = true;
                         if (!success)
@@ -790,9 +790,10 @@ namespace LayoutMonitor
 
                         //var newLog = log;
                         //Go back to the start of the block in case we're joining it in the middle
-                        var currentBlockReverse = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
+                        //var currentBlockReverse = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
 
-                        var currentBlockRoute = await NavigateThroughBlockItems(currentBlockReverse.BlockChecked, currentBlockReverse.PreviousBlock, currentBlockReverse.EdgeConnectorDirectionConnector, currentBlockReverse.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
+                        //var currentBlockRoute = await NavigateThroughBlockItems(currentBlockReverse.BlockChecked, currentBlockReverse.PreviousBlock, currentBlockReverse.EdgeConnectorDirectionConnector, currentBlockReverse.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
+                        var currentBlockRoute = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector);
                         var nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                         var twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
                         if (currentBlockRoute.BlockFound != log.CurrentBlockBNL.BlockFound)
@@ -1410,10 +1411,57 @@ namespace LayoutMonitor
                 }
             }
 
+            if (block.data.value != null)
+            {
+                existingLog = Log.FirstOrDefault(f => f.DCCiD == block.data.value.data.userName && f.NextBlock == block.data.userName);
+                if (existingLog != null)
+                {
+                    lbOutput.Items.Add("New block " + block.data.userName + " found simplest way for DCC ID " + existingLog.DCCiD);
+                }
+                else
+                {
+                    //Handle possible incorrect block value assignment by JMRI?
+                    if (prevBlockState != null && prevBlockState.data.value != null)
+                    {
+                        existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName && f.NextBlock == block.data.userName);
+                        if (existingLog != null)
+                        {
+                            lbOutput.Items.Add("New block " + block.data.userName + " found by matching up allocation for DCC ID " + existingLog.DCCiD);
+                            block.data.value = prevBlockState.data.value;
+                            await webClient.AllocateBlock(block.data.name, existingLog.DCCiD);
+                        }
+                    }
+
+                }
+            }
+            else
+            {
+                if (prevBlockState != null && prevBlockState.data.value != null)
+                {
+                    existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName && f.NextBlock == block.data.userName);
+                    if (existingLog != null)
+                    {
+                        lbOutput.Items.Add(block.data.userName +  " matched to log but nab appears to have no value for DCC ID "+existingLog.DCCiD);
+                        block.data.value = prevBlockState.data.value;
+                        await webClient.AllocateBlock(block.data.name, existingLog.DCCiD);
+                    }
+                    else
+                    {
+                        return (false, "No block value");
+                    }
+                }
+                else
+                {
+                    return (false, "No block value");
+                }
+            }
+
+            /*
             if (prevBlockState != null && prevBlockState.data.value != null)
             {
                 prevBlockAllocatedId = prevBlockState.data.value.data.userName;
                 //lbOutput.Items.Add("Block previously allocated to " + prevBlockState.data.value.data.userName);
+                 existingLog = Log.FirstOrDefault(f => f.NextBlock == block.data.userName);
 
                 existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName);
                 if (existingLog == null)
@@ -1545,6 +1593,7 @@ namespace LayoutMonitor
                     }
                 }
             }
+            */
 
             if (existingLog == null && block.data.value != null)
             {
@@ -1832,7 +1881,7 @@ namespace LayoutMonitor
             bjl.BlockUserName = block.data.userName;
             bjl.SequenceState = JourneySequenceState.Active;
             bjl.OccupationSensorSystemName = block.data.sensor.Substring(2); ;
-            lbOutput.Items.Add("Sensor for new block " + bjl.OccupationSensorSystemName);
+            //lbOutput.Items.Add("Sensor for new block " + bjl.OccupationSensorSystemName);
             bjl.SpeedLog = new List<SpeedStepLog>();
 
 
@@ -1850,7 +1899,7 @@ namespace LayoutMonitor
                 ssl.SpeedMMS = mms;
                 bjl.SpeedLog.Add(ssl);
                 blockLog.CurrentSpeedStep = existingThrottle.Speed;
-                lbOutput.Items.Add("Got throttle and initial speed step, direction " + dir.ToString()+" speed MM "+mms.ToString());
+                //lbOutput.Items.Add("Got throttle and initial speed step, direction " + dir.ToString()+" speed MM "+mms.ToString());
             }
 
             blockLog.AutomatedBlockList.Add(bjl);
@@ -3087,9 +3136,16 @@ namespace LayoutMonitor
             {
                 foreach (var blockToUnallocate in log.AllocatedBlocks)
                 {
-                    await webClient.AllocateBlock(blockToUnallocate, "");
-                    var sysName = config.GetBlockByUserName(blockToUnallocate);
-                    await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
+                    var blockState = activeBlocks.FirstOrDefault(f => f.data.userName == blockToUnallocate);
+                    if (blockState != null)
+                    {
+                        if (blockState.data.state != 4)
+                        {
+                            await webClient.AllocateBlock(blockToUnallocate, "");
+                            var sysName = config.GetBlockByUserName(blockToUnallocate);
+                            await MQTTClient.SendMQTTMessage(MQTTServer, BlockReleaseTopic + "/" + sysName.userName, sysName.userName, false);
+                        }
+                    }
                 }
             }
             log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Cancelled;
