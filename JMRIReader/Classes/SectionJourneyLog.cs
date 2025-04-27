@@ -16,6 +16,8 @@ namespace JMRIReader.Classes
         public int Sequence { get; set; }
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }
+        public int AllocationFailureCount { get; set; }
+        public Guid SectionID { get; set; }
         public AllocationStatus AllocationStatus { get; set; }
         public string AllocationStatusReason { get; set; }
         public List<block> Blocks { get; set; }

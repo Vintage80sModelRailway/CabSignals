@@ -17,6 +17,7 @@ namespace JMRIReader.Classes
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }
         public int SectionSequenceId { get; set; }
+        public Guid SectionId { get; set; }
         public DateTime TimeTrainEnteredBlock { get; set; }
         public JourneySequenceState SequenceState { get; set; }
         public decimal BlockLengthMM { get; set; }

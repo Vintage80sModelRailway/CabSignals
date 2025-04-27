@@ -18,6 +18,7 @@ public partial class transit
     public List<SectionJourneyLog> Sections { get; set; }
     public List<SectionJourneyLog> AlternateSections { get; set; }
     public List<BlockJourneyLog> BlocksInOrder { get; set; }
+    public List<BlockJourneyLog> AlternateBlocks { get; set; }
     public string StartBlock { get; set; }
     public string EndBlock { get; set; }
     public TransitType Type { get; set; }

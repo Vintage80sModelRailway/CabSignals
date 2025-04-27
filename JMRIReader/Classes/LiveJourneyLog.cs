@@ -22,8 +22,11 @@ namespace JMRIReader.Classes
         public int CurrentSpeedStep { get; set; }
         public bool AutomatedTrainActive { get; set; }
         public List<BlockJourneyLog> AutomatedBlockList { get; set; }
+        public List<BlockJourneyLog> AutomatedAlternativeBlockList { get; set; }
         public int AutomatedCurrentSectionIndex { get; set; }
         public List<SectionJourneyLog> AutomatedSectionList { get; set; }
+        public List<SectionJourneyLog> AutomatedAlternateSectionList { get; set; }
+        public int CurrentAlternateIndex { get; set; }
         public SignalAspect SignalAspect { get; set; }
         public AllocationStatus NextSectionAllocationStatus { get; set; }
         public string NextSectionAllocationStatusReason { get; set; }

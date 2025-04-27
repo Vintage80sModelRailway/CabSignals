@@ -28,6 +28,8 @@ public partial class section
     private string rStoppingSensor;
     public List<block> Blocks { get; set; }
 
+    private string commentField;
+
     /// <remarks/>
     public string systemName
     {
@@ -51,6 +53,18 @@ public partial class section
         set
         {
             this.userNameField = value;
+        }
+    }
+
+    public string comment
+    {
+        get
+        {
+            return this.commentField;
+        }
+        set
+        {
+            this.commentField = value;
         }
     }
 

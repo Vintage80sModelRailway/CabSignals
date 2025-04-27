@@ -185,18 +185,36 @@ namespace JMRIReader
         {
             int sectionCounter = -1;
             int blockCounter = -1;
+            int altSectionCounter = 0;
+            int blockCounterAtStartOfAltSections = 0;
 
             foreach (var transitsection in tr.transitsection)
             {
                 var newSection = new SectionJourneyLog();
+                int blockSequenceCounterAtAltSectionStart = blockCounter;
+               
+                newSection.SectionID = Guid.NewGuid();
                 newSection.AllocationStatus = AllocationStatus.NotAllocated;
-                sectionCounter++;
+
+                if (transitsection.alternate != "yes")
+                    sectionCounter++;
+
                 var hasAlternate = false;
-                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
+                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter+1);
                 if (nextSection != null && nextSection.alternate == "yes")
                 {
                     hasAlternate = true;
                 }
+
+                if (hasAlternate && !transitsection.alternate.Equals("yes"))
+                {
+                    blockCounterAtStartOfAltSections = blockCounter;
+                    altSectionCounter = 0;
+                }
+
+                if (transitsection.alternate.Equals("yes"))
+                    altSectionCounter++;
+
                 section s = GetSectionBySystemName(transitsection.sectionname);
                 newSection.Section = s;
                 newSection.TransitSection = transitsection;
@@ -274,9 +292,12 @@ namespace JMRIReader
                 if (lb != null)
                     lastBlockInSection = lb.sName;
 
+                int sectionBlockCounter = 0;
+
                 foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
                 {
                     blockCounter++;
+                    sectionBlockCounter++;
                     block b = GetBlockBySystemName(blockEntry.sName);
 
                     b.SignalAspect = SignalAspect.Proceed;
@@ -287,6 +308,7 @@ namespace JMRIReader
                     newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockTriggers = new List<BlockTrigger>();
+                    logEntry.SectionId = newSection.SectionID;
                     logEntry.BlockSystemname = b.systemName;
                     logEntry.BlockUserName = b.userName;
                     logEntry.Traversed = false;
@@ -306,7 +328,25 @@ namespace JMRIReader
                     {
                         logEntry.ForwardStoppingSensor = s.forwardStoppingSensor;
                     }
-                    tr.BlocksInOrder.Add(logEntry);
+
+                    //if block is not part of an alt section, add to blocks in order
+                    //else if it has an alt (ie it's the primary section and has alts, add to both blocks in order and alt blocks (so it can be swapped in and out later)
+                    //otherwise it is an alt, needs its sequence adjusting, and adding to the alt blocks list
+                    if (transitsection.alternate != "yes")
+                        tr.BlocksInOrder.Add(logEntry);
+
+                    else
+                    {
+                        logEntry.Sequence = blockCounterAtStartOfAltSections + sectionBlockCounter;
+                        tr.AlternateBlocks.Add(logEntry);
+                    }
+
+                    if (hasAlternate)
+                    {
+                        logEntry.Sequence = blockCounterAtStartOfAltSections + sectionBlockCounter;
+                        if (!tr.AlternateBlocks.Contains(logEntry))
+                            tr.AlternateBlocks.Add(logEntry);
+                    }
                 }
 
                 newSection.SectionkUserName = s.userName;
@@ -316,10 +356,20 @@ namespace JMRIReader
                 newSection.Sequence = sectionCounter;
                 newSection.Traversed = false;
 
+                //alternates need to have the same section sequence as the original alt section - but the section counter increments with each section parsed
+
                 if (newSection.PossibleAlternate)
                     tr.AlternateSections.Add(newSection);
-                else
+                else if (newSection.HasAlternate)
+                {
+                    tr.AlternateSections.Add(newSection);
                     tr.Sections.Add(newSection);
+                }
+                else
+                {
+                    tr.Sections.Add(newSection);
+                }
+                    
             }
             var sb = tr.BlocksInOrder.FirstOrDefault();
             if (sb != null)
