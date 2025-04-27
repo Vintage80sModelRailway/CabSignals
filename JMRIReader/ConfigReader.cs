@@ -146,6 +146,7 @@ namespace JMRIReader
                                 var stoppingSensor = configSection.forwardStoppingSensor;
                                 var shortStoppingSensor = configSection.reverseStoppingSensor;
                                 logEntry.ForwardStoppingSensor = stoppingSensor;
+                                logEntry.reverseStoppingSensor = shortStoppingSensor;
                             }
                         }
 
@@ -324,9 +325,14 @@ namespace JMRIReader
                     logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
                     var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
                     logEntry.BlockTriggers = thisBlockTriggers;
-                    if (blockEntry.sName == lastBlockInSection && !string.IsNullOrEmpty(s.forwardStoppingSensor))
+                    if (!string.IsNullOrEmpty(s.forwardStoppingSensor))
                     {
                         logEntry.ForwardStoppingSensor = s.forwardStoppingSensor;
+                    }
+
+                    if (!string.IsNullOrEmpty(s.reverseStoppingSensor))
+                    {
+                        logEntry.reverseStoppingSensor = s.reverseStoppingSensor;
                     }
 
                     //if block is not part of an alt section, add to blocks in order

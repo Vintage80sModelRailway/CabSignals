@@ -892,6 +892,14 @@ namespace Shuttler
                     {
                         var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
                         var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
+                        var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(indexOfSequenceBlock + 1);
+                        
+                        var nextBlockName = block.BNL.BlockFound;
+                        if (nextBlockInSequence != null && nextBlockInSequence.BlockUserName != block.BNL.BlockFound)
+                        {
+                            //section.LastBlockRerouteAndCheckRequired = true;
+                            nextBlockName = nextBlockInSequence.BlockUserName;
+                        }
 
                         if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued)
                         {
@@ -906,14 +914,15 @@ namespace Shuttler
 
                         if (block.BNL != null)
                         {
-                            var turnouts = block.BNL.BNLTurnouts;
-                            block.BNL = NavigateThroughBlockItems(block.userName, block.BNL.BlockFound, block.BNL.UsedEdgeConnector, block.BNL.UsedEdgeConnectorDirectionConnector, "");
+                            block.BNL = NavigateThroughBlockItems(block.userName, nextBlockName, block.BNL.UsedEdgeConnector, block.BNL.UsedEdgeConnectorDirectionConnector, "");
+                            /*
                             for (int it = 0; it < turnouts.Count; it++)
                             {
                                 block.BNL.BNLTurnouts.ElementAt(it).NumberOfRetries = turnouts.ElementAt(it).NumberOfRetries;
                             }
-
+                            */
                         }
+
                         else continue;
 
                         if (liveStateBlock != null)
@@ -962,7 +971,7 @@ namespace Shuttler
                         }
                         else
                             errorDuringBlockChecking = true;
-
+                        
                         sectionBlockCounter++;
                     }
 
@@ -1041,39 +1050,41 @@ namespace Shuttler
                             {
                                 //not occupied and not allocated - set turnouts
                                 //Check all turnouts even if allocated - one may have been set by human error
-                                if (block.BNL != null && block.BNL.BNLTurnouts != null)
+                                if (!section.AlternativeRouteCheckingInProgress)
                                 {
-                                    var tos = block.BNL.BNLTurnouts.ToList();
-                                    var blockName = block.userName;
-                                    foreach (var to in block.BNL.BNLTurnouts)
+                                    if (block.BNL != null && block.BNL.BNLTurnouts != null)
                                     {
-                                        try
+                                        var tos = block.BNL.BNLTurnouts.ToList();
+                                        var blockName = block.userName;
+                                        foreach (var to in block.BNL.BNLTurnouts)
                                         {
-                                            var liveTO = await webClient.GetTurnout(to.ID);
-                                            if (liveTO != null)
+                                            try
                                             {
-                                                to.CurrentState = liveTO.data.state.ToString();
-                                                var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
-                                                if (storedTO != null)
+                                                var liveTO = await webClient.GetTurnout(to.ID);
+                                                if (liveTO != null)
                                                 {
-                                                    storedTO.State = liveTO.data.state.ToString();
+                                                    to.CurrentState = liveTO.data.state.ToString();
+                                                    var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
+                                                    if (storedTO != null)
+                                                    {
+                                                        storedTO.State = liveTO.data.state.ToString();
+                                                    }
                                                 }
                                             }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
-                                        }
+                                            catch (Exception ex)
+                                            {
+                                                WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
+                                            }
 
-                                        if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
-                                        {
-                                            to.NumberOfRetries++;
-                                            c.SetTurnout(to.ID, int.Parse(to.RequiredState));
-                                            WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
+                                            if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
+                                            {
+                                                to.NumberOfRetries++;
+                                                c.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                                WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
+                                            }
                                         }
                                     }
                                 }
-
                             }
                             sectionBlockCounter++;
                         }
@@ -1122,6 +1133,9 @@ namespace Shuttler
                                             log.AutomatedBlockList[index] = altBlock;
                                         }
                                     }
+
+                                    //the last block of the previous section is likely to need some points changing due to the change of route                                    
+                                    log.AutomatedSectionList[i - 1].AlternativeRouteCheckingInProgress = true;
                                 }
                             }
                             else
@@ -1130,7 +1144,7 @@ namespace Shuttler
                                 section.AllocationStatusReason = "Section contains unallocatable block";
                             }
 
-                            var failedAltSectionAllocations = log.AutomatedAlternateSectionList.Where(w => w.AllocationFailureCount > 5);
+                            var failedAltSectionAllocations = log.AutomatedAlternateSectionList.Where(w => w.AllocationFailureCount > 0);
                             var thisIsStorage = true;
                             if (failedAltSectionAllocations.Count() == log.AutomatedAlternateSectionList.Count())
                             {
@@ -1169,15 +1183,21 @@ namespace Shuttler
                                         for (int bi = 0; bi < altSec.Blocks.Count && storageSpaceFound == false; bi++)
                                         {
                                             var storageBlock = altSec.Blocks[bi];
-                                            availableSpaceMM += storageBlock.length;
-                                            if (availableSpaceMM > log.TrainLengthMM + 50)
+                                            var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == storageBlock.systemName);
+                                            if (liveStateBlock != null && liveStateBlock.data.state == 4)
                                             {
-                                                WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
-                                                storageSpaceFound = true;
-                                                indexOfLastBlockNeeded = bi;
-                                                sectionHasSpace = true;
-                                                indexOfSectionWithSpace = si;
+                                                availableSpaceMM += storageBlock.length;
+                                                if (availableSpaceMM > log.TrainLengthMM + 50)
+                                                {
+                                                    WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
+                                                    storageSpaceFound = true;
+                                                    indexOfLastBlockNeeded = bi;
+                                                    sectionHasSpace = true;
+                                                    indexOfSectionWithSpace = si;
+                                                }
                                             }
+                                            else
+                                                break;
                                         }
                                     }
                                 }
@@ -1240,6 +1260,7 @@ namespace Shuttler
                     //Go down to caution in penultimate section
                     var position = log.AutomatedSectionList.IndexOf(section);
                     var positionRelative = log.AutomatedSectionList.Count - position;
+                    section.AlternativeRouteCheckingInProgress = false;
                 }
 
                 //check blocks for issues
@@ -1656,6 +1677,8 @@ namespace Shuttler
                     }
                     else
                         currentBlockLog.derivedStoppingSensor = currentBlockLog.reverseStoppingSensor;
+
+                    WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
                 }
 
                 var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
