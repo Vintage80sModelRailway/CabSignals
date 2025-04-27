@@ -27,6 +27,8 @@ public partial class block
 
     private string systemName1Field;
 
+    private string speedField;
+
     private decimal lengthField;
 
     private byte curveField;
@@ -110,6 +112,18 @@ public partial class block
         set
         {
             this.occupancysensorField = value;
+        }
+    }
+
+    public string speed
+    {
+        get
+        {
+            return this.speedField;
+        }
+        set
+        {
+            this.speedField = value;
         }
     }
 

@@ -2899,7 +2899,7 @@ namespace LayoutMonitor
                         alertStillActive = true;
                     }
 
-                    if (!alertStillActive)
+                    if (!alertStillActive && !alert.Deactivated)
                     {
                         lbOutput.Items.Add("2282 deactivate alert - no longer active - "+log.DCCiD+" - " +alert.LikelyIssue);
                         DeactivateAlert(alert,true); 

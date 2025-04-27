@@ -18,3 +18,14 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReade
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\JMRIReader.dll
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\JMRIReader.pdb
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\MQTTnet.dll
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.dll
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\MQTTnet.xml
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\bin\Release\Newtonsoft.Json.xml
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.AssemblyReference.cache
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CoreCompileInputs.cache
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\obj\Release\JMRIReader.csproj.CopyComplete
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\obj\Release\JMRIReader.dll
+C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIReader\obj\Release\JMRIReader.pdb

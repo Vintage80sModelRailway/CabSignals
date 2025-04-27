@@ -111,6 +111,10 @@ namespace JMRIReader
                 configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                 onlySection.Blocks.Add(configBlock);
 
+                if (configBlock.speed != null && configBlock.speed == "Slow")
+                    configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                
+
                 var logEntry = new BlockJourneyLog();
                 logEntry.BlockSystemname = configBlock.systemName;
                 logEntry.BlockUserName = configBlock.userName;
@@ -123,6 +127,30 @@ namespace JMRIReader
                 logEntry.BlockLengthMM = configBlock.length;
                 logEntry.PreviousBlockExited = false;
                 logEntry.SpeedLog = new List<SpeedStepLog>();
+
+                if (counter == blockList.Count-1)
+                {
+                    //last block - check for stopping sensor
+                    var comment = configBlock.comment;
+                    var splitCOmment = comment.Split(';').ToList();
+                    var sectionConfig = splitCOmment.FirstOrDefault(f => f.ToUpper().Contains("SENSORCONFIGSECTION"));
+                    if (sectionConfig != null)
+                    {
+                        var splitSectionConfig = sectionConfig.Split('=').ToList();
+                        if ( splitSectionConfig != null && splitSectionConfig.Count == 2)
+                        {
+                            var configSectionName = splitSectionConfig.Last();
+                            var configSection = GetSectionByUserName(configSectionName);
+                            if (configSection != null)
+                            {
+                                var stoppingSensor = configSection.forwardStoppingSensor;
+                                var shortStoppingSensor = configSection.reverseStoppingSensor;
+                                logEntry.ForwardStoppingSensor = stoppingSensor;
+                            }
+                        }
+
+                    }
+                }
                 tr.BlocksInOrder.Add(logEntry);
             }
             tr.Sections = new List<SectionJourneyLog>
@@ -253,6 +281,9 @@ namespace JMRIReader
 
                     b.SignalAspect = SignalAspect.Proceed;
                     b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
+                    if (b.speed != null && b.speed == "Slow")
+                        b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+
                     newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockTriggers = new List<BlockTrigger>();
@@ -284,7 +315,11 @@ namespace JMRIReader
                 newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
                 newSection.Sequence = sectionCounter;
                 newSection.Traversed = false;
-                tr.Sections.Add(newSection);
+
+                if (newSection.PossibleAlternate)
+                    tr.AlternateSections.Add(newSection);
+                else
+                    tr.Sections.Add(newSection);
             }
             var sb = tr.BlocksInOrder.FirstOrDefault();
             if (sb != null)
@@ -354,6 +389,15 @@ namespace JMRIReader
         public section GetSectionBySystemName(string SystemName)
         {
             var configSection = config.Elements("layout-config").Elements("sections").Elements("section").FirstOrDefault(f => f.Attribute("systemName").Value.Equals(SystemName));
+            var sectionSerializer = new XmlSerializer(typeof(section));
+            section s = (section)sectionSerializer.Deserialize(configSection.CreateReader());
+            return s;
+        }
+
+
+        public section GetSectionByUserName(string UserName)
+        {
+            var configSection = config.Elements("layout-config").Elements("sections").Elements("section").FirstOrDefault(f => f.Attribute("userName").Value.Equals(UserName));
             var sectionSerializer = new XmlSerializer(typeof(section));
             section s = (section)sectionSerializer.Deserialize(configSection.CreateReader());
             return s;

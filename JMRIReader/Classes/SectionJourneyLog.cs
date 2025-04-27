@@ -28,5 +28,7 @@ namespace JMRIReader.Classes
         public List<BlockNavigationLog> BlockBNLs { get; set; }
         public bool IsTraversed { get; set; }
 
+
+
     }
 }

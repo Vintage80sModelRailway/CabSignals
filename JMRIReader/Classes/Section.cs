@@ -25,6 +25,7 @@ public partial class section
     private string creationtypeField;
 
     private string fStoppingSensor;
+    private string rStoppingSensor;
     public List<block> Blocks { get; set; }
 
     /// <remarks/>
@@ -133,6 +134,20 @@ public partial class section
         set
         {
             this.fStoppingSensor = value;
+        }
+    }
+
+
+    [System.Xml.Serialization.XmlAttributeAttribute("rstopsensorname")]
+    public string reverseStoppingSensor
+    {
+        get
+        {
+            return this.rStoppingSensor;
+        }
+        set
+        {
+            this.rStoppingSensor = value;
         }
     }
 }

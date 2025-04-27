@@ -25,6 +25,8 @@ namespace JMRIReader.Classes
         public bool PreviousBlockExited { get; set; }
         public List<BlockTrigger> BlockTriggers { get; set; }
         public string ForwardStoppingSensor { get; set; }
+        public string reverseStoppingSensor { get; set; }
+        public string derivedStoppingSensor { get; set; }
 
         public string OccupationSensorSystemName { get; set; }
 

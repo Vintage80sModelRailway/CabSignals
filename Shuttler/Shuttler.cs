@@ -42,6 +42,7 @@ namespace Shuttler
         private int cautiomBlockPercentToBeginRampDown;
         private int dangerBlockPercentToBeginRampDown;
         private int shortBlockThresholdMM;
+        private int shortTrainThresholdMM = 1200;
         private string memoryAllocatedTrainsName;
         private string SensorHoldTopic;
 
@@ -1519,7 +1520,21 @@ namespace Shuttler
                 decimal percentageOfBlockTraversed = 100.0M;
                 var mmRemaining = lengthMM - traversedSoFarMM;
                 bool previousBlockExited = false;
-                bool stopBlockHasStoppingSensor = !string.IsNullOrEmpty(currentBlockLog.ForwardStoppingSensor);
+                bool stopBlockHasStoppingSensor = false;
+
+                //there can't be a short stopping sensor without a forward one
+                //using JMRI section config 'reverse stopping sensor' as short stopping sensor
+                if (!string.IsNullOrEmpty(currentBlockLog.ForwardStoppingSensor))
+                {
+                    stopBlockHasStoppingSensor = true;
+                    if (string.IsNullOrEmpty(currentBlockLog.reverseStoppingSensor) || log.TrainLengthMM < shortTrainThresholdMM)
+                    {
+                        currentBlockLog.derivedStoppingSensor = currentBlockLog.ForwardStoppingSensor;                        
+                    }
+                    else
+                        currentBlockLog.derivedStoppingSensor = currentBlockLog.reverseStoppingSensor;
+                }
+
                 var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
                 if (previousBlock != null)
                 {
@@ -1540,7 +1555,7 @@ namespace Shuttler
 
                 if (stopBlockHasStoppingSensor && (numberOfBlocksRemaining == 0 || log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
-                    var sensor = await webClient.GetSensor(currentBlockLog.ForwardStoppingSensor);
+                    var sensor = await webClient.GetSensor(currentBlockLog.derivedStoppingSensor);
                     if (sensor != null)
                     {
                         if (sensor.data.state == 2) //active

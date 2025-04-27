@@ -16,6 +16,7 @@ public partial class transit
 
     private string userNameField;
     public List<SectionJourneyLog> Sections { get; set; }
+    public List<SectionJourneyLog> AlternateSections { get; set; }
     public List<BlockJourneyLog> BlocksInOrder { get; set; }
     public string StartBlock { get; set; }
     public string EndBlock { get; set; }
