@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Deployment.Application;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
@@ -335,7 +336,7 @@ namespace Shuttler
                             existingLog.AutomatedCurrentSectionIndex++;
                             activeSection.IsTraversed = true;
                             activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
-                            WriteToLog("New active section " + activeSection.SectionkUserName + " - block " + activeBlock.userName + " section index now at " + existingLog.AutomatedCurrentSectionIndex.ToString());
+                            WriteToLog("New active section " + activeSection.SectionkUserName + " - block " + activeBlock.userName + " section index now at " + existingLog.AutomatedCurrentSectionIndex.ToString()+" storage "+activeSection.IsStorage.ToString());
                         }
                         if (activeBlock != null)
                         {
@@ -395,8 +396,13 @@ namespace Shuttler
                         logBlock.SequenceState = JourneySequenceState.Active;
                         logBlock.SpeedLog = new List<SpeedStepLog>();
 
+                        WriteToLog("Config block speed " + activeBlock.BlockSpeed.ToString() + " - " + activeBlock.AutomatedSpeedReason);
+                        WriteToLog("Log block speed " + logBlock.SpeedLimit.ToString());
+
                         if (existingLog.AutomatedBlockList.ElementAt(0).SequenceState == JourneySequenceState.Queued)
                             existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
+
+                        existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
 
                         //log the speed the train was going at as it entered the block - for mm covered so far calculations
                         var previousLogBlock = existingLog.AutomatedBlockList.ElementAtOrDefault(existingLog.AutomatedCurrentBlockIndex - 1);
@@ -408,11 +414,17 @@ namespace Shuttler
                                 lastSpeedLogEntry.start = DateTime.Now;
                                 logBlock.SpeedLog.Add(lastSpeedLogEntry);
                             }
+                            else
+                            {
+                                WriteToLog(logBlock.BlockUserName + " prev block " + previousLogBlock.BlockUserName + " last speed log entry null count " + previousLogBlock.SpeedLog.Count.ToString());
+                            }
                             previousLogBlock.SequenceState = JourneySequenceState.EnteredNextBlock;
                             await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousLogBlock.OccupationSensorSystemName, "1", false);
                         }
-
-                        existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
+                        else
+                        {
+                            WriteToLog(logBlock.BlockUserName + " previous log block null");
+                        }
 
                         if (existingLog.AllocatedBlocks.Contains(nab.data.userName))
                         {
@@ -506,8 +518,18 @@ namespace Shuttler
 
                     if (!string.IsNullOrEmpty(done.NextTransit))
                     {
+                        if (done.AutomatedCurrentBlockIndex < done.AutomatedBlockList.Count - 1)
+                        {
+                            WriteToLog("Not triggering new transit - " + done.NextTransit + " - detected that previous transit was cancelled");
+                        }
+
+                        if (done.TerminatedReason == "Manually cancelled")
+                        {
+                            WriteToLog("Not triggering new transit - " + done.NextTransit + " - detected that previous transit was not completed (block index)");
+                        }
                         var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
                         newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
+                        newTransit.Type = TransitType.Triggered;
 
                         var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
                         WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " +fullDelay.ToString());
@@ -795,6 +817,10 @@ namespace Shuttler
                                 SpeedStep = speedStep
                             });
                         }
+                        else
+                        {
+                            WriteToLog("Unable to create speed log entry - active Block lookup null");
+                        }
                     }
                 }
             }
@@ -934,7 +960,7 @@ namespace Shuttler
 
                             if (!section.IsAllocated)
                             {
-                                if (state == 2 && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
+                                if (state == 2 && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0 && value != log.DCCiD) //occupied
                                 {
                                     issue = block.userName+ " occupied";
                                     if (value.Length > 0) issue += " by " + value;
@@ -1111,7 +1137,7 @@ namespace Shuttler
                             var alternates = log.AutomatedAlternateSectionList.Where(w => w.Sequence == section.Sequence);
                             if (alternates != null && alternates.Count() > 0)
                             {
-                                WriteToLog("Alternates found for section " + section.SectionkUserName);
+                                //WriteToLog("Alternates found for section " + section.SectionkUserName);
 
                                 log.CurrentAlternateIndex++;
                                 if (log.CurrentAlternateIndex >= alternates.Count())
@@ -1214,7 +1240,7 @@ namespace Shuttler
                                 }
                                 if (thisIsStorage)
                                 {
-                                    WriteToLog("Attempt to find storage space in yard now train length " + log.TrainLengthMM.ToString());
+                                    //WriteToLog("Attempt to find storage space in yard now train length " + log.TrainLengthMM.ToString());
                                     //go through each alt section
                                     //for each section start calculating the length available by adding length of available blocks together starting with the closest
                                     //if enough space for the train is found in the back of the yard line, remove any subsequent blocks from the section, starting from the block after the block that completes the available space
@@ -1365,6 +1391,8 @@ namespace Shuttler
                             var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
                             mmCoveredSoFar += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
                             thisLogBlock.mmCovered = mmCoveredSoFar;
+
+                            //WriteToLog("Block "+thisLogBlock.BlockUserName+" mm covered " + mmCoveredSoFar.ToString());
                         }
 
                         //Sometimes, on line convergence, JMRI can put the wrong train value in a block value
@@ -1398,7 +1426,7 @@ namespace Shuttler
                                             WriteToLog("Found block trigger block " + thisLogBlock.BlockUserName + " transit " + bt.TransitName);
                                             var transit = _transits.FirstOrDefault(f => f.userName == bt.TransitName);
                                             var newTransit = config.GetTransit(bt.TransitName, DispatcherPath);
-                                            newTransit.Type = TransitType.Scripted;
+                                            newTransit.Type = TransitType.Triggered;
                                             //newTransit.NextTransitDelayMS = log.NextTransitDelayMS;
                                             newTransit.NextTransitAdditionalDelayMS = log.NextTransitAdditionalDelayMS;
                                             WriteToLog("Starting new triggered BLOCKENTRY transit passing on delay "+(newTransit.NextTransitAdditionalDelayMS+newTransit.NextTransitDelayMS).ToString());
@@ -1478,7 +1506,7 @@ namespace Shuttler
                         {
                             var state = liveStateBlock.data.state;
                             var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-                            if (state == 2) //occupied
+                            if (state == 2 && value != log.DCCiD) //occupied
                             {
                                 issue += "; Occupied";
                                 if (value.Length > 0) issue += " by " + value;
@@ -1492,7 +1520,7 @@ namespace Shuttler
                                 }
                                 else if (value.Length == 0)
                                 {
-                                    issue += "; not allocated";
+                                    issue += "; "+liveStateBlock.data.userName+" not allocated";
                                     var allocationIssue = false;
                                     if ( thisLogBlock.LastAllocationTime != null)
                                     {
@@ -1508,7 +1536,13 @@ namespace Shuttler
                                         WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
                                         //Or just try to reallocate this block?
                                         //If all other blocks have values it might cause an issue
-                                        thisLogSection.IsAllocated = false;
+                                        var responseBlock = await webClient.AllocateBlock(liveStateBlock.data.name, log.DCCiD, false);
+                                        if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
+                                        {
+                                            WriteToLog("Allocation failure for block " + liveStateBlock.data.userName + " - 1542 no response");
+                                        }
+
+                                        //thisLogSection.IsAllocated = false;
                                     }
                                 }
                             }
@@ -1579,8 +1613,8 @@ namespace Shuttler
 
                     if (!requiresCustomSpeedValue)
                     {
-                        thisLogSectionBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
-                        thisLogSectionBlock.AutomatedSpeedReason = "Default speed";
+                        thisLogSectionBlock.BlockSpeed = thisLogSectionBlock.DefaultBlockSpeed;
+                        thisLogSectionBlock.AutomatedSpeedReason = thisLogSectionBlock.DefaultSpeedReason;
                     }
 
                     if (i == log.AutomatedCurrentBlockIndex)
@@ -1658,6 +1692,20 @@ namespace Shuttler
                 var newRunningSpeed = currentOccupiedLogSectionBlock.BlockSpeed;
                 var newRunningSpeedReason = currentOccupiedLogSectionBlock.AutomatedSpeedReason;
 
+                int numberOfBlocksRemaining = (log.AutomatedBlockList.Count - 1) - log.AutomatedCurrentBlockIndex;
+
+                bool inStorageLine = false;
+
+                var currentSection = log.AutomatedSectionList.ElementAtOrDefault(log.AutomatedCurrentSectionIndex);
+                if (currentSection != null)
+                {
+                    if (currentSection.IsStorage && numberOfBlocksRemaining == 0)
+                    {
+                        inStorageLine = true;
+                       // WriteToLog("In storage line");
+                    }
+                }
+
                 //get speed setting and set that first - this will be superceded by signal based speed
                 switch (log.SignalAspect)
                 {
@@ -1700,7 +1748,7 @@ namespace Shuttler
                         break;
                 }
 
-                int numberOfBlocksRemaining = (log.AutomatedBlockList.Count - 1) - log.AutomatedCurrentBlockIndex;
+
                 if (blocksRemainingIncludingCurrent == 2)
                 {
                     //ensure caution to slow towards end
@@ -1731,14 +1779,14 @@ namespace Shuttler
                 if (!string.IsNullOrEmpty(currentBlockLog.ForwardStoppingSensor))
                 {
                     stopBlockHasStoppingSensor = true;
-                    if (string.IsNullOrEmpty(currentBlockLog.reverseStoppingSensor) || log.TrainLengthMM < shortTrainThresholdMM)
+                    if (string.IsNullOrEmpty(currentBlockLog.reverseStoppingSensor) || log.TrainLengthMM > shortTrainThresholdMM)
                     {
                         currentBlockLog.derivedStoppingSensor = currentBlockLog.ForwardStoppingSensor;                        
                     }
                     else
                         currentBlockLog.derivedStoppingSensor = currentBlockLog.reverseStoppingSensor;
 
-                    WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
+                    //WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
                 }
 
                 var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
@@ -1770,6 +1818,12 @@ namespace Shuttler
                             newRunningSpeedReason = "Last block or danger and stopping sensor activated - stopping";
                         }
                     }
+                }
+
+                else if (numberOfBlocksRemaining == 0 && inStorageLine)
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    newRunningSpeedReason = "End of journey - storage line - stopping immediately";
                 }
 
                 else if (numberOfBlocksRemaining == 0 && lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor)
@@ -2129,10 +2183,21 @@ namespace Shuttler
             var rampDownStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampDownStep");
             var rampUpStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpStep");
             var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+            var defaultDirection = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerDefaultDirection");
 
             int fulSpeedMMS = DefaultFullSpeedMMS;
             int cautionMMS = DefaultCautionMMS;
             int crawlMMS = DefaultCrawlMMS;
+
+            if (transit.Type == TransitType.Triggered && defaultDirection != null)
+            {
+                var textDir = defaultDirection.Value;
+                if (textDir == "Forward")
+                    trainLog.TrainMotionCfg.TrainDirection = TrainDirection.Forward;
+                else if (textDir == "Reverse")
+                    trainLog.TrainMotionCfg.TrainDirection = TrainDirection.Reverse;
+                WriteToLog("Train direction override from roster - now " + trainLog.TrainMotionCfg.TrainDirection.ToString());
+            }
 
             if (fullSpeed != null)
             {
@@ -2332,7 +2397,13 @@ namespace Shuttler
                 await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
             }
 
-            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +" starting at "+trainLog.StartTime.TimeOfDay.ToString());
+            var lastSection = trainLog.AutomatedSectionList.LastOrDefault();
+            string finishesInStorageLine = "";
+            if (lastSection != null)
+            {
+                finishesInStorageLine = " last section is storage " + lastSection.SectionkUserName+" ";
+            }
+            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +finishesInStorageLine +" starting at "+trainLog.StartTime.TimeOfDay.ToString());
         }
 
         private void btnStartTransit_Click(object sender, EventArgs e)
@@ -2350,7 +2421,7 @@ namespace Shuttler
             var transit = _transits.FirstOrDefault(f => f.systemName == tSysName);
             var newTransit = config.GetTransit(transit.userName, DispatcherPath);
 
-            newTransit.Type = TransitType.Scripted;
+            newTransit.Type = TransitType.UserSelected;
             //newTransit.NextTransitDelayMS = newTransit.NextTransitDelayMS + additionalDelayMS;
             newTransit.NextTransitAdditionalDelayMS = additionalDelayMS * 1000;
 

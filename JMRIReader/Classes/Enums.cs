@@ -41,7 +41,9 @@
         public enum TransitType
         {
             Scripted,
-            Generated
+            Generated,
+            Triggered,
+            UserSelected
         }
 
         public enum AutomatedTrainRunningStatus

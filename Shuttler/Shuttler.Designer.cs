@@ -413,7 +413,7 @@
             // 
             // btnStopTransit
             // 
-            this.btnStopTransit.Location = new System.Drawing.Point(239, 80);
+            this.btnStopTransit.Location = new System.Drawing.Point(355, 80);
             this.btnStopTransit.Name = "btnStopTransit";
             this.btnStopTransit.Size = new System.Drawing.Size(89, 23);
             this.btnStopTransit.TabIndex = 35;

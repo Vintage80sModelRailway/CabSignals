@@ -36,8 +36,10 @@ public partial class block
     public BlockNavigationLog BNL;
 
     public AutomatedTrainRunningSpeed BlockSpeed;
+    public AutomatedTrainRunningSpeed DefaultBlockSpeed;
 
     public string AutomatedSpeedReason;
+    public string DefaultSpeedReason;
 
     public SignalAspect SignalAspect;
     public string SignalAspectReason;

@@ -28,6 +28,7 @@ namespace JMRIReader.Classes
         public string SignalAspectReason { get; set; }
         public List<BlockNavigationLog> BlockBNLs { get; set; }
         public bool IsTraversed { get; set; }
+        public bool IsStorage { get; set; }
 
     }
 }

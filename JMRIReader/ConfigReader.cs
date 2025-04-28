@@ -112,8 +112,7 @@ namespace JMRIReader
                 onlySection.Blocks.Add(configBlock);
 
                 if (configBlock.speed != null && configBlock.speed == "Slow")
-                    configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
-                
+                    configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;                
 
                 var logEntry = new BlockJourneyLog();
                 logEntry.BlockSystemname = configBlock.systemName;
@@ -220,6 +219,11 @@ namespace JMRIReader
                 newSection.Section = s;
                 newSection.TransitSection = transitsection;
 
+                if (s.comment != null && s.comment.Contains("Storage"))
+                {
+                    newSection.IsStorage = true;
+                }                 
+
                 newSection.Blocks = new List<block>();
                 List<BlockTrigger> BlockTriggers = new List<BlockTrigger>();
 
@@ -303,8 +307,8 @@ namespace JMRIReader
 
                     b.SignalAspect = SignalAspect.Proceed;
                     b.BlockSpeed = AutomatedTrainRunningSpeed.Full;
-                    if (b.speed != null && b.speed == "Slow")
-                        b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                    b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Full;
+                    b.DefaultSpeedReason = "No restrictions";
 
                     newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
@@ -321,6 +325,16 @@ namespace JMRIReader
                     logEntry.BlockLengthMM = b.length;
                     logEntry.PreviousBlockExited = false;
                     logEntry.SpeedLog = new List<SpeedStepLog>();
+                    logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Full;
+                    if (b.speed != null && b.speed.ToUpper() == "SLOW")
+                    {
+                        b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        b.AutomatedSpeedReason = "Applied by block speed limit";
+                        b.DefaultSpeedReason = "Applied by block speed limit";
+                        logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
+                    }
+                        
                     //if (!string.IsNullOrEmpty(b.occupancysensor))
                     logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
                     var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
