@@ -1050,41 +1050,40 @@ namespace Shuttler
                             {
                                 //not occupied and not allocated - set turnouts
                                 //Check all turnouts even if allocated - one may have been set by human error
-                                if (!section.AlternativeRouteCheckingInProgress)
+
+                                if (block.BNL != null && block.BNL.BNLTurnouts != null)
                                 {
-                                    if (block.BNL != null && block.BNL.BNLTurnouts != null)
+                                    var tos = block.BNL.BNLTurnouts.ToList();
+                                    var blockName = block.userName;
+                                    foreach (var to in block.BNL.BNLTurnouts)
                                     {
-                                        var tos = block.BNL.BNLTurnouts.ToList();
-                                        var blockName = block.userName;
-                                        foreach (var to in block.BNL.BNLTurnouts)
+                                        try
                                         {
-                                            try
+                                            var liveTO = await webClient.GetTurnout(to.ID);
+                                            if (liveTO != null)
                                             {
-                                                var liveTO = await webClient.GetTurnout(to.ID);
-                                                if (liveTO != null)
+                                                to.CurrentState = liveTO.data.state.ToString();
+                                                var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
+                                                if (storedTO != null)
                                                 {
-                                                    to.CurrentState = liveTO.data.state.ToString();
-                                                    var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
-                                                    if (storedTO != null)
-                                                    {
-                                                        storedTO.State = liveTO.data.state.ToString();
-                                                    }
+                                                    storedTO.State = liveTO.data.state.ToString();
                                                 }
                                             }
-                                            catch (Exception ex)
-                                            {
-                                                WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
-                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
+                                        }
 
-                                            if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
-                                            {
-                                                to.NumberOfRetries++;
-                                                c.SetTurnout(to.ID, int.Parse(to.RequiredState));
-                                                WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
-                                            }
+                                        if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
+                                        {
+                                            to.NumberOfRetries++;
+                                            c.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                            WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState);
                                         }
                                     }
                                 }
+
                             }
                             sectionBlockCounter++;
                         }
@@ -1107,15 +1106,72 @@ namespace Shuttler
                     {
                         if (sectionContainsUnallocatableBlock)
                         {
-                            section.AllocationFailureCount++;
+                            var alternateSectionWasAllocated = false;
                             var alternates = log.AutomatedAlternateSectionList.Where(w => w.Sequence == section.Sequence);
                             if (alternates != null && alternates.Count() > 0)
                             {
                                 WriteToLog("Alternates found for section " + section.SectionkUserName);
+
                                 log.CurrentAlternateIndex++;
                                 if (log.CurrentAlternateIndex >= alternates.Count())
                                     log.CurrentAlternateIndex = 0;
                                 var possibleAlt = alternates.ElementAtOrDefault(log.CurrentAlternateIndex);
+
+                                //entire section has to be unallocated and empty if it's going to be used
+                                foreach (var potentialAlt in alternates)
+                                {
+                                    var sectionIsAvaileble = true;
+
+                                    if (potentialAlt.SectionSystemname == section.SectionSystemname)
+                                    {
+                                        sectionIsAvaileble = false;
+                                        continue;
+                                    }
+
+                                    foreach (var altBlock in potentialAlt.Blocks)
+                                    {
+                                        var liveBlock = LiveBlocks.FirstOrDefault(f => f.data.name == altBlock.systemName);
+                                        if (liveBlock == null || liveBlock.data == null)
+                                        {
+                                            sectionIsAvaileble = false;
+                                            break;
+                                        }
+
+                                        if (liveBlock.data.value != null && liveBlock.data.value.data.userName != log.DCCiD)
+                                        {
+                                            sectionIsAvaileble = false;
+                                            break;
+                                        }
+
+                                        if (liveBlock.data.state != 4)
+                                        {
+                                            sectionIsAvaileble = false;
+                                            break;
+                                        }
+                                    }
+
+                                    if (sectionIsAvaileble)
+                                    {
+                                        section = potentialAlt;
+                                        log.AutomatedSectionList[i] = section;
+                                        log.CurrentAlternateIndex = log.CurrentAlternateIndex;
+
+                                        var sectionAltBlocks = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == section.SectionID);
+                                        foreach (var altBlock in sectionAltBlocks)
+                                        {
+                                            var existingBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == altBlock.Sequence);
+                                            if (existingBlock != null)
+                                            {
+                                                var index = log.AutomatedBlockList.IndexOf(existingBlock);
+                                                log.AutomatedBlockList[index] = altBlock;
+                                            }
+                                        }
+                                        alternateSectionWasAllocated = true;
+                                        break;
+                                    }
+                                }
+
+                                /*
                                 if (possibleAlt != null && possibleAlt.SectionSystemname != section.SectionSystemname)
                                 {
                                     WriteToLog("Replaced unavailable section with section " + section.SectionkUserName);
@@ -1137,6 +1193,7 @@ namespace Shuttler
                                     //the last block of the previous section is likely to need some points changing due to the change of route                                    
                                     log.AutomatedSectionList[i - 1].AlternativeRouteCheckingInProgress = true;
                                 }
+                                */
                             }
                             else
                             {
@@ -1144,10 +1201,9 @@ namespace Shuttler
                                 section.AllocationStatusReason = "Section contains unallocatable block";
                             }
 
-                            var failedAltSectionAllocations = log.AutomatedAlternateSectionList.Where(w => w.AllocationFailureCount > 0);
-                            var thisIsStorage = true;
-                            if (failedAltSectionAllocations.Count() == log.AutomatedAlternateSectionList.Count())
+                            if (!alternateSectionWasAllocated)
                             {
+                                var thisIsStorage = true;
                                 foreach (var storageSec in log.AutomatedAlternateSectionList)
                                 {
                                     if (storageSec.Section.comment == null || !storageSec.Section.comment.Contains("Storage"))
@@ -1155,88 +1211,82 @@ namespace Shuttler
                                         thisIsStorage = false;
                                     }
                                 }
-                            }
-                            else
-                                thisIsStorage = false;
-
-                            if (thisIsStorage)
-                            {
-                                WriteToLog("Attempt to find storage space in yard now train length "+log.TrainLengthMM.ToString());
-                                //go through each alt section
-                                //for each section start calculating the length available by adding length of available blocks together starting with the closest
-                                //if enough space for the train is found in the back of the yard line, remove any subsequent blocks from the section, starting from the block after the block that completes the available space
-                                //then assign this section and its reduces blocks to the transit / log and the train should part on the end of the line
-
-                                var sectionHasSpace = false;
-                                int indexOfSectionWithSpace = -1;
-                                int indexOfLastBlockNeeded = -1;
-                                int sequenceOfLastBlockNeeded = -1;
-
-                                for (int si = 0; si < log.AutomatedAlternateSectionList.Count && sectionHasSpace == false; si++)
+                                if (thisIsStorage)
                                 {
-                                    var altSec = log.AutomatedAlternateSectionList.ElementAtOrDefault(si);
-                                    if (altSec != null)
-                                    {
-                                        var availableSpaceMM = 0M;
-                                        var storageSpaceFound = false;
+                                    WriteToLog("Attempt to find storage space in yard now train length " + log.TrainLengthMM.ToString());
+                                    //go through each alt section
+                                    //for each section start calculating the length available by adding length of available blocks together starting with the closest
+                                    //if enough space for the train is found in the back of the yard line, remove any subsequent blocks from the section, starting from the block after the block that completes the available space
+                                    //then assign this section and its reduces blocks to the transit / log and the train should part on the end of the line
 
-                                        for (int bi = 0; bi < altSec.Blocks.Count && storageSpaceFound == false; bi++)
+                                    var sectionHasSpace = false;
+                                    int indexOfSectionWithSpace = -1;
+                                    int indexOfLastBlockNeeded = -1;
+                                    int sequenceOfLastBlockNeeded = -1;
+
+                                    for (int si = 0; si < log.AutomatedAlternateSectionList.Count && sectionHasSpace == false; si++)
+                                    {
+                                        var altSec = log.AutomatedAlternateSectionList.ElementAtOrDefault(si);
+                                        if (altSec != null)
                                         {
-                                            var storageBlock = altSec.Blocks[bi];
-                                            var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == storageBlock.systemName);
-                                            if (liveStateBlock != null && liveStateBlock.data.state == 4)
+                                            var availableSpaceMM = 0M;
+                                            var storageSpaceFound = false;
+
+                                            for (int bi = 0; bi < altSec.Blocks.Count && storageSpaceFound == false; bi++)
                                             {
-                                                availableSpaceMM += storageBlock.length;
-                                                if (availableSpaceMM > log.TrainLengthMM + 50)
+                                                var storageBlock = altSec.Blocks[bi];
+                                                var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == storageBlock.systemName);
+                                                if (liveStateBlock != null && liveStateBlock.data.state == 4)
                                                 {
-                                                    WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
-                                                    storageSpaceFound = true;
-                                                    indexOfLastBlockNeeded = bi;
-                                                    sectionHasSpace = true;
-                                                    indexOfSectionWithSpace = si;
+                                                    availableSpaceMM += storageBlock.length;
+                                                    if (availableSpaceMM > log.TrainLengthMM + 50)
+                                                    {
+                                                        WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
+                                                        storageSpaceFound = true;
+                                                        indexOfLastBlockNeeded = bi;
+                                                        sectionHasSpace = true;
+                                                        indexOfSectionWithSpace = si;
+                                                    }
+                                                }
+                                                else
+                                                    break;
+                                            }
+                                        }
+                                    }
+
+                                    if (sectionHasSpace)
+                                    {
+                                        var sectionToUse = log.AutomatedAlternateSectionList.ElementAt(indexOfSectionWithSpace);
+                                        var altBlocksToUse = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == sectionToUse.SectionID);
+
+                                        var currentSectionToReplace = log.AutomatedSectionList.FirstOrDefault(f => f.Sequence == sectionToUse.Sequence);
+                                        var secIndex = log.AutomatedSectionList.IndexOf(currentSectionToReplace);
+
+
+                                        foreach (var rb in altBlocksToUse)
+                                        {
+                                            var blockWithSpace = sectionToUse.Blocks.FirstOrDefault(f => f.systemName == rb.BlockSystemname);
+                                            if (blockWithSpace != null)
+                                            {
+                                                var indexInSection = sectionToUse.Blocks.IndexOf(blockWithSpace);
+                                                var scriptBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == rb.Sequence);
+                                                var replacementIndex = log.AutomatedBlockList.IndexOf(scriptBlock);
+                                                if (indexInSection <= indexOfLastBlockNeeded)
+                                                {
+                                                    log.AutomatedBlockList[replacementIndex] = rb;
+                                                }
+                                                else
+                                                {
+                                                    //remove the block from the script
+                                                    log.AutomatedBlockList.RemoveAt(replacementIndex);
+                                                    sectionToUse.Blocks.RemoveAt(indexInSection);
                                                 }
                                             }
-                                            else
-                                                break;
                                         }
-                                    }
-                                }
-
-                                if (sectionHasSpace)
-                                {
-                                    var sectionToUse = log.AutomatedAlternateSectionList.ElementAt(indexOfSectionWithSpace);
-                                    var altBlocksToUse = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == sectionToUse.SectionID);
-
-                                    var currentSectionToReplace = log.AutomatedSectionList.FirstOrDefault(f => f.Sequence == sectionToUse.Sequence);
-                                    var secIndex = log.AutomatedSectionList.IndexOf(currentSectionToReplace);
-
-
-                                    foreach (var rb in altBlocksToUse)
-                                    {
-                                        var blockWithSpace = sectionToUse.Blocks.FirstOrDefault(f => f.systemName == rb.BlockSystemname);
-                                        if (blockWithSpace != null)
-                                        {
-                                            var indexInSection = sectionToUse.Blocks.IndexOf(blockWithSpace);
-                                            var scriptBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == rb.Sequence);
-                                            var replacementIndex = log.AutomatedBlockList.IndexOf(scriptBlock);
-                                            if (indexInSection <= indexOfLastBlockNeeded)
-                                            {
-                                                log.AutomatedBlockList[replacementIndex] = rb;
-                                            }
-                                            else
-                                            {
-                                                //remove the block from the script
-                                                log.AutomatedBlockList.RemoveAt(replacementIndex);
-                                                sectionToUse.Blocks.RemoveAt(indexInSection);
-                                            }
-                                        }
+                                        log.AutomatedSectionList[secIndex] = sectionToUse;
                                     }
 
-                                    log.AutomatedSectionList[secIndex] = sectionToUse;
-
-
                                 }
-
                             }
 
                             //WriteToLog("Section " + section.SectionkUserName + " unallocatable due to unallocatable block");
@@ -1260,7 +1310,6 @@ namespace Shuttler
                     //Go down to caution in penultimate section
                     var position = log.AutomatedSectionList.IndexOf(section);
                     var positionRelative = log.AutomatedSectionList.Count - position;
-                    section.AlternativeRouteCheckingInProgress = false;
                 }
 
                 //check blocks for issues
