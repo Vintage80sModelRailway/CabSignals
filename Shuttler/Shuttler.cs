@@ -1552,9 +1552,10 @@ namespace Shuttler
 
                     if (nextBlock != null)
                     {
-                        bool nextBlockHasThrownTurnout = false;
+                        //bool nextBlockHasThrownTurnout = false;
                         var nextBlockSection = log.AutomatedSectionList.ElementAtOrDefault(nextBlock.SectionSequenceId);
                         var nextBlockSectionBlock = nextBlockSection.Blocks.FirstOrDefault(f => f.systemName == nextBlock.BlockSystemname);
+                        /*
                         if (nextBlockSectionBlock != null && nextBlockSectionBlock.BNL != null && nextBlockSectionBlock.BNL.BNLTurnouts != null)
                         {
                             foreach (var to in nextBlockSectionBlock.BNL.BNLTurnouts)
@@ -1574,6 +1575,7 @@ namespace Shuttler
                                 requiresCustomSpeedValue = true;
                             }
                         }
+                        */
                     }
 
                     if (i == log.AutomatedBlockList.Count-2)
@@ -1706,6 +1708,29 @@ namespace Shuttler
                     }
                 }
 
+                //if the current block contains a throen turnout and the train is going to come to a stop in it, we can't trust the block length
+                //So if there is a thrown turnout in this block and the train is coming to a stop, stop as soon as the block goes active
+
+                var thisBlockCheck = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0);
+                var currentBlockContainsThrownTurnout = false;
+                if (thisBlockCheck != null)
+                {
+                    if (thisBlockCheck.BNL != null)
+                    {
+                        if (thisBlockCheck.BNL.BNLTurnouts != null)
+                        {
+                            foreach (var to in thisBlockCheck.BNL.BNLTurnouts)
+                            {
+                                if (to.RequiredState == "4")
+                                {
+                                    currentBlockContainsThrownTurnout = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 //get speed setting and set that first - this will be superceded by signal based speed
                 switch (log.SignalAspect)
                 {
@@ -1831,6 +1856,7 @@ namespace Shuttler
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "End of journey - short block - stopping";
                 }
+               
                 else if (numberOfBlocksRemaining == 0 && percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
@@ -1857,7 +1883,7 @@ namespace Shuttler
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
                     newRunningSpeedReason = "Short block, stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
-                }
+                }                
 
                 else if (mmRemaining > 0 && mmRemaining < 500 && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
@@ -1882,6 +1908,11 @@ namespace Shuttler
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                     newRunningSpeedReason = "Short caution block approaching";
+                }
+                else if (currentBlockContainsThrownTurnout && (log.SignalAspect == SignalAspect.Danger || log.SignalAspect == SignalAspect.Stop))
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
+                    newRunningSpeedReason = "Danger block, thrown turnout detected, so can't trust block length - stop now";
                 }
 
                 if (log.AutomatedTrainRunningSpeed != newRunningSpeed)
