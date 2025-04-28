@@ -1024,7 +1024,7 @@ namespace Shuttler
                                         if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
                                         {
                                             allocateFailedAnywhere = true;
-                                            WriteToLog("Allocation failure for block " + block.userName);
+                                            WriteToLog("Allocation failure for block " + block.userName+" - 1827 no response");
                                         }
 
                                         //WriteToLog("Allocated block " + block.userName + " to " + log.Name);
@@ -1033,6 +1033,7 @@ namespace Shuttler
                                             WriteToLog("Successful allocation for block " + block.userName + " value " + responseBlock.data.value.data.userName);
                                             if (!log.AllocatedBlocks.Contains(block.userName))
                                                 log.AllocatedBlocks.Add(block.userName);
+                                            correspondingLogBlock.LastAllocationTime = DateTime.Now;
                                         }
 
                                     }
@@ -1137,7 +1138,7 @@ namespace Shuttler
                                             break;
                                         }
 
-                                        if (liveBlock.data.value != null && liveBlock.data.value.data.userName != log.DCCiD)
+                                        if (liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName) && liveBlock.data.value.data.userName != log.DCCiD)
                                         {
                                             sectionIsAvaileble = false;
                                             break;
@@ -1492,7 +1493,17 @@ namespace Shuttler
                                 else if (value.Length == 0)
                                 {
                                     issue += "; not allocated";
-                                    if (thisLogSection.IsAllocated)
+                                    var allocationIssue = false;
+                                    if ( thisLogBlock.LastAllocationTime != null)
+                                    {
+                                        var diff = DateTime.Now - thisLogBlock.LastAllocationTime;
+                                        if (diff.TotalMilliseconds > 1000)
+                                        {
+                                            allocationIssue = true;
+                                        }
+                                    }
+
+                                    if (thisLogSection.IsAllocated && allocationIssue)
                                     {
                                         WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
                                         //Or just try to reallocate this block?

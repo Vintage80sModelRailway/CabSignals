@@ -13,6 +13,7 @@ namespace JMRIReader.Classes
         public string BlockUserName { get; set; }
         public bool Traversed { get; set; }
         public bool Assigned { get; set; }
+        public DateTime LastAllocationTime { get; set; }
         public int Sequence { get; set; }
         public bool HasAlternate { get; set; }
         public bool PossibleAlternate { get; set; }
