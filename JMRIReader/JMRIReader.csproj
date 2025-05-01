@@ -53,6 +53,7 @@
     <Compile Include="Classes\APIAllocationBlock.cs" />
     <Compile Include="Classes\APIBlock.cs" />
     <Compile Include="Classes\APIMemory.cs" />
+    <Compile Include="Classes\APISensor.cs" />
     <Compile Include="Classes\APISignalMast.cs" />
     <Compile Include="Classes\APITurnout.cs" />
     <Compile Include="Classes\BlockJourneyLog.cs" />
@@ -72,6 +73,8 @@
     <Compile Include="Classes\SectionJourneyLog.cs" />
     <Compile Include="Classes\Sensor.cs" />
     <Compile Include="Classes\SpeedStepLog.cs" />
+    <Compile Include="Classes\StationAutomationJourney.cs" />
+    <Compile Include="Classes\StationAutomationManagement.cs" />
     <Compile Include="Classes\Test.cs" />
     <Compile Include="Classes\TrainMotionConfig.cs" />
     <Compile Include="Classes\TurnoutRootObject.cs" />

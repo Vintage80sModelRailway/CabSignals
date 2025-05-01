@@ -30,6 +30,7 @@ namespace JMRIReader
             XmlSerializer serial = new XmlSerializer(typeof(transit));
             var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
             var serializer = new XmlSerializer(typeof(transit));
+            if (transit == null) return null;
             tr = (transit)serializer.Deserialize(transit.CreateReader());            
 
             return PrepareTransit(tr, DispatcherPath);

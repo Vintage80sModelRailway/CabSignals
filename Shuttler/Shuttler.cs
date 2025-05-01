@@ -2,22 +2,15 @@
 using JMRIReader.Classes;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
-using System.Data.SqlClient;
-using System.Deployment.Application;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Net.Mail;
-using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Messaging;
-using System.Security.Policy;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WiThrottleClient;
 using WiThrottleClient.Classes;
 using static JMRIReader.Classes.Enums;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Shuttler
 {
@@ -48,7 +41,10 @@ namespace Shuttler
         private string memoryAllocatedTrainsName;
         private string SensorHoldTopic;
         private DateTime LastTimeYardWasCheckedForShuffle;
-
+        private StationAutomationManagement sam;
+        private const string ACSAYardTransit = "SA AC Yard Exit to AC Platform";
+        private const string CWSAYardTransit = "SA CW Yard Exit to CW Platform";
+        private const string CWSAYard5Transit = "SA CW Yard 5 to CW Platform";
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -282,6 +278,11 @@ namespace Shuttler
 
                 UpdateLogPanel();
                 CleanUpListBoxes();
+
+                if (sam != null && sam.StationManagementRunning)
+                {
+                    ManageStationAutomation(newBlockStates);
+                }
                 _allBlocks = newBlockStates;
             }
         }
@@ -2482,6 +2483,7 @@ namespace Shuttler
                 dir = TrainDirection.Reverse;
 
             StartAutoTrain(newTransit, dir, DateTime.Now);
+            tbAdditionalTriggerDelay.Text = "";
         }
 
         private (decimal percentage, decimal speed) GetRelativeSpeedPercentage(int targetMMS, decimal prevForwardSpeed, decimal thisForwardSpeed)
@@ -3904,7 +3906,6 @@ namespace Shuttler
                     lbRoster.SelectedIndex = rIndex;
                 }
             }
-
         }
 
         private async void ProcessBlocksToDecorate()
@@ -3971,6 +3972,156 @@ namespace Shuttler
                 lblSpeedStep.Text = "";
 
             }
+        }
+
+        private async void ManageStationAutomation(List<BlockRootObject> LiveBlocks)
+        {
+            if (!sam.StationManagementRunning) return;
+            var acTriggerSensor = await webClient.GetSensor("AC SA TriggerNextTrain");
+            var cwTriggerSensor = await webClient.GetSensor("CW SA TriggerNextTrain");
+
+            if (acTriggerSensor != null && acTriggerSensor.data.state == 2)
+            {
+                var yardLines = config.GetYardSections();
+                var acYardLines = yardLines.Where(w => w.userName.Contains("AC")).ToList();
+                var searchResult = FindUsableLaunchBlock(acYardLines, sam.LastACLaunchAttemptSectionIndex, LiveBlocks);
+                sam.LastACLaunchAttemptSectionIndex = searchResult.index;
+
+                if (searchResult.found)
+                {
+                    var acTransit = PrepareSATransit(ACSAYardTransit, searchResult.name);
+                    StartAutoTrain(acTransit, TrainDirection.Forward, DateTime.Now);
+                    await webClient.SetSensor("AC SA TriggerNextTrain", "4");
+                }
+            }
+
+            if (cwTriggerSensor != null && cwTriggerSensor.data.state == 2)
+            {
+                var yardLines = config.GetYardSections();
+                var cwLines = yardLines.Where(w => w.userName.Contains("CW")).ToList();
+                var searchResult = FindUsableLaunchBlock(cwLines, sam.LastCWLaunchAttemptSectionIndex, LiveBlocks);
+                sam.LastCWLaunchAttemptSectionIndex = searchResult.index;
+                if (searchResult.found)
+                {
+                    if (searchResult.name == "Yard CW Line 5 Exit")
+                    {
+                        var cw5Transit = config.GetTransit(CWSAYard5Transit);
+                        cw5Transit.Type = TransitType.StationAutomation;
+                        StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
+                    }
+                    else
+                    {
+                        var cwTransit = PrepareSATransit(CWSAYardTransit, searchResult.name);
+                        StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                    }
+
+                    await webClient.SetSensor("CW SA TriggerNextTrain", "4");
+                }
+            }      
+        }
+
+        private transit PrepareSATransit(string transitName, string startBlockName)
+        {
+            var newTransit = config.GetTransit(transitName);
+            var replacementBlock = config.GetBlockByUserName(startBlockName);
+            //big assumption here that a section exists with the same name, containing only this block
+            var replacementSection = config.GetSectionByUserName(startBlockName);
+            if (replacementSection == null)
+            {
+                WriteToLog("Auto launch failed - section " + startBlockName + " could not be found");
+            }
+            newTransit.transitsection[0] = new transitTransitsection()
+            {
+                alternate = "no",
+                sectionname = replacementSection.systemName
+            };
+            var oldSec = newTransit.Sections[0];
+            newTransit.Sections[0] = new SectionJourneyLog()
+            {
+                HasAlternate = false,
+                PossibleAlternate = false,
+                BlockBNLs = new List<BlockNavigationLog>(),
+                Blocks = new List<block>(),
+                IsStorage = false,
+                SectionkUserName = replacementSection.userName,
+                AllocationStatus = AllocationStatus.NotAllocated,
+                SectionID = oldSec.SectionID,
+                SectionSystemname = replacementSection.systemName,
+                Sequence = oldSec.Sequence
+            };
+            newTransit.Sections[0].Blocks.Add(replacementBlock);
+
+            var oldBlock = newTransit.BlocksInOrder[0];
+            newTransit.BlocksInOrder[0] = new BlockJourneyLog()
+            {
+                HasAlternate = false,
+                BlockLengthMM = replacementBlock.length,
+                BlockSystemname = replacementBlock.systemName,
+                BlockUserName = replacementBlock.userName,
+                PossibleAlternate = false,
+                OccupationSensorSystemName = replacementBlock.occupancysensor,
+                SectionId = oldSec.SectionID,
+                Sequence = oldBlock.Sequence,
+                SectionSequenceId = oldBlock.SectionSequenceId,
+                SpeedLog = new List<SpeedStepLog>()
+            };
+
+            newTransit.Type = TransitType.StationAutomation;
+            newTransit.StartBlock = replacementBlock.userName;
+            return newTransit;
+        }
+
+        private (bool found, string name, int index) FindUsableLaunchBlock(List<section> YardLines, int index, List<BlockRootObject> LiveBlocks)
+        {
+            index++;
+            var lineToAttempt = YardLines.ElementAtOrDefault(index);
+            if (lineToAttempt == null)
+            {
+                index = 0;
+                lineToAttempt = YardLines.ElementAtOrDefault(index);
+            }
+
+            if (lineToAttempt == null) return (false,"",index);
+            var endBlock = lineToAttempt.blockentry.LastOrDefault();
+            if (endBlock == null) return (false, "",index);
+            var liveBlock = LiveBlocks.FirstOrDefault(f => f.data.name == endBlock.sName);
+            if (liveBlock == null) return (false, "",index);
+
+            if (liveBlock.data.state == 2 && liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName))
+            {
+                var dccIdFound = liveBlock.data.value.data.userName;
+                var alreadyRunning = _logs.Any(a => a.DCCiD == dccIdFound);
+                if (!alreadyRunning)
+                {
+                    return (true, liveBlock.data.userName, index);
+                }
+            }
+
+            return (false, "",index);
+
+        }
+
+        private async void btnStartStationAutomation_Click(object sender, EventArgs e)
+        {
+            if (webClient == null) return;
+            btnStartStationAutomation.BackColor = Color.Green;
+            btnStartStationAutomation.Enabled = false;
+            sam = new StationAutomationManagement();
+            sam.StationManagementRunning = true;
+            btnStopStationAutomation.Enabled = true;
+            sam.LastACLaunchAttemptSectionIndex = -1;
+            sam.LastCWLaunchAttemptSectionIndex = -1;
+
+            await webClient.SetSensor("AC SA TriggerNextTrain", "2");
+            await webClient.SetSensor("CW SA TriggerNextTrain", "2");
+        }
+
+        private void btnStopStationAutomation_Click(object sender, EventArgs e)
+        {
+            btnStartStationAutomation.BackColor = Color.Gray;
+            btnStartStationAutomation.Enabled = true;
+            sam.StationManagementRunning = false;
+            btnStopStationAutomation.Enabled = false;
         }
     }
 }

@@ -3,6 +3,7 @@ using JMRIReader.Classes.DTO;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -82,6 +83,35 @@ namespace JMRIReader
                 var test = ex.Message;
             }
             return sensor;
+        }
+
+        public async Task SetSensor(string sensorName, string state)
+        {
+            APISensor sensor = new APISensor();
+            sensor.state = state;
+
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/sensor/" + sensorName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+
+            var memString = JsonConvert.SerializeObject(sensor, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
+            {
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(memString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
         }
 
         public async Task UpdateMemory(string userName, string value)

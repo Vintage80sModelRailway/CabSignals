@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnTest = new System.Windows.Forms.Button();
             this.lbRoster = new System.Windows.Forms.ListBox();
             this.btnStart = new System.Windows.Forms.Button();
             this.btnStop = new System.Windows.Forms.Button();
@@ -78,17 +77,9 @@
             this.cbManageYard = new System.Windows.Forms.CheckBox();
             this.tbAdditionalTriggerDelay = new System.Windows.Forms.TextBox();
             this.lblAdditionalTriggerDelay = new System.Windows.Forms.Label();
+            this.btnStartStationAutomation = new System.Windows.Forms.Button();
+            this.btnStopStationAutomation = new System.Windows.Forms.Button();
             this.SuspendLayout();
-            // 
-            // btnTest
-            // 
-            this.btnTest.Location = new System.Drawing.Point(186, 15);
-            this.btnTest.Name = "btnTest";
-            this.btnTest.Size = new System.Drawing.Size(75, 23);
-            this.btnTest.TabIndex = 0;
-            this.btnTest.Text = "Test";
-            this.btnTest.UseVisualStyleBackColor = true;
-            this.btnTest.Click += new System.EventHandler(this.btnTest_Click);
             // 
             // lbRoster
             // 
@@ -413,7 +404,7 @@
             // 
             // btnStopTransit
             // 
-            this.btnStopTransit.Location = new System.Drawing.Point(355, 80);
+            this.btnStopTransit.Location = new System.Drawing.Point(585, 196);
             this.btnStopTransit.Name = "btnStopTransit";
             this.btnStopTransit.Size = new System.Drawing.Size(89, 23);
             this.btnStopTransit.TabIndex = 35;
@@ -548,11 +539,34 @@
             this.lblAdditionalTriggerDelay.TabIndex = 51;
             this.lblAdditionalTriggerDelay.Text = "Trigger delay";
             // 
+            // btnStartStationAutomation
+            // 
+            this.btnStartStationAutomation.Location = new System.Drawing.Point(136, 15);
+            this.btnStartStationAutomation.Name = "btnStartStationAutomation";
+            this.btnStartStationAutomation.Size = new System.Drawing.Size(75, 23);
+            this.btnStartStationAutomation.TabIndex = 52;
+            this.btnStartStationAutomation.Text = "Start SA";
+            this.btnStartStationAutomation.UseVisualStyleBackColor = true;
+            this.btnStartStationAutomation.Click += new System.EventHandler(this.btnStartStationAutomation_Click);
+            // 
+            // btnStopStationAutomation
+            // 
+            this.btnStopStationAutomation.Enabled = false;
+            this.btnStopStationAutomation.Location = new System.Drawing.Point(136, 45);
+            this.btnStopStationAutomation.Name = "btnStopStationAutomation";
+            this.btnStopStationAutomation.Size = new System.Drawing.Size(75, 23);
+            this.btnStopStationAutomation.TabIndex = 53;
+            this.btnStopStationAutomation.Text = "Stop SA";
+            this.btnStopStationAutomation.UseVisualStyleBackColor = true;
+            this.btnStopStationAutomation.Click += new System.EventHandler(this.btnStopStationAutomation_Click);
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 422);
+            this.Controls.Add(this.btnStopStationAutomation);
+            this.Controls.Add(this.btnStartStationAutomation);
             this.Controls.Add(this.lblAdditionalTriggerDelay);
             this.Controls.Add(this.tbAdditionalTriggerDelay);
             this.Controls.Add(this.cbManageYard);
@@ -602,7 +616,6 @@
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.lbRoster);
-            this.Controls.Add(this.btnTest);
             this.Name = "Shuttler";
             this.Text = "Shuttler";
             this.ResumeLayout(false);
@@ -611,8 +624,6 @@
         }
 
         #endregion
-
-        private System.Windows.Forms.Button btnTest;
         private System.Windows.Forms.ListBox lbRoster;
         private System.Windows.Forms.Button btnStart;
         private System.Windows.Forms.Button btnStop;
@@ -662,5 +673,7 @@
         private System.Windows.Forms.CheckBox cbManageYard;
         private System.Windows.Forms.TextBox tbAdditionalTriggerDelay;
         private System.Windows.Forms.Label lblAdditionalTriggerDelay;
+        private System.Windows.Forms.Button btnStartStationAutomation;
+        private System.Windows.Forms.Button btnStopStationAutomation;
     }
 }
