@@ -82,6 +82,14 @@ namespace JMRIReader
                     logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
                 }
 
+
+                if (configBlock.comment != null)
+                {
+                    var splitComment = configBlock.comment.Split(';').ToList();
+                    if (splitComment.Contains("EarlyExit"))
+                        logEntry.EarlyExitBlock = true;
+                }
+
                 if (counter == blockList.Count-1)
                 {
                     //last block - check for stopping sensor
@@ -267,6 +275,7 @@ namespace JMRIReader
                     b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Full;
                     b.DefaultSpeedReason = "No restrictions";
 
+
                     newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockTriggers = new List<BlockTrigger>();
@@ -291,7 +300,14 @@ namespace JMRIReader
                         b.DefaultSpeedReason = "Applied by block speed limit";
                         logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
                     }
-                        
+
+                    if (b.comment != null)
+                    {
+                        var splitComment = b.comment.Split(';').ToList();
+                        if (splitComment.Contains("EarlyExit"))
+                            logEntry.EarlyExitBlock = true;
+                    }
+
                     //if (!string.IsNullOrEmpty(b.occupancysensor))
                     logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
                     var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();

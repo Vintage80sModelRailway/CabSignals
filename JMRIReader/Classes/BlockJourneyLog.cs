@@ -32,6 +32,7 @@ namespace JMRIReader.Classes
         public string derivedStoppingSensor { get; set; }
 
         public string OccupationSensorSystemName { get; set; }
+        public bool EarlyExitBlock { get; set; }
 
     }
 }

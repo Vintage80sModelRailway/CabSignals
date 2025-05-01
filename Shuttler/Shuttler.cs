@@ -429,6 +429,8 @@ namespace Shuttler
 
                 WriteToLog("Config block speed " + activeBlock.BlockSpeed.ToString() + " - " + activeBlock.AutomatedSpeedReason);
                 WriteToLog("Log block speed " + logBlock.SpeedLimit.ToString());
+                if (logBlock.EarlyExitBlock)
+                    WriteToLog(nab.data.userName+" is an early exit block train may stop prematurely in this block (if a stop is required) if it also has thrown turnouts");
 
                 if (existingLog.AutomatedBlockList.ElementAt(0).SequenceState == JourneySequenceState.Queued)
                     existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
@@ -1927,10 +1929,10 @@ namespace Shuttler
                     newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                     newRunningSpeedReason = "Short caution block approaching";
                 }
-                else if (currentBlockContainsThrownTurnout && (log.SignalAspect == SignalAspect.Danger || log.SignalAspect == SignalAspect.Stop))
+                else if (currentBlockContainsThrownTurnout && currentBlockLog.EarlyExitBlock && (log.SignalAspect == SignalAspect.Danger || log.SignalAspect == SignalAspect.Stop))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
-                    newRunningSpeedReason = "Danger block, thrown turnout detected, so can't trust block length - stop now";
+                    newRunningSpeedReason = "Danger block, thrown turnout detected and early exit block, so can't trust block length - stop now";
                 }
 
                 if (log.AutomatedTrainRunningSpeed != newRunningSpeed)
