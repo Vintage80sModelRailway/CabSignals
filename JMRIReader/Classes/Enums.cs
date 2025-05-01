@@ -43,7 +43,9 @@
             Scripted,
             Generated,
             Triggered,
-            UserSelected
+            UserSelected,
+            YardShuffle,
+            StationAutomation
         }
 
         public enum AutomatedTrainRunningStatus

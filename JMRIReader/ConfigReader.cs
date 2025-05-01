@@ -24,58 +24,6 @@ namespace JMRIReader
 
         }
 
-        public transit GetTransitOld(string name)
-        {
-            transit tr = new transit();
-            XmlSerializer serial = new XmlSerializer(typeof(transit));            
-            var transit = config.Descendants("transit").FirstOrDefault(x => x.Attribute("userName").Value.Equals(name));
-            var serializer = new XmlSerializer(typeof(transit));
-            tr = (transit)serializer.Deserialize(transit.CreateReader());
-            int sectionCounter = -1;
-            int blockCounter = -1;
-
-            foreach (var transitsection in tr.transitsection)
-            {
-                var newSection = new SectionJourneyLog();
-                sectionCounter++;
-                var hasAlternate = false;
-                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter);
-                if (nextSection != null && nextSection.alternate == "yes")
-                {
-                    hasAlternate = true;
-                }
-                section s = GetSectionBySystemName(transitsection.sectionname);
-                newSection.Section = s;
-                newSection.TransitSection = transitsection;
-                newSection.Blocks = new List<block>();
-
-                foreach (var blockEntry in s.blockentry.OrderBy(o => o.order))
-                {
-                    blockCounter++;
-                    block b = GetBlockBySystemName(blockEntry.sName);
-                    newSection.Blocks.Add(b);
-                    var logEntry = new BlockJourneyLog();
-                    logEntry.BlockSystemname = b.systemName;
-                    logEntry.BlockUserName = b.userName;
-                    logEntry.Traversed = false;
-                    logEntry.Sequence = blockCounter;
-                    logEntry.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                    logEntry.HasAlternate = hasAlternate;
-                    logEntry.SectionSequenceId = sectionCounter;
-                    tr.BlocksInOrder.Add(logEntry);
-                }
-
-                newSection.SectionkUserName = s.userName;
-                newSection.SectionSystemname = s.systemName;
-                newSection.HasAlternate = hasAlternate;
-                newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                newSection.Sequence = sectionCounter;
-                newSection.Traversed = false;
-                tr.Sections.Add(newSection);
-            }
-            return tr;
-        }
-
         public transit GetTransit(string name, string DispatcherPath = "")
         {
             transit tr = new transit();
@@ -111,9 +59,6 @@ namespace JMRIReader
                 configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Full;
                 onlySection.Blocks.Add(configBlock);
 
-                if (configBlock.speed != null && configBlock.speed == "Slow")
-                    configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;                
-
                 var logEntry = new BlockJourneyLog();
                 logEntry.BlockSystemname = configBlock.systemName;
                 logEntry.BlockUserName = configBlock.userName;
@@ -127,28 +72,39 @@ namespace JMRIReader
                 logEntry.PreviousBlockExited = false;
                 logEntry.SpeedLog = new List<SpeedStepLog>();
 
+                if (configBlock.speed != null && configBlock.speed.ToUpper() == "SLOW")
+                {
+                    configBlock.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                    configBlock.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                    configBlock.AutomatedSpeedReason = "Applied by block speed limit";
+                    configBlock.DefaultSpeedReason = "Applied by block speed limit";
+                    logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
+                }
+
                 if (counter == blockList.Count-1)
                 {
                     //last block - check for stopping sensor
                     var comment = configBlock.comment;
-                    var splitCOmment = comment.Split(';').ToList();
-                    var sectionConfig = splitCOmment.FirstOrDefault(f => f.ToUpper().Contains("SENSORCONFIGSECTION"));
-                    if (sectionConfig != null)
+                    if (comment != null)
                     {
-                        var splitSectionConfig = sectionConfig.Split('=').ToList();
-                        if ( splitSectionConfig != null && splitSectionConfig.Count == 2)
+                        var splitCOmment = comment.Split(';').ToList();
+                        var sectionConfig = splitCOmment.FirstOrDefault(f => f.ToUpper().Contains("SENSORCONFIGSECTION"));
+                        if (sectionConfig != null)
                         {
-                            var configSectionName = splitSectionConfig.Last();
-                            var configSection = GetSectionByUserName(configSectionName);
-                            if (configSection != null)
+                            var splitSectionConfig = sectionConfig.Split('=').ToList();
+                            if (splitSectionConfig != null && splitSectionConfig.Count == 2)
                             {
-                                var stoppingSensor = configSection.forwardStoppingSensor;
-                                var shortStoppingSensor = configSection.reverseStoppingSensor;
-                                logEntry.ForwardStoppingSensor = stoppingSensor;
-                                logEntry.reverseStoppingSensor = shortStoppingSensor;
+                                var configSectionName = splitSectionConfig.Last();
+                                var configSection = GetSectionByUserName(configSectionName);
+                                if (configSection != null)
+                                {
+                                    var stoppingSensor = configSection.forwardStoppingSensor;
+                                    var shortStoppingSensor = configSection.reverseStoppingSensor;
+                                    logEntry.ForwardStoppingSensor = stoppingSensor;
+                                    logEntry.reverseStoppingSensor = shortStoppingSensor;
+                                }
                             }
                         }
-
                     }
                 }
                 tr.BlocksInOrder.Add(logEntry);
@@ -477,7 +433,8 @@ namespace JMRIReader
         {
             var ys = new List<section>();
 
-            var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(f => f.Attribute("userName").Value.Contains("Yard Line"));
+            //var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(f => f.Attribute("userName").Value.Contains("Yard Line"));
+            var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(w => w.Element("comment") != null && w.Element("comment").Value.Contains("Storage"));
             var sectionSerializer = new XmlSerializer(typeof(section));
             foreach (var s in configSections)
             {
