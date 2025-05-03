@@ -1291,8 +1291,11 @@ namespace Shuttler
                                     var sectionHasSpace = false;
                                     int indexOfSectionWithSpace = -1;
                                     int indexOfLastBlockNeeded = -1;
+                                    decimal lowestDifferenceInSpace = 10000;
+                                    int indexOfBestFitBlock = -1;
+                                    int indexOfBestFitSection = -1;
 
-                                    for (int si = 0; si < log.AutomatedAlternateSectionList.Count && sectionHasSpace == false; si++)
+                                    for (int si = 0; si < log.AutomatedAlternateSectionList.Count; si++)
                                     {
                                         var altSec = log.AutomatedAlternateSectionList.ElementAtOrDefault(si);
                                         if (altSec != null)
@@ -1307,13 +1310,20 @@ namespace Shuttler
                                                 if (liveStateBlock != null && liveStateBlock.data.state == 4)
                                                 {
                                                     availableSpaceMM += storageBlock.length;
-                                                    if (availableSpaceMM > log.TrainLengthMM + 50)
+                                                    if (availableSpaceMM > log.TrainLengthMM)
                                                     {
                                                         WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
                                                         storageSpaceFound = true;
                                                         indexOfLastBlockNeeded = bi;
                                                         sectionHasSpace = true;
                                                         indexOfSectionWithSpace = si;
+                                                        decimal thisSpaceDiff = availableSpaceMM - log.TrainLengthMM;
+                                                        if (thisSpaceDiff < lowestDifferenceInSpace)
+                                                        {
+                                                            lowestDifferenceInSpace = thisSpaceDiff;
+                                                            indexOfBestFitBlock = bi;
+                                                            indexOfBestFitSection = si;
+                                                        }
                                                     }
                                                 }
                                                 else
@@ -1324,7 +1334,7 @@ namespace Shuttler
 
                                     if (sectionHasSpace)
                                     {
-                                        var sectionToUse = log.AutomatedAlternateSectionList.ElementAt(indexOfSectionWithSpace);
+                                        var sectionToUse = log.AutomatedAlternateSectionList.ElementAt(indexOfBestFitSection);
                                         var altBlocksToUse = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == sectionToUse.SectionID);
 
                                         var currentSectionToReplace = log.AutomatedSectionList.FirstOrDefault(f => f.Sequence == sectionToUse.Sequence);
@@ -1593,7 +1603,6 @@ namespace Shuttler
 
                     if (nextBlock != null)
                     {
-                        //bool nextBlockHasThrownTurnout = false;
                         var nextBlockSection = log.AutomatedSectionList.ElementAtOrDefault(nextBlock.SectionSequenceId);
                         var nextBlockSectionBlock = nextBlockSection.Blocks.FirstOrDefault(f => f.systemName == nextBlock.BlockSystemname);
                     }
