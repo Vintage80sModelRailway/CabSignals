@@ -79,6 +79,8 @@
             this.lblAdditionalTriggerDelay = new System.Windows.Forms.Label();
             this.btnStartStationAutomation = new System.Windows.Forms.Button();
             this.btnStopStationAutomation = new System.Windows.Forms.Button();
+            this.btnTest = new System.Windows.Forms.Button();
+            this.btnCopyLogToClipboard = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbRoster
@@ -560,11 +562,34 @@
             this.btnStopStationAutomation.UseVisualStyleBackColor = true;
             this.btnStopStationAutomation.Click += new System.EventHandler(this.btnStopStationAutomation_Click);
             // 
+            // btnTest
+            // 
+            this.btnTest.Enabled = false;
+            this.btnTest.Location = new System.Drawing.Point(450, 162);
+            this.btnTest.Name = "btnTest";
+            this.btnTest.Size = new System.Drawing.Size(75, 23);
+            this.btnTest.TabIndex = 54;
+            this.btnTest.Text = "Test";
+            this.btnTest.UseVisualStyleBackColor = true;
+            this.btnTest.Click += new System.EventHandler(this.btnTest_Click);
+            // 
+            // btnCopyLogToClipboard
+            // 
+            this.btnCopyLogToClipboard.Location = new System.Drawing.Point(528, 209);
+            this.btnCopyLogToClipboard.Name = "btnCopyLogToClipboard";
+            this.btnCopyLogToClipboard.Size = new System.Drawing.Size(44, 23);
+            this.btnCopyLogToClipboard.TabIndex = 55;
+            this.btnCopyLogToClipboard.Text = "Clip";
+            this.btnCopyLogToClipboard.UseVisualStyleBackColor = true;
+            this.btnCopyLogToClipboard.Click += new System.EventHandler(this.btnCopyLogToClipboard_Click);
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 422);
+            this.Controls.Add(this.btnCopyLogToClipboard);
+            this.Controls.Add(this.btnTest);
             this.Controls.Add(this.btnStopStationAutomation);
             this.Controls.Add(this.btnStartStationAutomation);
             this.Controls.Add(this.lblAdditionalTriggerDelay);
@@ -675,5 +700,7 @@
         private System.Windows.Forms.Label lblAdditionalTriggerDelay;
         private System.Windows.Forms.Button btnStartStationAutomation;
         private System.Windows.Forms.Button btnStopStationAutomation;
+        private System.Windows.Forms.Button btnTest;
+        private System.Windows.Forms.Button btnCopyLogToClipboard;
     }
 }

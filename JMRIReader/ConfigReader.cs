@@ -153,6 +153,11 @@ namespace JMRIReader
             int altSectionCounter = 0;
             int blockCounterAtStartOfAltSections = 0;
 
+            if (tr.userName == "SA CW Platform to CW Yard")
+            {
+                var stop = "here";
+            }
+
             foreach (var transitsection in tr.transitsection)
             {
                 var newSection = new SectionJourneyLog();
@@ -276,7 +281,6 @@ namespace JMRIReader
                     b.DefaultSpeedReason = "No restrictions";
 
 
-                    newSection.Blocks.Add(b);
                     var logEntry = new BlockJourneyLog();
                     logEntry.BlockTriggers = new List<BlockTrigger>();
                     logEntry.SectionId = newSection.SectionID;
@@ -292,6 +296,10 @@ namespace JMRIReader
                     logEntry.PreviousBlockExited = false;
                     logEntry.SpeedLog = new List<SpeedStepLog>();
                     logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Full;
+                    logEntry.StorageBlock = false;
+                    logEntry.EarlyExitBlock = false;
+                    b.IsStorageBlock = false;
+
                     if (b.speed != null && b.speed.ToUpper() == "SLOW")
                     {
                         b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
@@ -306,20 +314,31 @@ namespace JMRIReader
                         var splitComment = b.comment.Split(';').ToList();
                         if (splitComment.Contains("EarlyExit"))
                             logEntry.EarlyExitBlock = true;
+                        if (splitComment.Contains("Storage"))
+                        {
+                            logEntry.StorageBlock = true;
+                            b.IsStorageBlock = true;
+                        }                            
                     }
 
                     //if (!string.IsNullOrEmpty(b.occupancysensor))
+                    //if (b.occupancysensor != null)
                     logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
-                    var thisBlockTriggers = BlockTriggers.Where(w => w.TriggerBlock == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
+                    var thisBlockTriggers = BlockTriggers.Where(w => w.WhenString == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
                     logEntry.BlockTriggers = thisBlockTriggers;
-                    if (!string.IsNullOrEmpty(s.forwardStoppingSensor))
-                    {
-                        logEntry.ForwardStoppingSensor = s.forwardStoppingSensor;
-                    }
 
-                    if (!string.IsNullOrEmpty(s.reverseStoppingSensor))
+                    //only add stopping sensors on the last block
+                    if (sectionBlockCounter == s.blockentry.Count())
                     {
-                        logEntry.reverseStoppingSensor = s.reverseStoppingSensor;
+                        if (!string.IsNullOrEmpty(s.forwardStoppingSensor))
+                        {
+                            logEntry.ForwardStoppingSensor = s.forwardStoppingSensor;
+                        }
+
+                        if (!string.IsNullOrEmpty(s.reverseStoppingSensor))
+                        {
+                            logEntry.reverseStoppingSensor = s.reverseStoppingSensor;
+                        }
                     }
 
                     //if block is not part of an alt section, add to blocks in order
@@ -340,6 +359,8 @@ namespace JMRIReader
                         if (!tr.AlternateBlocks.Contains(logEntry))
                             tr.AlternateBlocks.Add(logEntry);
                     }
+
+                    newSection.Blocks.Add(b);
                 }
 
                 newSection.SectionkUserName = s.userName;

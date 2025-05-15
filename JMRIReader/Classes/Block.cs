@@ -52,6 +52,8 @@ public partial class block
 
     public int CheckSequence;
 
+    public bool IsStorageBlock;
+
     /// <remarks/>
     public string systemName
     {
