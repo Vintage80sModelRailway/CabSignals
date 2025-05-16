@@ -224,8 +224,9 @@ namespace Shuttler
 
             var goneInactiveBlocks = oldActiveBlocks.Where(x => !newActiveBlocks.Select(i => i.data.name).Contains(x.data.name));
 
-            foreach (var gib in goneInactiveBlocks)
+            foreach (var gib in goneInactiveBlocks.ToList())
             {
+                if (gib == null) continue;
                 if (gib.data.value == null) continue;
                 var relatedLog = _logs.FirstOrDefault(f => f.DCCiD == gib.data.value.data.userName);
                 if (relatedLog == null) continue;
@@ -240,6 +241,7 @@ namespace Shuttler
                         var affectedBlock = relatedLog.AutomatedBlockList.ElementAtOrDefault(posInSequence + 1);
                         if (affectedBlock != null)
                         {
+                            WriteToLog("GIB " + gib.data.userName + " ID " + relatedLog.DCCiD + " so set " + affectedBlock.BlockUserName + " to previous block exited");
                             affectedBlock.PreviousBlockExited = true;
                         }
                     }
@@ -250,8 +252,8 @@ namespace Shuttler
             {
                 var nextBlockName = "";
                 var allocatedTo = "";
-                var previousBlockState = _allBlocks.First(f => f.data.name == nab.data.name);
-                if (previousBlockState.data.value != null)
+                var previousBlockState = _allBlocks.FirstOrDefault(f => f.data.name == nab.data.name);
+                if (previousBlockState != null && previousBlockState.data.value != null)
                 {
                     allocatedTo = previousBlockState.data.value.data.userName;
                 }
@@ -259,11 +261,9 @@ namespace Shuttler
                 var existingLog = _logs.FirstOrDefault(f => f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
                 if (existingLog == null)
                 {
-                    //WriteToLog("Log lookup failure for block " + nab.data.userName);
+                    WriteToLog("Log lookup failure for block " + nab.data.userName);
                     continue;
-                }
-
-                WriteToLog("NAB " + nab.data.userName + " next block in log " + existingLog.NextBlock);
+                }                
 
                 if (nab.data.value == null || existingLog.DCCiD != nab.data.value.data.userName)
                 {
@@ -292,10 +292,13 @@ namespace Shuttler
                 {
                     //entered new active section
                     activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex + 1);
-                    existingLog.AutomatedCurrentSectionIndex++;
-                    activeSection.IsTraversed = true;
-                    activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
-                    WriteToLog("New active section " + activeSection.SectionkUserName + " - block " + activeBlock.userName + " section index now at " + existingLog.AutomatedCurrentSectionIndex.ToString() + " storage " + activeSection.IsStorage.ToString());
+                    if (activeSection != null)
+                    {
+                        existingLog.AutomatedCurrentSectionIndex++;
+                        activeSection.IsTraversed = true;
+                        activeBlock = activeSection.Blocks.FirstOrDefault(f => f.userName == nab.data.userName);
+                        WriteToLog("New active section " + activeSection.SectionkUserName + " - block " + activeBlock.userName + " section index now at " + existingLog.AutomatedCurrentSectionIndex.ToString() + " storage " + activeSection.IsStorage.ToString());
+                    }
                 }
                 if (activeBlock != null)
                 {
@@ -364,6 +367,7 @@ namespace Shuttler
                     existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
 
                 existingLog.AutomatedCurrentBlockIndex = existingLog.AutomatedBlockList.IndexOf(logBlock);
+                WriteToLog("NAB " + nab.data.userName + " next block in log " + existingLog.NextBlock + " ID " + existingLog.DCCiD+" index "+existingLog.AutomatedCurrentBlockIndex.ToString());
 
                 //log the speed the train was going at as it entered the block - for mm covered so far calculations
                 var previousLogBlock = existingLog.AutomatedBlockList.ElementAtOrDefault(existingLog.AutomatedCurrentBlockIndex - 1);
@@ -387,7 +391,7 @@ namespace Shuttler
                     WriteToLog(logBlock.BlockUserName + " previous log block null");
                 }
 
-                if (existingLog.AllocatedBlocks.Contains(nab.data.userName))
+                if (existingLog != null && existingLog.AllocatedBlocks != null && existingLog.AllocatedBlocks.Contains(nab.data.userName))
                 {
                     existingLog.AllocatedBlocks.Remove(nab.data.userName);
                 }
@@ -958,7 +962,6 @@ namespace Shuttler
                             }
                             */
                         }
-
                         else continue;
 
                         if (liveStateBlock != null)
@@ -998,11 +1001,18 @@ namespace Shuttler
                                     block.AllocationIssue = issue;
                                 }
                             }
-                            else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
+                            //else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
+                            else if (state == 4 && string.IsNullOrEmpty(value))
                             {
-                                WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
-                                section.IsAllocated = false;
-                                section.AllocationStatus = AllocationStatus.LostAllocation;
+                                var currentJourneyBlockSequenceNo = log.AutomatedCurrentBlockIndex;
+                                var sequenceNumberOfCheckedBlock = indexOfSequenceBlock;
+
+                                if (sequenceNumberOfCheckedBlock > currentJourneyBlockSequenceNo)
+                                {
+                                    WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
+                                    section.IsAllocated = false;
+                                    section.AllocationStatus = AllocationStatus.LostAllocation;
+                                }
                             }
                         }
                         else
@@ -1033,7 +1043,7 @@ namespace Shuttler
                             if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
                             {
                                 //was already allocated so just add the block to allocated blocks
-                                log.AllocatedBlocks.Add(block.userName);
+                                log.AllocatedBlocks.Add(block.userName);                                
                                 blocksToDecorate.Add(new BlockToDecorate
                                 {
                                     SetToAlternate = true,
@@ -1144,6 +1154,7 @@ namespace Shuttler
                             if (previousSectionAllocated)
                             {
                                 var alternateSectionWasAllocated = false;
+                                var shuffleUpSpaceWasAllocated = false;
                                 var alternates = log.AutomatedAlternateSectionList.Where(w => w.Sequence == section.Sequence);
                                 if (alternates != null && alternates.Count() > 0)
                                 {
@@ -1264,7 +1275,7 @@ namespace Shuttler
                                                         availableSpaceMM += storageBlock.length;
                                                         if (availableSpaceMM > log.TrainLengthMM)
                                                         {
-                                                            WriteToLog("Looks like there's space in " + altSec.SectionkUserName);
+                                                            WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);
                                                             storageSpaceFound = true;
                                                             indexOfLastBlockNeeded = bi;
                                                             sectionHasSpace = true;
@@ -1275,14 +1286,14 @@ namespace Shuttler
                                                                 lowestDifferenceInSpace = thisSpaceDiff;
                                                                 indexOfBestFitBlock = bi;
                                                                 indexOfBestFitSection = si;
-                                                                WriteToLog("Best fit space so far in " + altSec.SectionkUserName + " diff MM " + lowestDifferenceInSpace.ToString("#.##"));
+                                                                WriteToLog("Best fit space so far for "+log.DCCiD+"  in " + altSec.SectionkUserName + " diff MM " + lowestDifferenceInSpace.ToString("#.##"));
                                                             }
                                                         }
                                                     }
                                                     else if (storageSpaceFound)
                                                     {
                                                         //should get here if there was space found in the line, but the front of the section is occupied
-                                                        WriteToLog("Enough space was found in " + altSec.SectionkUserName + " but it wasn't at the front");
+                                                        //WriteToLog("Enough space was found in " + altSec.SectionkUserName + " but it wasn't at the front");
                                                     }
                                                     else
                                                         break;
@@ -1304,6 +1315,7 @@ namespace Shuttler
                                                 var blockWithSpace = sectionToUse.Blocks.FirstOrDefault(f => f.systemName == rb.BlockSystemname);
                                                 if (blockWithSpace != null)
                                                 {
+                                                    shuffleUpSpaceWasAllocated = true;
                                                     var indexInSection = sectionToUse.Blocks.IndexOf(blockWithSpace);
                                                     var scriptBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == rb.Sequence);
                                                     var replacementIndex = log.AutomatedBlockList.IndexOf(scriptBlock);
@@ -1314,15 +1326,26 @@ namespace Shuttler
                                                     else
                                                     {
                                                         //remove the block from the script
-                                                        log.AutomatedBlockList.RemoveAt(replacementIndex);
-                                                        sectionToUse.Blocks.RemoveAt(indexInSection);
+                                                        if (log.AutomatedBlockList.Count-1 >= replacementIndex)
+                                                            log.AutomatedBlockList.RemoveAt(replacementIndex);
+                                                        if (sectionToUse.Blocks.Count-1 >= indexInSection)
+                                                            sectionToUse.Blocks.RemoveAt(indexInSection);
                                                     }
+                                                }
+                                                else
+                                                {
+                                                    WriteToLog("Couldn't find block " + rb.BlockUserName + " in section " + sectionToUse.SectionkUserName);
                                                 }
                                             }
                                             log.AutomatedSectionList[secIndex] = sectionToUse;
+                                            WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
                                         }
 
                                     }
+                                }
+                                if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
+                                {
+                                    WriteToLog("No room at the inn for " + log.DCCiD);
                                 }
                             }
                             else
@@ -1407,14 +1430,16 @@ namespace Shuttler
                             mmCoveredSoFar += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
                             thisLogBlock.mmCovered = mmCoveredSoFar;
 
-                            //WriteToLog("Block "+thisLogBlock.BlockUserName+" mm covered " + mmCoveredSoFar.ToString());
+                            //WriteToLog("Block " + thisLogBlock.BlockUserName + " mm covered " + mmCoveredSoFar.ToString() + " for " + log.DCCiD);
                         }
 
                         //Sometimes, on line convergence, JMRI can put the wrong train value in a block value
                         //We know we have the right value due to turnout config, so if it's wrong, correct it
+                        /*
                         var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.userName == thisLogBlock.BlockUserName);
                         if (liveStateBlock.data.value == null || liveStateBlock.data.value.data.userName != log.DCCiD)
                         {
+                            var indexOfLogBlock = log.AutomatedBlockList.IndexOf(thisLogBlock);
                             if (liveStateBlock.data.state == 2)
                             {
                                 if (log.TransitType != TransitType.YardShuffle)
@@ -1437,7 +1462,7 @@ namespace Shuttler
                             }
 
                         }
-
+                        */
                         if (thisLogBlock.BlockTriggers != null && thisLogBlock.BlockTriggers.Count > 0)
                         {
                             var timeInBlock = DateTime.Now - thisLogBlock.TimeTrainEnteredBlock;
@@ -1538,10 +1563,12 @@ namespace Shuttler
                         if (liveStateBlock != null)
                         {
                             var state = liveStateBlock.data.state;
+                            /*
                             if (liveStateBlock.data.value == null)
                             {
                                 WriteToLog("Block value reported null for " + thisLogBlock.BlockUserName+" live block returned was "+liveStateBlock.data.userName);
                             }
+                            */
                             var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
                             if (state == 2 && value != log.DCCiD) //occupied
                             {
@@ -1882,8 +1909,8 @@ namespace Shuttler
 
                 else if (numberOfBlocksRemaining == 0 && inStorageLine)
                 {
-                    newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
-                    newRunningSpeedReason = "End of journey - storage line - stopping immediately";
+                    newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
+                    newRunningSpeedReason = "End of journey - storage line - emergency stopping immediately";
                 }
 
                 else if (numberOfBlocksRemaining == 0 && lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor)
