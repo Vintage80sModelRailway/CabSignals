@@ -315,6 +315,7 @@ namespace JMRIReader
                         var splitComment = b.comment.Split(';').ToList();
                         if (splitComment.Contains("EarlyExit"))
                             logEntry.EarlyExitBlock = true;
+
                         if (splitComment.Contains("Storage"))
                         {
                             logEntry.StorageBlock = true;

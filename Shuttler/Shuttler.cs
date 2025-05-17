@@ -360,8 +360,8 @@ namespace Shuttler
 
                 //WriteToLog("Config block speed " + activeBlock.BlockSpeed.ToString() + " - " + activeBlock.AutomatedSpeedReason);
                 //WriteToLog("Log block speed " + logBlock.SpeedLimit.ToString());
-                //if (logBlock.EarlyExitBlock)
-                    //WriteToLog(nab.data.userName+" is an early exit block train may stop prematurely in this block (if a stop is required) if it also has thrown turnouts");
+                if (logBlock.EarlyExitBlock)
+                    WriteToLog(nab.data.userName+" is an early exit block train may stop prematurely in this block (if a stop is required) if it also has thrown turnouts; ID"+existingLog.DCCiD);
 
                 if (existingLog.AutomatedBlockList.ElementAt(0).SequenceState == JourneySequenceState.Queued)
                     existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
@@ -443,16 +443,21 @@ namespace Shuttler
                             {
                                 for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
                                 {
-                                    var dateTimeTo = DateTime.Now;
-                                    if (b + 1 < thisLogBlock.SpeedLog.Count)
+                                    decimal mmCoveredAtStartOfLoop = thisLogBlock.mmCovered;
+                                    var thisSpeedLog = thisLogBlock.SpeedLog.ElementAt(b);
+                                    if (thisSpeedLog != null && thisSpeedLog.SpeedStep > 0)
                                     {
-                                        dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
-                                    }
+                                        var dateTimeTo = DateTime.Now;
+                                        if (b + 1 < thisLogBlock.SpeedLog.Count)
+                                        {
+                                            dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
+                                        }
 
-                                    var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
-                                    mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                                    thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
-                                    totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
+                                        var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
+                                        mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                        thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
+                                        totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
+                                    }
                                 }
                             }
 
@@ -1326,7 +1331,7 @@ namespace Shuttler
                                                                 //if it's a short train at the front make sure it won't run over into the second block
                                                                 if (log.TrainLengthMM > storageBlock.length)
                                                                 {
-                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - too long for front storage block, ignoring " + altSec.SectionkUserName);
+                                                                    //WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - too long for front storage block, ignoring " + altSec.SectionkUserName);
                                                                     break;
                                                                 }
                                                             }
@@ -1335,7 +1340,7 @@ namespace Shuttler
                                                                 //don't let a short train pull up behind another short train
                                                                 if (log.TrainLengthMM < shortTrainThresholdMM)
                                                                 {
-                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - can't park in block 2, ignoring " + altSec.SectionkUserName);
+                                                                    //WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - can't park in block 2, ignoring " + altSec.SectionkUserName);
                                                                     break;
                                                                 }
                                                             }
@@ -1345,7 +1350,7 @@ namespace Shuttler
                                                                 var sectionFrontBlock = altSec.Blocks.Last();
                                                                 if (sectionFrontBlock.length < log.TrainLengthMM)
                                                                 {
-                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - found space in block 3, but block 1 is too short - ignoring " + altSec.SectionkUserName);
+                                                                    //WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - found space in block 3, but block 1 is too short - ignoring " + altSec.SectionkUserName);
                                                                     break;
                                                                 }
                                                             }
@@ -1353,7 +1358,7 @@ namespace Shuttler
 
                                                         if (availableSpaceMM > log.TrainLengthMM && (nextBlockIsOccupied || blockIsLastInSection))
                                                         {
-                                                            WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);                                                            
+                                                            //WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);                                                            
                                                             decimal thisSpaceDiff = availableSpaceMM - log.TrainLengthMM;
                                                             if (thisSpaceDiff < lowestDifferenceInSpace)
                                                             {
@@ -1361,7 +1366,7 @@ namespace Shuttler
                                                                 indexOfBestFitBlock = bi;
                                                                 indexOfBestFitSection = si;
                                                                 storageSpaceFound = true;
-                                                                WriteToLog("Best fit space so far for "+log.DCCiD+"  in " + altSec.SectionkUserName + " diff MM " + lowestDifferenceInSpace.ToString("#.##"));
+                                                                //WriteToLog("Best fit space so far for "+log.DCCiD+"  in " + altSec.SectionkUserName + " diff MM " + lowestDifferenceInSpace.ToString("#.##"));
                                                             }
                                                         }
                                                     }                                                   
@@ -1405,18 +1410,18 @@ namespace Shuttler
                                                 }
                                                 else
                                                 {
-                                                    WriteToLog("Couldn't find block " + rb.BlockUserName + " in section " + sectionToUse.SectionkUserName);
+                                                    //WriteToLog("Couldn't find block " + rb.BlockUserName + " in section " + sectionToUse.SectionkUserName);
                                                 }
                                             }
 
                                             sectionToUse.AllocationStatus = AllocationStatus.NotAllocated;
                                             sectionToUse.AllocationStatusReason = "Found suitable space in storage yard";
                                             log.AutomatedSectionList[secIndex] = sectionToUse;
-                                            WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
+                                            //WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
                                         }
                                         if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
                                         {
-                                            WriteToLog("No room at the inn for " + log.DCCiD);
+                                            //WriteToLog("No room at the inn for " + log.DCCiD);
                                         }
                                     }
                                 }
@@ -1802,7 +1807,7 @@ namespace Shuttler
 
                 if (anyDanger && string.IsNullOrEmpty(newAspectReason) && !signalHasChanged)
                 {
-                    newAspectReason = "Unallocatable block found but potentially in next section.";
+                    newAspectReason = "Danger block found but potentially in next section.";
                     newAspect = SignalAspect.Proceed;
                 }
 
@@ -1881,7 +1886,6 @@ namespace Shuttler
 
                     case SignalAspect.Danger:
                         if (((int)log.AutomatedTrainRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0) && log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Running)
-
                         {
                             newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
                             newRunningSpeedReason = "Signal aspect set to danger";
@@ -1972,6 +1976,18 @@ namespace Shuttler
                     percentageOfBlockTraversed = (traversedSoFarMM / lengthMM) * 100;
                 }
 
+                //debug
+                /*
+                if (log.SignalAspect == SignalAspect.Danger && currentBlockContainsThrownTurnout && currentBlockLog.EarlyExitBlock)
+                {
+                   WriteToLog("Should be early stopping - thrown turnouts and early exit " + currentBlockLog.BlockUserName + " ID " + log.DCCiD);
+                }
+                else if (log.SignalAspect == SignalAspect.Danger && currentBlockLog.EarlyExitBlock)
+                {
+                    WriteToLog("Regular stopping - just early exit " + currentBlockLog.BlockUserName + " ID " + log.DCCiD);
+                }
+                */
+
                 if (stopBlockHasStoppingSensor && (numberOfBlocksRemaining == 0 || log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     var sensor = await webClient.GetSensor(currentBlockLog.derivedStoppingSensor);
@@ -1989,6 +2005,17 @@ namespace Shuttler
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
                     newRunningSpeedReason = "End of journey - storage line - emergency stopping immediately";
+                }
+                else if ((lengthMM < shortBlockThresholdMM || currentBlockIsEmergencyStopOnly) && !stopBlockHasStoppingSensor && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
+                    newRunningSpeedReason = "Short block or ES only block, emergency stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
+                }
+
+                else if (mmRemaining > 0 && mmRemaining < 500 && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
+                    newRunningSpeedReason = "Dangerously close to end of block - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + mmRemaining.ToString();
                 }
 
                 else if (numberOfBlocksRemaining == 0 && lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor)
@@ -2009,28 +2036,6 @@ namespace Shuttler
                     newRunningSpeedReason = "End of journey - train wholly in last block - stopping";
                 }
 
-                else if (percentageOfBlockTraversed > cautiomBlockPercentToBeginRampDown && log.SignalAspect == SignalAspect.Caution && lengthMM > 0)
-                {
-                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0)
-                    {
-                        newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
-                        newRunningSpeedReason = "Towards end of caution block and approaching danger";
-                        //WriteToLog("Dropping from caution to crawl as approaching danger block for " + log.Name);
-                    }
-                }
-
-                else if ((lengthMM < shortBlockThresholdMM || currentBlockIsEmergencyStopOnly) && !stopBlockHasStoppingSensor && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
-                {
-                    newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
-                    newRunningSpeedReason = "Short block or ES only block, emergency stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
-                }                
-
-                else if (mmRemaining > 0 && mmRemaining < 500 && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
-                {
-                    newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
-                    newRunningSpeedReason = "Dangerously close to end of block - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + mmRemaining.ToString();
-                }
-
                 else if (percentageOfBlockTraversed > dangerBlockPercentToBeginRampDown && !stopBlockHasStoppingSensor && lengthMM > 0 && (log.TrainLengthMM <= 0 || log.TrainLengthMM > currentBlockLog.BlockLengthMM)
                         && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
@@ -2044,15 +2049,27 @@ namespace Shuttler
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "Danger block, train wholly in block, time to ramp to stop";
                 }
-                else if (shortBlockEarlyCautionRequired && log.SignalAspect == SignalAspect.Proceed && percentageOfBlockTraversed > 30)
-                {
-                    newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
-                    newRunningSpeedReason = "Short caution block approaching";
-                }
                 else if (currentBlockContainsThrownTurnout && currentBlockLog.EarlyExitBlock && (log.SignalAspect == SignalAspect.Danger || log.SignalAspect == SignalAspect.Stop))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                     newRunningSpeedReason = "Danger block, thrown turnout detected and early exit block, so can't trust block length - stop now";
+                }
+
+                else if (percentageOfBlockTraversed > cautiomBlockPercentToBeginRampDown && log.SignalAspect == SignalAspect.Caution && lengthMM > 0)
+                {
+                    if ((int)newRunningSpeed >= (int)AutomatedTrainRunningSpeed.Crawl || log.AutomatedTrainRunningSpeed == 0)
+                    {
+                        newRunningSpeed = AutomatedTrainRunningSpeed.Crawl;
+                        newRunningSpeedReason = "Towards end of caution block and approaching danger";
+                        //WriteToLog("Dropping from caution to crawl as approaching danger block for " + log.Name);
+                    }
+                }
+
+
+                else if (shortBlockEarlyCautionRequired && log.SignalAspect == SignalAspect.Proceed && percentageOfBlockTraversed > 30)
+                {
+                    newRunningSpeed = AutomatedTrainRunningSpeed.Caution;
+                    newRunningSpeedReason = "Short caution block approaching";
                 }
 
                 if (log.AutomatedTrainRunningSpeed != newRunningSpeed)
@@ -4235,9 +4252,9 @@ namespace Shuttler
 
             if (lineToAttempt == null) return (false,"",index,false);
             var endBlock = lineToAttempt.blockentry.LastOrDefault();
-            if (endBlock == null) return (false, "",index+1, false);
+            if (endBlock == null) return (false, "",index, false);
             var liveBlock = LiveBlocks.FirstOrDefault(f => f.data.name == endBlock.sName);
-            if (liveBlock == null) return (false, "",index+1, false);
+            if (liveBlock == null) return (false, "",index, false);
 
             if (liveBlock.data.state == 2 && liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName))
             {
@@ -4274,7 +4291,7 @@ namespace Shuttler
                 }         
             }
 
-            return (false, "",index+1, false);
+            return (false, "",index, false);
 
         }
 
