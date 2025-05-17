@@ -748,9 +748,19 @@ namespace LayoutMonitor
                                     //}
                                     if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                                     {
-                                        lbOutput.Items.Add(DateTime.Now.ToString() + " Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
-                                        pbso.SequenceState = JourneySequenceState.Traversed;
-                                        await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
+                                        var liveBlock = allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
+                                        if (liveBlock != null)
+                                        {
+                                            var sensorName = liveBlock.data.sensor.Substring(2);
+                                            lbOutput.Items.Add(DateTime.Now.ToString() + " Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " senspr "+sensorName+ " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                            pbso.SequenceState = JourneySequenceState.Traversed;
+                                            await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "0", false);
+                                        }
+                                        else
+                                        {
+                                            lbOutput.Items.Add("Sensor release failure - couldn't get live block for " + pbso.BlockUserName);
+                                        }
+
                                     }
                                     else
                                     {
@@ -1907,10 +1917,22 @@ namespace LayoutMonitor
             if (indexOfBJL > 0 && blockLog.TrainLengthMM > 0 && blockLog.HasSpeedProfile)
             {
                 var previousBlockLog = blockLog.AutomatedBlockList.ElementAtOrDefault(indexOfBJL - 1);
+
                 if (previousBlockLog != null && blockLog.TrainLengthMM > 0)
                 {
                     previousBlockLog.SequenceState = JourneySequenceState.EnteredNextBlock;
-                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousBlockLog.OccupationSensorSystemName, "1", false);
+
+                    var previousLiveBlock = allBlocks.FirstOrDefault(f => f.data.name == previousBlockLog.BlockSystemname);
+                    if (previousLiveBlock != null)
+                    {
+                        var sensorName = previousLiveBlock.data.sensor.Substring(2);
+                        lbOutput.Items.Add(existingLog.DCCiD + " Sensor hold for " + sensorName);
+                        await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "1", false);
+                    }
+                    else
+                    {
+                        lbOutput.Items.Add("Sensor hold failure - couldn't find log block for " + previousBlockLog.BlockUserName);
+                    }
                 }
             }
 

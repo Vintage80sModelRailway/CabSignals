@@ -329,6 +329,7 @@ namespace JMRIReader
                     //if (!string.IsNullOrEmpty(b.occupancysensor))
                     //if (b.occupancysensor != null)
                     logEntry.OccupationSensorSystemName = b.occupancysensor.Substring(2);
+
                     var thisBlockTriggers = BlockTriggers.Where(w => w.WhenString == b.systemName && w.WhenCode == transitsectionwhen.BLOCKENTRY).ToList();
                     logEntry.BlockTriggers = thisBlockTriggers;
 

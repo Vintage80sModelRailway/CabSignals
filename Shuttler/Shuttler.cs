@@ -384,7 +384,17 @@ namespace Shuttler
                         //WriteToLog(logBlock.BlockUserName + " prev block " + previousLogBlock.BlockUserName + " last speed log entry null count " + previousLogBlock.SpeedLog.Count.ToString());
                     }
                     previousLogBlock.SequenceState = JourneySequenceState.EnteredNextBlock;
-                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + previousLogBlock.OccupationSensorSystemName, "1", false);
+                    var previousLiveBlock = _allBlocks.FirstOrDefault(f => f.data.name == previousLogBlock.BlockSystemname);
+                    if (previousLiveBlock != null)
+                    {
+                        var sensorName = previousLiveBlock.data.sensor.Substring(2);
+                        WriteToLog(existingLog.DCCiD + " Sensor hold for " + sensorName);
+                        await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "1", false);
+                    }
+                    else
+                    {
+                        WriteToLog("Sensor hold failure - couldn't find log block for " + previousLogBlock.BlockUserName);
+                    }
                 }
                 else
                 {
@@ -449,12 +459,22 @@ namespace Shuttler
                         }
                         if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                         {
-                            lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
-                            await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, "0", false);
-                            var logToUpdate = _logs.FirstOrDefault(f => f.DCCiD == log.DCCiD);
-                            if (logToUpdate != null)
+                            //only reliable place to get system name of occupancy sensor is API - names seem inconsistent in the config
+                            var liveBlock = _allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
+                            if (liveBlock != null)
                             {
-                                logToUpdate.AutomatedBlockList.ElementAt(indexOfpbso).SequenceState = JourneySequenceState.Traversed;                                
+                                var sensorName = liveBlock.data.sensor.Substring(2);
+                                lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " sensor "+sensorName+" train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "0", false);
+                                var logToUpdate = _logs.FirstOrDefault(f => f.DCCiD == log.DCCiD);
+                                if (logToUpdate != null)
+                                {
+                                    logToUpdate.AutomatedBlockList.ElementAt(indexOfpbso).SequenceState = JourneySequenceState.Traversed;
+                                }
+                            }
+                            else
+                            {
+                                lbOutput.Items.Add("Sensor hold failure - couldn't get live block for " + pbso.BlockUserName);
                             }
                         }
                     }
@@ -1149,9 +1169,21 @@ namespace Shuttler
                     }
                     else
                     {
-                        if (sectionContainsUnallocatableBlock)
+                        if (sectionContainsUnallocatableBlock && previousSectionAllocated && log.AutomatedAlternateSectionList != null)
                         {
-                            if (previousSectionAllocated)
+                            var alternatesExistOnThisTransit = log.AutomatedAlternateSectionList.Any();
+                            var thisIsStorage = log.AutomatedAlternateSectionList.Any(a => a.IsStorage == true);
+                            //var thisIsStorage = true;
+                            /*
+                            foreach (var storageSec in log.AutomatedAlternateSectionList)
+                            {
+                                if (storageSec.Section.comment == null || !storageSec.Section.comment.Contains("Storage"))
+                                {
+                                    thisIsStorage = false;
+                                }
+                            }
+                            */
+                            if (alternatesExistOnThisTransit)
                             {
                                 var alternateSectionWasAllocated = false;
                                 var shuffleUpSpaceWasAllocated = false;
@@ -1223,20 +1255,12 @@ namespace Shuttler
                                 }
                                 else
                                 {
-                                    section.AllocationStatus = AllocationStatus.NotAvailable;
+                                    section.AllocationStatus = AllocationStatus.NotAllocated;
                                     section.AllocationStatusReason = "Section contains unallocatable block";
                                 }
 
                                 if (!alternateSectionWasAllocated)
                                 {
-                                    var thisIsStorage = true;
-                                    foreach (var storageSec in log.AutomatedAlternateSectionList)
-                                    {
-                                        if (storageSec.Section.comment == null || !storageSec.Section.comment.Contains("Storage"))
-                                        {
-                                            thisIsStorage = false;
-                                        }
-                                    }
                                     if (thisIsStorage)
                                     {
                                         //WriteToLog("Attempt to find storage space in yard now train length " + log.TrainLengthMM.ToString());
@@ -1245,12 +1269,12 @@ namespace Shuttler
                                         //if enough space for the train is found in the back of the yard line, remove any subsequent blocks from the section, starting from the block after the block that completes the available space
                                         //then assign this section and its reduces blocks to the transit / log and the train should part on the end of the line
 
-                                        var sectionHasSpace = false;
-                                        int indexOfSectionWithSpace = -1;
-                                        int indexOfLastBlockNeeded = -1;
-                                        decimal lowestDifferenceInSpace = 10000;
+                                        //var sectionHasSpace = false;
+                                        //int indexOfLastBlockNeeded = -1;
+                                        decimal lowestDifferenceInSpace = 10000; // just needs to be a high number for the start of comparisons later
                                         int indexOfBestFitBlock = -1;
                                         int indexOfBestFitSection = -1;
+                                        var storageSpaceFound = false;
                                         List<block> FirstNonStorageBlocksInSection = new List<block>();
 
                                         for (int si = 0; si < log.AutomatedAlternateSectionList.Count; si++)
@@ -1259,7 +1283,7 @@ namespace Shuttler
                                             if (altSec != null)
                                             {
                                                 var availableSpaceMM = 0M;
-                                                var storageSpaceFound = false;
+                                                
 
                                                 //go through the blocks in the section to see if there's space
                                                 //Go right to the end of the line, because if we stop when enough space is found, there's a risk that it will leave an empty space at the start of the line
@@ -1317,11 +1341,11 @@ namespace Shuttler
                                                             }
                                                             //if it's found space on the end of the line for a shorty, make sure the shorty will also fit into the front block when it gets there
                                                             if (blockPositionInSection == 3 && availableSpaceMM > log.TrainLengthMM && nextBlockIsOccupied)
-                                                            {
-                                                                WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - found space in block 3, but block 1 is too short - ignoring " + altSec.SectionkUserName);
+                                                            {                                                                
                                                                 var sectionFrontBlock = altSec.Blocks.Last();
                                                                 if (sectionFrontBlock.length < log.TrainLengthMM)
                                                                 {
+                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - found space in block 3, but block 1 is too short - ignoring " + altSec.SectionkUserName);
                                                                     break;
                                                                 }
                                                             }
@@ -1329,35 +1353,26 @@ namespace Shuttler
 
                                                         if (availableSpaceMM > log.TrainLengthMM && (nextBlockIsOccupied || blockIsLastInSection))
                                                         {
-                                                            WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);
-                                                            storageSpaceFound = true;
-                                                            indexOfLastBlockNeeded = bi;
-                                                            sectionHasSpace = true;
-                                                            indexOfSectionWithSpace = si;
+                                                            WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);                                                            
                                                             decimal thisSpaceDiff = availableSpaceMM - log.TrainLengthMM;
                                                             if (thisSpaceDiff < lowestDifferenceInSpace)
                                                             {
                                                                 lowestDifferenceInSpace = thisSpaceDiff;
                                                                 indexOfBestFitBlock = bi;
                                                                 indexOfBestFitSection = si;
+                                                                storageSpaceFound = true;
                                                                 WriteToLog("Best fit space so far for "+log.DCCiD+"  in " + altSec.SectionkUserName + " diff MM " + lowestDifferenceInSpace.ToString("#.##"));
                                                             }
                                                         }
-                                                    }
+                                                    }                                                   
 
-                                                   
-                                                    else if (storageSpaceFound)
-                                                    {
-                                                        //should get here if there was space found in the line, but the front of the section is occupied
-                                                        //WriteToLog("Enough space was found in " + altSec.SectionkUserName + " but it wasn't at the front");
-                                                    }
                                                     else
                                                         break;
                                                 }
                                             }
                                         }
 
-                                        if (sectionHasSpace)
+                                        if (storageSpaceFound)
                                         {
                                             var sectionToUse = log.AutomatedAlternateSectionList.ElementAt(indexOfBestFitSection);
                                             var altBlocksToUse = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == sectionToUse.SectionID);
@@ -1375,7 +1390,7 @@ namespace Shuttler
                                                     var indexInSection = sectionToUse.Blocks.IndexOf(blockWithSpace);
                                                     var scriptBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == rb.Sequence);
                                                     var replacementIndex = log.AutomatedBlockList.IndexOf(scriptBlock);
-                                                    if (indexInSection <= indexOfLastBlockNeeded)
+                                                    if (indexInSection <= indexOfBestFitBlock)
                                                     {
                                                         log.AutomatedBlockList[replacementIndex] = rb;
                                                     }
@@ -1394,16 +1409,15 @@ namespace Shuttler
                                                 }
                                             }
 
-                                            sectionToUse.AllocationStatus = AllocationStatus.Allocated;
-                                            sectionToUse.AllocationStatusReason = "Allocated suitable space in storage yard";
+                                            sectionToUse.AllocationStatus = AllocationStatus.NotAllocated;
+                                            sectionToUse.AllocationStatusReason = "Found suitable space in storage yard";
                                             log.AutomatedSectionList[secIndex] = sectionToUse;
                                             WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
                                         }
-
-                                    }
-                                    if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
-                                    {
-                                        WriteToLog("No room at the inn for " + log.DCCiD);
+                                        if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
+                                        {
+                                            WriteToLog("No room at the inn for " + log.DCCiD);
+                                        }
                                     }
                                 }
                             }
