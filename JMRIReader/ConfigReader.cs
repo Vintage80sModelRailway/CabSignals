@@ -298,6 +298,7 @@ namespace JMRIReader
                     logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Full;
                     logEntry.StorageBlock = false;
                     logEntry.EarlyExitBlock = false;
+                    logEntry.EmergencyStopOnly = false;
                     b.IsStorageBlock = false;
 
                     if (b.speed != null && b.speed.ToUpper() == "SLOW")
@@ -318,7 +319,11 @@ namespace JMRIReader
                         {
                             logEntry.StorageBlock = true;
                             b.IsStorageBlock = true;
-                        }                            
+                        }  
+                        if (splitComment.Contains("EmergencyStopOnly"))
+                        {
+                            logEntry.EmergencyStopOnly = true;
+                        }
                     }
 
                     //if (!string.IsNullOrEmpty(b.occupancysensor))

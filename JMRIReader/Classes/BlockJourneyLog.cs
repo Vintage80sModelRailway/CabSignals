@@ -34,6 +34,7 @@ namespace JMRIReader.Classes
         public string OccupationSensorSystemName { get; set; }
         public bool EarlyExitBlock { get; set; }
         public bool StorageBlock { get; set; }
+        public bool EmergencyStopOnly { get; set; }
 
     }
 }

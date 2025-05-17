@@ -1156,7 +1156,9 @@ namespace Shuttler
                                 var alternateSectionWasAllocated = false;
                                 var shuffleUpSpaceWasAllocated = false;
                                 var alternates = log.AutomatedAlternateSectionList.Where(w => w.Sequence == section.Sequence);
-                                if (alternates != null && alternates.Count() > 0)
+                                //if it's a storage section let the subsequent code that tries to fit trains into the smallest available gap deal with it
+                                //this section will always put a train at the front of the first available line which isn't always ideal
+                                if (alternates != null && alternates.Count() > 0 && !section.IsStorage)
                                 {
                                     //WriteToLog("Alternates found for section " + section.SectionkUserName);
 
@@ -1269,11 +1271,63 @@ namespace Shuttler
                                                         FirstNonStorageBlocksInSection.Add(storageBlock);
                                                         continue;
                                                     }
+
+                                                    var nextBlockIsOccupied = false;
+                                                    var blockIsLastInSection = false;
+                                                    var possibleNextBlock = altSec.Blocks.ElementAtOrDefault(bi + 1);
+                                                    if (possibleNextBlock != null)
+                                                    {
+                                                        var nextPossibleLiveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == possibleNextBlock.systemName);
+                                                        if (nextPossibleLiveStateBlock != null && nextPossibleLiveStateBlock.data.state == 2)
+                                                        {
+                                                            nextBlockIsOccupied = true;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        blockIsLastInSection = true;
+                                                    }
+
                                                     var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == storageBlock.systemName);
                                                     if (liveStateBlock != null && liveStateBlock.data.state == 4)
                                                     {
                                                         availableSpaceMM += storageBlock.length;
-                                                        if (availableSpaceMM > log.TrainLengthMM)
+                                                        var blockPositionInSection = altSec.Blocks.Count - bi;
+                                                        //1 = front; 2 = middle; 3 = back
+
+                                                        if (log.TrainLengthMM < shortTrainThresholdMM)
+                                                        {
+                                                            if (blockPositionInSection == 1)
+                                                            {
+                                                                //if it's a short train at the front make sure it won't run over into the second block
+                                                                if (log.TrainLengthMM > storageBlock.length)
+                                                                {
+                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - too long for front storage block, ignoring " + altSec.SectionkUserName);
+                                                                    break;
+                                                                }
+                                                            }
+                                                            if (blockPositionInSection == 2 && nextBlockIsOccupied)
+                                                            {
+                                                                //don't let a short train pull up behind another short train
+                                                                if (log.TrainLengthMM < shortTrainThresholdMM)
+                                                                {
+                                                                    WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - can't park in block 2, ignoring " + altSec.SectionkUserName);
+                                                                    break;
+                                                                }
+                                                            }
+                                                            //if it's found space on the end of the line for a shorty, make sure the shorty will also fit into the front block when it gets there
+                                                            if (blockPositionInSection == 3 && availableSpaceMM > log.TrainLengthMM && nextBlockIsOccupied)
+                                                            {
+                                                                WriteToLog("Short train - " + log.DCCiD + " - BP " + blockPositionInSection.ToString() + " - found space in block 3, but block 1 is too short - ignoring " + altSec.SectionkUserName);
+                                                                var sectionFrontBlock = altSec.Blocks.Last();
+                                                                if (sectionFrontBlock.length < log.TrainLengthMM)
+                                                                {
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (availableSpaceMM > log.TrainLengthMM && (nextBlockIsOccupied || blockIsLastInSection))
                                                         {
                                                             WriteToLog("Looks like there's space for "+log.DCCiD+" in " + altSec.SectionkUserName);
                                                             storageSpaceFound = true;
@@ -1290,6 +1344,8 @@ namespace Shuttler
                                                             }
                                                         }
                                                     }
+
+                                                   
                                                     else if (storageSpaceFound)
                                                     {
                                                         //should get here if there was space found in the line, but the front of the section is occupied
@@ -1337,15 +1393,18 @@ namespace Shuttler
                                                     WriteToLog("Couldn't find block " + rb.BlockUserName + " in section " + sectionToUse.SectionkUserName);
                                                 }
                                             }
+
+                                            sectionToUse.AllocationStatus = AllocationStatus.Allocated;
+                                            sectionToUse.AllocationStatusReason = "Allocated suitable space in storage yard";
                                             log.AutomatedSectionList[secIndex] = sectionToUse;
                                             WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
                                         }
 
                                     }
-                                }
-                                if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
-                                {
-                                    WriteToLog("No room at the inn for " + log.DCCiD);
+                                    if (!alternateSectionWasAllocated && !shuffleUpSpaceWasAllocated)
+                                    {
+                                        WriteToLog("No room at the inn for " + log.DCCiD);
+                                    }
                                 }
                             }
                             else
@@ -1759,6 +1818,7 @@ namespace Shuttler
                 int numberOfBlocksRemaining = (log.AutomatedBlockList.Count - 1) - log.AutomatedCurrentBlockIndex;
 
                 bool inStorageLine = false;
+                bool currentBlockIsEmergencyStopOnly = false;
 
                 var currentSection = log.AutomatedSectionList.ElementAtOrDefault(log.AutomatedCurrentSectionIndex);
                 if (currentSection != null)
@@ -1770,13 +1830,17 @@ namespace Shuttler
                     }
                 }
 
-                //if the current block contains a throen turnout and the train is going to come to a stop in it, we can't trust the block length
+                if (currentBlockLog.EmergencyStopOnly)
+                    currentBlockIsEmergencyStopOnly = true;
+                
+                //if the current block contains a thrown turnout and the train is going to come to a stop in it, we can't trust the block length
                 //So if there is a thrown turnout in this block and the train is coming to a stop, stop as soon as the block goes active
 
                 var thisBlockCheck = CheckedBlocks.OrderBy(o => o.CheckSequence).ElementAtOrDefault(0);
                 var currentBlockContainsThrownTurnout = false;
                 if (thisBlockCheck != null)
                 {
+                    
                     if (thisBlockCheck.BNL != null)
                     {
                         if (thisBlockCheck.BNL.BNLTurnouts != null)
@@ -1941,10 +2005,10 @@ namespace Shuttler
                     }
                 }
 
-                else if (lengthMM < shortBlockThresholdMM && !stopBlockHasStoppingSensor && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
+                else if ((lengthMM < shortBlockThresholdMM || currentBlockIsEmergencyStopOnly) && !stopBlockHasStoppingSensor && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
                 {
                     newRunningSpeed = AutomatedTrainRunningSpeed.EmergencyStop;
-                    newRunningSpeedReason = "Short block, stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
+                    newRunningSpeedReason = "Short block or ES only block, emergency stop ASAP - " + currentOccupiedLogSectionBlock.userName + " - " + log.SignalAspect.ToString() + " - " + lengthMM.ToString();
                 }                
 
                 else if (mmRemaining > 0 && mmRemaining < 500 && (log.SignalAspect == SignalAspect.Stop || log.SignalAspect == SignalAspect.Danger))
