@@ -301,13 +301,25 @@ namespace JMRIReader
                     logEntry.EmergencyStopOnly = false;
                     b.IsStorageBlock = false;
 
-                    if (b.speed != null && b.speed.ToUpper() == "SLOW")
+                    if (b.speed != null)
                     {
-                        b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
-                        b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Crawl;
-                        b.AutomatedSpeedReason = "Applied by block speed limit";
-                        b.DefaultSpeedReason = "Applied by block speed limit";
-                        logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
+                        if (b.speed.ToUpper() == "SLOW")
+                        {
+                            b.BlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                            b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Crawl;
+                            b.AutomatedSpeedReason = "Applied by block speed limit";
+                            b.DefaultSpeedReason = "Applied by block speed limit";
+                            logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Crawl;
+                        }
+                        else if (b.speed.ToUpper() == "RESTRICTED")
+                        {
+                            b.BlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                            b.DefaultBlockSpeed = AutomatedTrainRunningSpeed.Caution;
+                            b.AutomatedSpeedReason = "Applied by block speed limit";
+                            b.DefaultSpeedReason = "Applied by block speed limit";
+                            logEntry.SpeedLimit = AutomatedTrainRunningSpeed.Caution;
+                        }
+
                     }
 
                     if (b.comment != null)

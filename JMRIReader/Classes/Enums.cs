@@ -57,7 +57,8 @@
             Resuming = 4,
             Running = 5,
             Complete = 6,
-            Cancelled = 7
+            Cancelled = 7,
+            ReadyToDelete = 8
         }
 
         public enum AutomatedTrainRunningSpeed

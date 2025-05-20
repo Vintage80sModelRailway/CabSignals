@@ -13,6 +13,8 @@ namespace JMRIReader.Classes
         public int MultiBlockLogIndex { get; set; }
         public int MultiBlockPriority { get; set; }
         public bool HasMultiBlockSuccessor { get; set; }
+
+        public int ProcessingOrder { get; set; }
     }
 
     public class BlockRootObjectInitial

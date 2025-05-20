@@ -11,6 +11,8 @@ namespace JMRIReader.Classes
     {
         public string Name { get; set; }
         public string OriginalName { get; set; }
+
+        public Guid LogId { get; set; }
         public string DCCiD { get; set; }
         public string OriginalDCCiD { get; set; }
         public string TransitName { get; set; }
