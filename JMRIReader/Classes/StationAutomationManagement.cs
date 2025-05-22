@@ -8,7 +8,8 @@ namespace JMRIReader.Classes
 {
     public class StationAutomationManagement
     {
-        public bool StationManagementRunning { get; set; }
+        public bool StationManagementACRunning { get; set; }
+        public bool StationManagementCWRunning { get; set; }
         public int LastACLaunchAttemptSectionIndex { get; set; }
         public int LastCWLaunchAttemptSectionIndex { get; set; }
     }

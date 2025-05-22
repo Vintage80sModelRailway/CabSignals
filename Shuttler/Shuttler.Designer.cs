@@ -81,6 +81,8 @@
             this.btnStopStationAutomation = new System.Windows.Forms.Button();
             this.btnTest = new System.Windows.Forms.Button();
             this.btnCopyLogToClipboard = new System.Windows.Forms.Button();
+            this.btnStartClockwiseSA = new System.Windows.Forms.Button();
+            this.btnStopClockwiseSA = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbRoster
@@ -547,7 +549,7 @@
             this.btnStartStationAutomation.Name = "btnStartStationAutomation";
             this.btnStartStationAutomation.Size = new System.Drawing.Size(75, 23);
             this.btnStartStationAutomation.TabIndex = 52;
-            this.btnStartStationAutomation.Text = "Start SA";
+            this.btnStartStationAutomation.Text = "Start AC SA";
             this.btnStartStationAutomation.UseVisualStyleBackColor = true;
             this.btnStartStationAutomation.Click += new System.EventHandler(this.btnStartStationAutomation_Click);
             // 
@@ -558,7 +560,7 @@
             this.btnStopStationAutomation.Name = "btnStopStationAutomation";
             this.btnStopStationAutomation.Size = new System.Drawing.Size(75, 23);
             this.btnStopStationAutomation.TabIndex = 53;
-            this.btnStopStationAutomation.Text = "Stop SA";
+            this.btnStopStationAutomation.Text = "Stop AC SA";
             this.btnStopStationAutomation.UseVisualStyleBackColor = true;
             this.btnStopStationAutomation.Click += new System.EventHandler(this.btnStopStationAutomation_Click);
             // 
@@ -583,11 +585,34 @@
             this.btnCopyLogToClipboard.UseVisualStyleBackColor = true;
             this.btnCopyLogToClipboard.Click += new System.EventHandler(this.btnCopyLogToClipboard_Click);
             // 
+            // btnStartClockwiseSA
+            // 
+            this.btnStartClockwiseSA.Location = new System.Drawing.Point(239, 15);
+            this.btnStartClockwiseSA.Name = "btnStartClockwiseSA";
+            this.btnStartClockwiseSA.Size = new System.Drawing.Size(75, 23);
+            this.btnStartClockwiseSA.TabIndex = 56;
+            this.btnStartClockwiseSA.Text = "Start CW SA";
+            this.btnStartClockwiseSA.UseVisualStyleBackColor = true;
+            this.btnStartClockwiseSA.Click += new System.EventHandler(this.btnStartClockwiseSA_Click);
+            // 
+            // btnStopClockwiseSA
+            // 
+            this.btnStopClockwiseSA.Enabled = false;
+            this.btnStopClockwiseSA.Location = new System.Drawing.Point(239, 44);
+            this.btnStopClockwiseSA.Name = "btnStopClockwiseSA";
+            this.btnStopClockwiseSA.Size = new System.Drawing.Size(75, 23);
+            this.btnStopClockwiseSA.TabIndex = 57;
+            this.btnStopClockwiseSA.Text = "Stop CW SA";
+            this.btnStopClockwiseSA.UseVisualStyleBackColor = true;
+            this.btnStopClockwiseSA.Click += new System.EventHandler(this.btnStopClockwiseSA_Click);
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 422);
+            this.Controls.Add(this.btnStopClockwiseSA);
+            this.Controls.Add(this.btnStartClockwiseSA);
             this.Controls.Add(this.btnCopyLogToClipboard);
             this.Controls.Add(this.btnTest);
             this.Controls.Add(this.btnStopStationAutomation);
@@ -702,5 +727,7 @@
         private System.Windows.Forms.Button btnStopStationAutomation;
         private System.Windows.Forms.Button btnTest;
         private System.Windows.Forms.Button btnCopyLogToClipboard;
+        private System.Windows.Forms.Button btnStartClockwiseSA;
+        private System.Windows.Forms.Button btnStopClockwiseSA;
     }
 }

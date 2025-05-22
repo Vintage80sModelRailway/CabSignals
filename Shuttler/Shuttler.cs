@@ -47,8 +47,8 @@ namespace Shuttler
         private const string CWSAYardTransit = "SA CW Yard Exit to CW Platform";
         private const string CWSAYard5Transit = "SA CW Yard 5 to CW Platform";
         private const string ACSAFreightTransit = "SA AC Freight run";
-        private const string CWSAYardFreightTransit = "";
-        private const string CWSAYard5FreightTransit = "";
+        private const string CWSAYardFreightTransit = "SA CW Yard Exit Freight run";
+        private const string CWSAYard5FreightTransit = "SA CW Yard 5 Freight run";
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -205,7 +205,7 @@ namespace Shuttler
                 UpdateLogPanel();
                 CleanUpListBoxes();
 
-                if (sam != null && sam.StationManagementRunning)
+                if (sam != null && (sam.StationManagementACRunning || sam.StationManagementCWRunning))
                 {
                     ManageStationAutomation(newBlockStates);
                 }
@@ -312,7 +312,9 @@ namespace Shuttler
                             if (includedInAllocation)
                             {
                                 //probably need to correct a block value here
+
                                 var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
+
                             }
                         }                        
                     }
@@ -842,8 +844,9 @@ namespace Shuttler
 
                 if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Starting || log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Resuming)
                 {
+                    //Don't set the trains off straight away, let the points get set and early route settled
                     var timeSinceStarted = DateTime.Now - log.StatusLastChanged;
-                    if (timeSinceStarted.TotalSeconds < 5)
+                    if (timeSinceStarted.TotalSeconds < 10)
                     {
                         log.TrainMotionCfg.CurrentSpeedStep = 0;
                         log.TrainMotionCfg.TargetSpeedStep = 0;
@@ -1300,17 +1303,18 @@ namespace Shuttler
                             foreach (var block in section.Blocks)
                             {
                                 //first block of a transit has to be treated differently as it's already active, so is never triggered as a new block and never gets processed as one
+                                bool processingFirstBlock = false;
                                 var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
                                 var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
                                 if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued || indexOfSequenceBlock == 0)
                                 {
                                     //block is already active or traversed, so it's fine that it's not allocated - do nothing
-                                    sectionBlockCounter++;
-                                    continue;
+                                    processingFirstBlock = true;
+                                    //sectionBlockCounter++;
+                                    //continue;
                                 }
-
                                 var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
-                                if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName))
+                                if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName) && !processingFirstBlock)
                                 {
                                     //was already allocated so just add the block to allocated blocks
                                     log.AllocatedBlocks.Add(block.userName);
@@ -1324,7 +1328,7 @@ namespace Shuttler
 
                                 else
                                 {
-                                    if (!section.IsAllocated)
+                                    if (!section.IsAllocated && !processingFirstBlock)
                                     {
                                         try
                                         {
@@ -1998,14 +2002,22 @@ namespace Shuttler
 
                                         if (thisLogSection.IsAllocated && allocationIssue)
                                         {
-                                            WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
                                             //Or just try to reallocate this block?
                                             //If all other blocks have values it might cause an issue
-                                            var responseBlock = await webClient.AllocateBlock(liveStateBlock.data.name, log.DCCiD, false);
-                                            if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
+                                            if ((DateTime.Now - thisLogBlock.LastAllocationTime).Milliseconds > 2000)
                                             {
-                                                WriteToLog("Allocation failure for block " + liveStateBlock.data.userName + " - 1542 no response");
+                                                WriteToLog("Potentially a lost allocation case, resetting allocation status for block " + liveStateBlock.data.userName + " section " + thisLogSection.SectionkUserName);
+                                                var responseBlock = await webClient.AllocateBlock(liveStateBlock.data.name, log.DCCiD, false);
+                                                if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
+                                                {
+                                                    WriteToLog("Allocation failure for block " + liveStateBlock.data.userName + " - 1542 no response");
+                                                }
+                                                else
+                                                {
+                                                    thisLogBlock.LastAllocationTime = DateTime.Now;
+                                                }
                                             }
+
 
                                             //thisLogSection.IsAllocated = false;
                                         }
@@ -2471,6 +2483,10 @@ namespace Shuttler
 
             WriteToLog("Starting");
 
+            sam = new StationAutomationManagement();
+            sam.StationManagementACRunning = false;
+            sam.StationManagementCWRunning = false;
+
             RunShuttles();
             LoadConfig();
         }
@@ -2598,7 +2614,6 @@ namespace Shuttler
 
             var firstBlockBNL = GetFirstBNL(trainLog.CurrentBlock, trainLog.NextBlock);
             if (firstBlockBNL == null) return;
-
             var prevBNL = firstBlockBNL;
             foreach (var section in transit.Sections)
             {
@@ -2608,11 +2623,19 @@ namespace Shuttler
                     if (blockInSequence == null) continue;
                     var seqIndex = transit.BlocksInOrder.IndexOf(blockInSequence);
                     if (seqIndex == -1) continue;
-                    var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                    if (nextBlockInSequence != null)
-                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                    if (seqIndex == 0)
+                    {
+                        block.BNL = firstBlockBNL;
+                    }
                     else
-                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                    {
+                        var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
+                        if (nextBlockInSequence != null)
+                            block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                        else
+                            block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                        
+                    }
                     prevBNL = block.BNL;
                 }
             }
@@ -2653,11 +2676,19 @@ namespace Shuttler
                                 if (blockInSequence == null) continue;
                                 var seqIndex = transit.BlocksInOrder.IndexOf(blockInSequence);
                                 if (seqIndex == -1) continue;
-                                var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                                if (nextBlockInSequence != null)
-                                    block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                if (seqIndex == 0)
+                                {
+                                    block.BNL = firstBlockBNL;
+                                }
                                 else
-                                    block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                {
+                                    var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
+                                    if (nextBlockInSequence != null)
+                                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                    else
+                                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                }
+
                                 prevBNL = block.BNL;
 
                             }
@@ -4461,7 +4492,7 @@ namespace Shuttler
 
         private async void ManageStationAutomation(List<BlockRootObject> LiveBlocks)
         {
-            if (!sam.StationManagementRunning) return;
+            if (!sam.StationManagementACRunning && !sam.StationManagementCWRunning) return;
             var acTriggerSensor = await webClient.GetSensor("AC SA TriggerNextTrain");
             var cwTriggerSensor = await webClient.GetSensor("CW SA TriggerNextTrain");
 
@@ -4494,8 +4525,7 @@ namespace Shuttler
                     await webClient.SetSensor("AC SA TriggerNextTrain", "4");
                 }
             }
-
-            /*
+            
             if (cwTriggerSensor != null && cwTriggerSensor.data.state == 2)
             {
                 var yardLines = config.GetYardSections();
@@ -4507,20 +4537,40 @@ namespace Shuttler
                 {
                     if (searchResult.name == "Yard CW Line 5 Block 1")
                     {
-                        var cw5Transit = config.GetTransit(CWSAYard5Transit);
-                        cw5Transit.Type = TransitType.StationAutomation;
-                        StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
+                        if (searchResult.isFreight)
+                        {
+                            var cw5FreightTransit = config.GetTransit(CWSAYard5FreightTransit);
+                            cw5FreightTransit.Type = TransitType.StationAutomation;
+                            StartAutoTrain(cw5FreightTransit, TrainDirection.Forward, DateTime.Now);
+                        }
+                        else
+                        {
+                            var cw5Transit = config.GetTransit(CWSAYard5Transit);
+                            cw5Transit.Type = TransitType.StationAutomation;
+                            StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
+                        }
                     }
                     else
                     {
-                        var cwTransit = PrepareSATransit(CWSAYardTransit, searchResult.name);
-                        StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                        if (searchResult.isFreight)
+                        {
+                            var cwTransit = PrepareSATransit(CWSAYardFreightTransit, searchResult.name);
+                            cwTransit.Type = TransitType.StationAutomation;
+                            StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                        }
+                        else
+                        {
+                            var cwTransit = PrepareSATransit(CWSAYardTransit, searchResult.name);
+                            cwTransit.Type = TransitType.StationAutomation;                            
+                            StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                        }
+
                     }
 
                     await webClient.SetSensor("CW SA TriggerNextTrain", "4");
                 }
             }   
-            */
+            
         }
 
         private transit PrepareSATransit(string transitName, string startBlockName)
@@ -4634,21 +4684,19 @@ namespace Shuttler
             if (webClient == null) return;
             btnStartStationAutomation.BackColor = Color.Green;
             btnStartStationAutomation.Enabled = false;
-            sam = new StationAutomationManagement();
-            sam.StationManagementRunning = true;
+            sam.StationManagementACRunning = true;
             btnStopStationAutomation.Enabled = true;
             sam.LastACLaunchAttemptSectionIndex = -1;
-            sam.LastCWLaunchAttemptSectionIndex = -1;
 
             await webClient.SetSensor("AC SA TriggerNextTrain", "2");
-            await webClient.SetSensor("CW SA TriggerNextTrain", "2");
+
         }
 
         private void btnStopStationAutomation_Click(object sender, EventArgs e)
         {
             btnStartStationAutomation.BackColor = Color.Gray;
             btnStartStationAutomation.Enabled = true;
-            sam.StationManagementRunning = false;
+            sam.StationManagementACRunning = false;
             btnStopStationAutomation.Enabled = false;
         }
 
@@ -4676,6 +4724,26 @@ namespace Shuttler
                 }
             }
                 
+        }
+
+        private async void btnStartClockwiseSA_Click(object sender, EventArgs e)
+        {
+            if (webClient == null) return;
+            btnStartClockwiseSA.BackColor = Color.Green;
+            btnStartClockwiseSA.Enabled = false;
+            sam.StationManagementCWRunning = true;
+            btnStopClockwiseSA.Enabled = true;
+            sam.LastCWLaunchAttemptSectionIndex = -1;
+
+            await webClient.SetSensor("CW SA TriggerNextTrain", "2");
+        }
+
+        private void btnStopClockwiseSA_Click(object sender, EventArgs e)
+        {
+            btnStartClockwiseSA.BackColor = Color.LightGray;
+            btnStartClockwiseSA.Enabled = true;
+            sam.StationManagementCWRunning = false;
+            btnStopClockwiseSA.Enabled = false;
         }
     }
 }
