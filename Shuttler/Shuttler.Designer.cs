@@ -566,7 +566,6 @@
             // 
             // btnTest
             // 
-            this.btnTest.Enabled = false;
             this.btnTest.Location = new System.Drawing.Point(450, 162);
             this.btnTest.Name = "btnTest";
             this.btnTest.Size = new System.Drawing.Size(75, 23);

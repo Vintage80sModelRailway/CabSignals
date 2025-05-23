@@ -11,3 +11,8 @@
     public int[] feedbackModes { get; set; }
 
 }
+
+public class APIBaseTurnout
+{
+    public int state { get; set; }
+}

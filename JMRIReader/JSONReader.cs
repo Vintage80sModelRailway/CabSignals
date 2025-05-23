@@ -341,6 +341,38 @@ namespace JMRIReader
             return turnout;
         }
 
+        public async Task<TurnoutRootobject> SetTurnout(string SystemName, int state)
+        {
+            APIBaseTurnout to = new APIBaseTurnout();
+            to.state = state;
+            var responseTO = new TurnoutRootobject();
+
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/turnout/" + SystemName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+
+            var blockString = JsonConvert.SerializeObject(to, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
+            {
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(blockString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                    responseTO = JsonConvert.DeserializeObject<TurnoutRootobject>(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
+            return responseTO;
+        }
+
         public async Task<SMRootobject> GetSignalMast(string SignalMastName)
         {
             SMRootobject sm = new SMRootobject();
