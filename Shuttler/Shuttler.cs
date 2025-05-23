@@ -1423,13 +1423,13 @@ namespace Shuttler
                         }
                         else
                         {
+                            //look for alternates
                             if (sectionContainsUnallocatableBlock && previousSectionAllocated && log.AutomatedAlternateSectionList != null)
                             {
                                 var previousSection = log.AutomatedSectionList.ElementAtOrDefault(i-1);
                                 if (previousSection != null && previousSection.AllocationStatus == AllocationStatus.Allocated)
                                 {
                                     var alternatesExistOnThisTransit = log.AutomatedAlternateSectionList.Any();
-                                    //var thisIsStorage = log.AutomatedAlternateSectionList.Any(a => a.IsStorage == true);
 
                                     if (alternatesExistOnThisTransit)
                                     {
@@ -1706,10 +1706,12 @@ namespace Shuttler
                                 }
                                 else
                                 {
+                                    /*
                                     if (previousSection != null)
                                         WriteToLog("Not processing " + section.SectionkUserName + " for storage fit as previous section " + previousSection.SectionkUserName + " appears unallocated");
                                     else
                                         WriteToLog("Not processing " + section.SectionkUserName + " for storage fit as previous section null. First section?");
+                                    */
                                 }
 
 
@@ -4649,7 +4651,7 @@ namespace Shuttler
                 var roster = rosterCfG.GetRoster();
                 var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == dccIdFound);
 
-                if (fullInfo != null)
+                if (fullInfo != null && fullInfo.Attributepairs != null)
                 {
                     var saUsable = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerSAUsable");
                     var saIsFreight = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerIsFreight");
