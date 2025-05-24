@@ -51,7 +51,7 @@ namespace Shuttler
         private const string ACSAFreightTransit = "SA AC Freight run";
         private const string CWSAYardFreightTransit = "SA CW Yard Exit Freight run";
         private const string CWSAYard5FreightTransit = "SA CW Yard 5 Freight run";
-        private const int SensorHoldBufferPercent = 20;
+        private const int SensorHoldBufferPercent = 35;
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -759,10 +759,14 @@ namespace Shuttler
                     {
                         if (liveBlock.data.state == 4) //unoccupied
                         {
-                            WriteToLog("Yard sensor override for " + liveBlock.data.userName + " ID " + previousBlockTrainId);
-                            var sensorToHack = liveBlock.data.sensor;
-                            await webClient.AllocateBlock(liveBlock.data.name, previousBlockTrainId);
-                            await webClient.SetSensor(sensorToHack, "2");                            
+                            var locoInMotion = _logs.Any(a => a.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && a.DCCiD == previousBlockTrainId);
+                            if (!locoInMotion)
+                            {
+                                WriteToLog("Yard sensor override for " + liveBlock.data.userName + " ID " + previousBlockTrainId);
+                                var sensorToHack = liveBlock.data.sensor;
+                                await webClient.AllocateBlock(liveBlock.data.name, previousBlockTrainId);
+                                await webClient.SetSensor(sensorToHack, "2");
+                            }                        
                         }
 
                         longTrainInPreviousBlock = false;
@@ -829,23 +833,28 @@ namespace Shuttler
                         //if it has a value and the occupant can be determined, shove it forward
                         if (liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName))
                         {
-                            blocksForTransitSection.Add(new ViableRouteBlock()
+                            var locoInMotion = _logs.Any(a => a.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && a.DCCiD == liveBlock.data.value.data.userName);
+                            if (!locoInMotion)
                             {
-                                IsAvailable = true,
-                                Blockname = liveBlock.data.userName,
-                                Displayname = liveBlock.data.userName
-                            });
+                                blocksForTransitSection.Add(new ViableRouteBlock()
+                                {
+                                    IsAvailable = true,
+                                    Blockname = liveBlock.data.userName,
+                                    Displayname = liveBlock.data.userName
+                                });
 
-                            blocksForTransitSection.Reverse();
+                                blocksForTransitSection.Reverse();
 
-                            var transit = config.BuildTransitFromBlockList(blocksForTransitSection);
-                            transit.Sections.First().IsStorage = true;
-                            transit.Type = TransitType.YardShuffle;
+                                var transit = config.BuildTransitFromBlockList(blocksForTransitSection);
+                                transit.Sections.First().IsStorage = true;
+                                transit.Type = TransitType.YardShuffle;
 
-                            //just set it as forward - the StartAutoTrain will retrieve the train's default direction from the roster and update this value
-                            TrainDirection dir = TrainDirection.Forward;
+                                //just set it as forward - the StartAutoTrain will retrieve the train's default direction from the roster and update this value
+                                TrainDirection dir = TrainDirection.Forward;
 
-                            StartAutoTrain(transit, dir, DateTime.Now);
+                                StartAutoTrain(transit, dir, DateTime.Now);
+                            }
+
                             break;
                         }
                     }
@@ -872,17 +881,20 @@ namespace Shuttler
                             WriteToLog("Not triggering new transit - " + done.NextTransit + " - detected that previous transit was cancelled");
                         }
 
-                        if (done.TerminatedReason == "Manually cancelled")
+                        else if (done.TerminatedReason == "Manually cancelled")
                         {
                             WriteToLog("Not triggering new transit - " + done.NextTransit + " - detected that previous transit was not completed (block index)");
                         }
-                        var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
-                        newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
-                        newTransit.Type = TransitType.Triggered;
+                        else
+                        {
+                            var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
+                            newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
+                            newTransit.Type = TransitType.Triggered;
 
-                        var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
-                        WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " +fullDelay.ToString());
-                        StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(fullDelay));
+                            var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
+                            WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " + fullDelay.ToString());
+                            StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(fullDelay));
+                        }
                     }
                 }
 
@@ -4661,13 +4673,13 @@ namespace Shuttler
                     {
                         if (searchResult.isFreight)
                         {
-                            var cw5FreightTransit = config.GetTransit(CWSAYard5FreightTransit);
+                            var cw5FreightTransit = config.GetTransit(CWSAYard5FreightTransit, DispatcherPath);
                             cw5FreightTransit.Type = TransitType.StationAutomation;
                             StartAutoTrain(cw5FreightTransit, TrainDirection.Forward, DateTime.Now);
                         }
                         else
                         {
-                            var cw5Transit = config.GetTransit(CWSAYard5Transit);
+                            var cw5Transit = config.GetTransit(CWSAYard5Transit, DispatcherPath);
                             cw5Transit.Type = TransitType.StationAutomation;
                             StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
                         }
