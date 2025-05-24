@@ -20,9 +20,12 @@ namespace JMRIReader
             filePath = FilePath;
             rosterCFG = XDocument.Load(filePath);
             _locos = new List<Locomotive>();
+            LocoList = GetRoster();
         }
 
-        public List<RosterEntry> GetRoster()
+        public List<RosterEntry> LocoList;
+
+        private List<RosterEntry> GetRoster()
         {
             List<RosterEntry> locolist = new List<RosterEntry>();
             XmlSerializer serial = new XmlSerializer(typeof(Locomotive));

@@ -25,6 +25,7 @@ namespace Shuttler
         private string DispatcherPath;
         private ConfigReader config;
         private JSONReader webClient;
+        private RosterReader rosterConfig;
         private List<BlockRootObject> _startBlocks;
         private List<transit> _transits;
         private int _sectionsAhead = 3;
@@ -50,6 +51,7 @@ namespace Shuttler
         private const string ACSAFreightTransit = "SA AC Freight run";
         private const string CWSAYardFreightTransit = "SA CW Yard Exit Freight run";
         private const string CWSAYard5FreightTransit = "SA CW Yard 5 Freight run";
+        private const int SensorHoldBufferPercent = 20;
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -684,31 +686,38 @@ namespace Shuttler
                             }
                             if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                             {
-                                //only reliable place to get system name of occupancy sensor is API - names seem inconsistent in the config
-                                var liveBlock = _allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
-                                if (liveBlock != null)
+                                var additionalPercent = (totalMMCoveredSinceExitingPBSO / 100) * SensorHoldBufferPercent;
+
+                                //locos always move slower than their speed profiled speed when turning corners, going up hills, dragging coaches etc., so add a little buffer
+                                if (totalMMCoveredSinceExitingPBSO + additionalPercent > log.TrainLengthMM)
                                 {
-                                    var sensorName = liveBlock.data.sensor.Substring(2);
-                                    lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " sensor " + sensorName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
-                                    await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "0", false);
-                                    var logToUpdate = _logs.FirstOrDefault(f => f.LogId == log.LogId && f.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete);
-                                    if (logToUpdate != null)
+                                    //only reliable place to get system name of occupancy sensor is API - names seem inconsistent in the config
+                                    var liveBlock = _allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
+                                    if (liveBlock != null)
                                     {
-                                        var blockToUpdate = logToUpdate.AutomatedBlockList.ElementAtOrDefault(indexOfpbso);
-                                        if (blockToUpdate != null)
+                                        var sensorName = liveBlock.data.sensor.Substring(2);
+                                        lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " sensor " + sensorName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                        await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "0", false);
+                                        var logToUpdate = _logs.FirstOrDefault(f => f.LogId == log.LogId && f.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete);
+                                        if (logToUpdate != null)
                                         {
-                                            logToUpdate.AutomatedBlockList.ElementAt(indexOfpbso).SequenceState = JourneySequenceState.Traversed;
-                                        }
-                                        else
-                                        {
-                                            WriteToLog(logToUpdate.DCCiD + " block " + pbso.BlockUserName + " can't find to update to traversed - current state " + pbso.SequenceState.ToString());
+                                            var blockToUpdate = logToUpdate.AutomatedBlockList.ElementAtOrDefault(indexOfpbso);
+                                            if (blockToUpdate != null)
+                                            {
+                                                logToUpdate.AutomatedBlockList.ElementAt(indexOfpbso).SequenceState = JourneySequenceState.Traversed;
+                                            }
+                                            else
+                                            {
+                                                WriteToLog(logToUpdate.DCCiD + " block " + pbso.BlockUserName + " can't find to update to traversed - current state " + pbso.SequenceState.ToString());
+                                            }
                                         }
                                     }
+                                    else
+                                    {
+                                        lbOutput.Items.Add("Sensor hold failure - couldn't get live block for " + pbso.BlockUserName);
+                                    }
                                 }
-                                else
-                                {
-                                    lbOutput.Items.Add("Sensor hold failure - couldn't get live block for " + pbso.BlockUserName);
-                                }
+
                             }
                         }
                     }
@@ -726,13 +735,17 @@ namespace Shuttler
             }
             */
         }
-        private void ManageYardLines(List<BlockRootObject> LiveBlocks)
+        private async void ManageYardLines(List<BlockRootObject> LiveBlocks)
         {
             if (!cbManageYard.Checked) return;
             var yardSections = config.GetYardSections();
+            
             foreach (var ys in yardSections)
             {
-                var blocksForTransitSection = new List<ViableRouteBlock>();
+                //override second sensors for long trains if they haven't detected a coach / truck
+                //get first block and see if it contains a long train
+                var previousBlockTrainId = "";
+                bool longTrainInPreviousBlock = false;
                 for (int i = ys.blockentry.Count() - 1; i >= 0; i--)
                 {
                     var yardbBock = ys.blockentry[i];
@@ -741,7 +754,65 @@ namespace Shuttler
                     //Some storage sections start with the yard entrance block which isn't storage, so skip those
                     if (liveBlock.data.comment != null && !liveBlock.data.comment.Contains("Storage"))
                         continue;
-                    if (liveBlock.data.state == 2 && i == ys.blockentry.Count() - 1) break; //first block in line occupied
+
+                    if (longTrainInPreviousBlock)
+                    {
+                        if (liveBlock.data.state == 4) //unoccupied
+                        {
+                            WriteToLog("Yard sensor override for " + liveBlock.data.userName + " ID " + previousBlockTrainId);
+                            var sensorToHack = liveBlock.data.sensor;
+                            await webClient.AllocateBlock(liveBlock.data.name, previousBlockTrainId);
+                            await webClient.SetSensor(sensorToHack, "2");                            
+                        }
+
+                        longTrainInPreviousBlock = false;
+                        break;
+                    }
+
+
+                    if (liveBlock.data.state == 2 && i == ys.blockentry.Count() - 1)
+                    {
+                        //first block in line occupied
+                        if (liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName))
+                        {
+                            var rosterCfG = new RosterReader(RosterPath);
+                            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == liveBlock.data.value.data.userName);
+                            if (fullInfo != null && fullInfo.Attributepairs != null)
+                            {
+                                var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+                                if (trainLength != null)
+                                {
+                                    int trainLengthMM = 0;
+                                    var success = int.TryParse(trainLength.Value, out trainLengthMM);
+                                    if (success)
+                                    {
+                                        if (trainLengthMM > shortTrainThresholdMM)
+                                        {
+                                            longTrainInPreviousBlock = true;
+                                            previousBlockTrainId = liveBlock.data.value.data.userName;
+                                        }
+                                    }
+                                }
+                            }                            
+                        }
+                    }
+                }
+
+                var blocksForTransitSection = new List<ViableRouteBlock>();
+
+                for (int i = ys.blockentry.Count() - 1; i >= 0; i--)
+                {
+                    var yardbBock = ys.blockentry[i];
+                    var liveBlock = LiveBlocks.FirstOrDefault(f => f.data.name == yardbBock.sName);
+                    if (liveBlock == null) break;
+                    //Some storage sections start with the yard entrance block which isn't storage, so skip those
+                    if (liveBlock.data.comment != null && !liveBlock.data.comment.Contains("Storage"))
+                        continue;
+                    if (liveBlock.data.state == 2 && i == ys.blockentry.Count() - 1)
+                    {
+                        //first block in line occupied
+                        break;
+                    }
                     if (liveBlock.data.value != null && !string.IsNullOrEmpty(liveBlock.data.value.data.userName) && i == ys.blockentry.Count() - 1) break; //first block allocated - likely this line has already been processed and transit has started
                     if (liveBlock.data.state == 4)
                     {
@@ -791,6 +862,7 @@ namespace Shuttler
             {
                 foreach (var done in completeLogs)
                 {
+                    WriteToLog("Processing completion for " + done.DCCiD+" next transit "+done.NextTransit);
                     done.LastUpdated = DateTime.Now;
                     done.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.ReadyToDelete;
                     if (!string.IsNullOrEmpty(done.NextTransit))
@@ -1037,7 +1109,6 @@ namespace Shuttler
 
                     //get relative position of new speed step
                     var rosterCfG = new RosterReader(RosterPath);
-                    var roster = rosterCfG.GetRoster();
                     var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
 
                     if (fullInfo != null && fullInfo.Speedprofile != null)
@@ -1380,6 +1451,11 @@ namespace Shuttler
                                 //first block of a transit has to be treated differently as it's already active, so is never triggered as a new block and never gets processed as one
                                 bool processingFirstBlock = false;
                                 var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+
+                                //Don't try to manage blocks in the current section that have already been exited
+                                if ((int)sequenceBlock.SequenceState >= (int)JourneySequenceState.Traversed)
+                                    continue;
+
                                 var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
                                 if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued || indexOfSequenceBlock == 0)
                                 {
@@ -1400,7 +1476,6 @@ namespace Shuttler
                                         Position = 10
                                     });
                                 }
-
                                 else
                                 {
                                     if (!section.IsAllocated && !processingFirstBlock)
@@ -1441,7 +1516,7 @@ namespace Shuttler
                                 }
 
 
-                                if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD)
+                                if (section.IsAllocated && liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD)
                                 {
                                     //not occupied and not allocated - set turnouts
                                     //Check all turnouts even if allocated - one may have been set by human error
@@ -2472,8 +2547,7 @@ namespace Shuttler
             config = new ConfigReader(_cfgFilePath);
             LoadPreferredBlocks();
             LoadAvailableTransits();
-
-
+            rosterConfig = new RosterReader(RosterPath);
         }
 
         private void LoadAvailableTransits()
@@ -2767,9 +2841,7 @@ namespace Shuttler
                 trainLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Starting;
 
             //get train roster entry
-            var rosterCfG = new RosterReader(RosterPath);
-            var roster = rosterCfG.GetRoster();
-            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == trainLog.DCCiD);
+            var fullInfo = rosterConfig.FullRoster.FirstOrDefault(f => f.DccAddress == trainLog.DCCiD);
 
             var fullSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerFullMMS");
             var cautionSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerCautionMMS");
@@ -3021,6 +3093,8 @@ namespace Shuttler
                 finishesInStorageLine = " last section is storage " + lastSection.SectionkUserName+" ";
             }
             WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +" - "+transit.Type.ToString()+" - "+" starting at "+trainLog.StartTime.TimeOfDay.ToString());
+            if (!string.IsNullOrEmpty(transit.NextTransit))
+                WriteToLog("Next transit " + transit.NextTransit);
         }
 
         private void btnStartTransit_Click(object sender, EventArgs e)
@@ -4556,9 +4630,7 @@ namespace Shuttler
 
                 if (searchResult.found)
                 {
-                    var rosterCfG = new RosterReader(RosterPath);
-                    var roster = rosterCfG.GetRoster();
-                    var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == searchResult.DCCID);
+                    var fullInfo = rosterConfig.FullRoster.FirstOrDefault(f => f.DccAddress == searchResult.DCCID);
 
                     var isFreightProp = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "IsFreight");
                     if (isFreightProp != null && isFreightProp.Value.ToString().ToUpper() == "TRUE")
@@ -4695,9 +4767,7 @@ namespace Shuttler
                 var dccIdFound = liveBlock.data.value.data.userName;
                 var alreadyRunning = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete).Any(a => a.DCCiD == dccIdFound);
 
-                var rosterCfG = new RosterReader(RosterPath);
-                var roster = rosterCfG.GetRoster();
-                var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == dccIdFound);
+                var fullInfo = rosterConfig.FullRoster.FirstOrDefault(f => f.DccAddress == dccIdFound);
 
                 if (fullInfo != null && fullInfo.Attributepairs != null)
                 {
