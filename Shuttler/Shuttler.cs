@@ -52,6 +52,7 @@ namespace Shuttler
         private const string CWSAYardFreightTransit = "SA CW Yard Exit Freight run";
         private const string CWSAYard5FreightTransit = "SA CW Yard 5 Freight run";
         private const int SensorHoldBufferPercent = 35;
+        private string LastLogLine = "";
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -190,12 +191,13 @@ namespace Shuttler
             {
                 InitialiseClients();
                 await c.CheckForMessages();
-                await Task.Delay(200);
+                await Task.Delay(100);
                 var newBlockStates = await CheckForNewActiveBlocks();
 
                 CheckRunningTrains(newBlockStates);
                 CalculateSpeedForTrains();
                 SetTrainSpeeds();
+                await Task.Delay(100);
                 ProcessBlocksToDecorate();
                 await ManageExitedBlockHolds();
 
@@ -207,12 +209,14 @@ namespace Shuttler
 
                 UpdateLogPanel();
                 CleanUpListBoxes();
+                await Task.Delay(100);
 
                 if (sam != null && (sam.StationManagementACRunning || sam.StationManagementCWRunning))
                 {
                     ManageStationAutomation(newBlockStates);
                 }
                 _allBlocks = newBlockStates;
+                await Task.Delay(100);
             }
         }
 
@@ -336,27 +340,41 @@ namespace Shuttler
 
                         WriteToLog("More than one matching log by next block found for " + nab.data.userName + " - " + IDs);
 
-                        var logsWithThisBlockAllocated = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.AllocatedBlocks.Contains(nab.data.userName)).ToList();
-                        if (logsWithThisBlockAllocated.Any())
+                        var logsWithMovingTrains = logsByNextBlock.Where(w => w.TrainMotionCfg.CurrentSpeedStep > 0).ToList();
+                        WriteToLog("Number of found logs with moving train: " + logsWithMovingTrains.Count.ToString());
+                        if (logsWithMovingTrains.Count == 1)
                         {
-                            WriteToLog("Number of found logs with this block allocated: " + logsWithThisBlockAllocated.Count.ToString());
-                            if (logsWithThisBlockAllocated.Count == 1)
-                            {
-                                logToProcess = logsWithThisBlockAllocated.First();
-                                foundASingleMatchingLog = true;
-                            }
+                            var logWithMovingTrain = logsWithMovingTrains.First();
+                            logToProcess = logWithMovingTrain;
+                            WriteToLog("Only " + logWithMovingTrain.DCCiD + " had a moving train though");
+
+                            foundASingleMatchingLog = true;
                         }
-                        else
+
+                        if (!foundASingleMatchingLog)
                         {
-                            var logsWithMovingTrains = logsByNextBlock.Where(w => w.CurrentSpeedStep > 0).ToList();
-                            WriteToLog("Number of found logs with moving train: " + logsWithMovingTrains.Count.ToString());
-                            if (logsWithMovingTrains.Count == 1)
+                            var logsWithThisBlockAllocated = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.AllocatedBlocks.Contains(nab.data.userName)).ToList();
+                            if (logsWithThisBlockAllocated.Any())
                             {
-                                var logWithMovingTrain = logsWithMovingTrains.First();
-                                logToProcess = logWithMovingTrain;
-                                WriteToLog("Only " + logWithMovingTrain.DCCiD + " had a moving train though");
-                                
-                                foundASingleMatchingLog = true;
+                                WriteToLog("Number of found logs with this block allocated: " + logsWithThisBlockAllocated.Count.ToString());
+                                if (logsWithThisBlockAllocated.Count == 1)
+                                {
+                                    logToProcess = logsWithThisBlockAllocated.First();
+                                    foundASingleMatchingLog = true;
+                                }
+                                else
+                                {
+                                    var logsWithThisBlockAllocatedAndAMovingTrain = logsWithThisBlockAllocated.Where(w => w.TrainMotionCfg.CurrentSpeedStep > 0).ToList();
+                                    WriteToLog("Number of found logs with this block allocated and are moving: " + logsWithThisBlockAllocatedAndAMovingTrain.Count.ToString());
+                                    if (logsWithThisBlockAllocatedAndAMovingTrain.Count == 1)
+                                    {
+                                        var logWithAllocationAndMovingTrain = logsWithThisBlockAllocatedAndAMovingTrain.First();
+                                        logToProcess = logWithAllocationAndMovingTrain;
+                                        WriteToLog("Only " + logToProcess.DCCiD + " had a moving train though");
+
+                                        foundASingleMatchingLog = true;
+                                    }
+                                }
                             }
                         }
 
@@ -402,34 +420,6 @@ namespace Shuttler
                         WriteToLog("Log lookup failure for block " + nab.data.userName);
                         continue;
                     }
-                    //var existingLog = _logs.FirstOrDefault(f => f.NextBlock == nab.data.userName && f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
-                    /*
-                    var existingLog = _logs.FirstOrDefault(f => f.DCCiD == allocatedTo && f.AllocatedBlocks.Contains(nab.data.userName));
-                    if (existingLog == null)
-                    {
-
-                    }
-                    */
-
-                    /*
-                    if (nab.data.value == null || existingLog.DCCiD != nab.data.value.data.userName)
-                    {
-                        if (existingLog.NextBlock == nab.data.userName)
-                        {
-                            var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
-                            string prevValue = nab.data.value != null ? nab.data.value.data.userName : "";
-                            WriteToLog("NAB Corrected " + nab.data.userName + " block value from " + prevValue + " to " + existingLog.DCCiD);
-                        }
-                        else
-                        {
-                            //probably a flickering sensor - ignore
-                            WriteToLog("Didn't correct " + nab.data.userName + " for " + existingLog.DCCiD + " as not the next block");
-                            continue;
-                        }
-
-                    }
-                    */
-
                     var activeSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex);
 
                     //if new block is in current section
@@ -696,7 +686,7 @@ namespace Shuttler
                                     if (liveBlock != null)
                                     {
                                         var sensorName = liveBlock.data.sensor.Substring(2);
-                                        lbOutput.Items.Add("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " sensor " + sensorName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
+                                        WriteToLog("Loco " + log.DCCiD + " calculated exit of block " + pbso.BlockUserName + " sensor " + sensorName + " train length " + log.TrainLengthMM.ToString() + " distance calculated " + totalMMCoveredSinceExitingPBSO.ToString());
                                         await MQTTClient.SendMQTTMessage(MQTTServer, SensorHoldTopic + "/" + sensorName, "0", false);
                                         var logToUpdate = _logs.FirstOrDefault(f => f.LogId == log.LogId && f.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete);
                                         if (logToUpdate != null)
@@ -714,7 +704,7 @@ namespace Shuttler
                                     }
                                     else
                                     {
-                                        lbOutput.Items.Add("Sensor hold failure - couldn't get live block for " + pbso.BlockUserName);
+                                        WriteToLog("Sensor hold failure - couldn't get live block for " + pbso.BlockUserName);
                                     }
                                 }
 
@@ -1274,14 +1264,12 @@ namespace Shuttler
                 try
                 {
                     int sectionCounter = 0;
-                    //var previousBlockBNL = log.PreviousBlockBNL;
 
                     //check sections for allocation and turnout setting
-
                     bool previousSectionAllocated = true;
                     int sectionBlockCounter = 0;
 
-                    for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + _sectionsAhead; i++)
+                    for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + log.NumberOfSectionsAheadToAllocate; i++)
                     {
                         sectionCounter++;
                         var section = log.AutomatedSectionList.ElementAtOrDefault(i);
@@ -1292,7 +1280,7 @@ namespace Shuttler
                         {
                             var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
                             var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
-                            var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(indexOfSequenceBlock + 1);
+                            var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(indexOfSequenceBlock + 1);                            
 
                             var nextBlockName = block.BNL.BlockFound;
                             if (nextBlockInSequence != null && nextBlockInSequence.BlockUserName != block.BNL.BlockFound)
@@ -1301,53 +1289,73 @@ namespace Shuttler
                                 nextBlockName = nextBlockInSequence.BlockUserName;
                             }
 
-                            if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued)
+                            if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued && indexOfSequenceBlock >= log.AutomatedCurrentBlockIndex)
                             {
                                 //this block is already active or traversed - just set the flags to not cause any trouble as it won't need to be allocated
+                                //WriteToLog("Block " + block.userName + " deemed active or traversed for " + log.DCCiD + " seq state " + sequenceBlock.SequenceState.ToString());
                                 block.ClearToAllocate = true;
                                 block.AllocationIssue = "";
                                 sectionBlockCounter++;
                                 continue;
                             }
 
-                            var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
-
                             if (block.BNL != null)
                             {
                                 block.BNL = NavigateThroughBlockItems(block.userName, nextBlockName, block.BNL.UsedEdgeConnector, block.BNL.UsedEdgeConnectorDirectionConnector, "");
-                                /*
-                                for (int it = 0; it < turnouts.Count; it++)
-                                {
-                                    block.BNL.BNLTurnouts.ElementAt(it).NumberOfRetries = turnouts.ElementAt(it).NumberOfRetries;
-                                }
-                                */
                             }
-                            else continue;
+                            else
+                            {
+                                WriteToLog("BNL null for block " + block.userName + " ID " + log.DCCiD);
+                                continue;
+                            }
 
                             string issue = "";
                             bool allocationIssueFound = false;
 
-                            if (log.AllocatedBlocks.Contains(block.userName))
+                            if (!section.IsAllocated)
                             {
-                                var occupiedInPreviousBlock = false;
-                                var instancesOfThisBlockInThisTransit = log.AutomatedBlockList.Where(w => w.BlockSystemname == block.systemName).ToList();
-                                foreach (var instance in instancesOfThisBlockInThisTransit)
+                                if (log.AllocatedBlocks.Contains(block.userName))
                                 {
-                                    if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState < (int)JourneySequenceState.Traversed)
+                                    var allocatedInPreviousBlock = false;
+                                    var instancesOfThisBlockInThisTransit = log.AutomatedBlockList.Where(w => w.BlockSystemname == block.systemName).ToList();
+                                    foreach (var instance in instancesOfThisBlockInThisTransit)
                                     {
-                                        occupiedInPreviousBlock = true;
+                                        if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState < (int)JourneySequenceState.Traversed)
+                                        {
+                                            allocatedInPreviousBlock = true;
+                                            break;
+                                        }
+                                    }
+                                    if (allocatedInPreviousBlock)
+                                    {
+                                        issue = block.userName + " allocated to this train earlier in the transit";
+                                        allocationIssueFound = true;
                                     }
                                 }
-                                if (occupiedInPreviousBlock)
+
+                                if (!allocationIssueFound)
                                 {
-                                    issue = block.userName + " occupied by this train earlier in the transit";
-                                    allocationIssueFound = true;
-                                }
+                                    var allocatedBlocksByLog = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.DCCiD != log.DCCiD);
+                                    foreach (var alog in allocatedBlocksByLog)
+                                    {
+                                        foreach (var alloc in alog.AllocatedBlocks)
+                                        {
+                                            if (alloc == block.userName)
+                                            {
+                                                //WriteToLog("Log check can't allocate " + block.userName + " to " + log.DCCiD + " as it's allocated to " + alog.DCCiD);
+                                                issue = block.userName + " allocated to another log - " + alog.DCCiD;
+                                                allocationIssueFound = true;
+                                            }
+                                        }
+                                    }
+                                }                                
                             }
 
-                            if (liveStateBlock != null)
+                            if (!allocationIssueFound)
                             {
-                                if (!allocationIssueFound)
+                                //var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                                var liveStateBlock = await webClient.GetBlock(block.userName);
+                                if (liveStateBlock != null)
                                 {
                                     var state = liveStateBlock.data.state;
                                     var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
@@ -1358,7 +1366,7 @@ namespace Shuttler
                                         //under these circumstances this section should not be allowed to be allocated, as a block within it is already allocated to this train on an earlier part of its journey
                                         //this section should not be allocated until the previous section has been exited
 
-                                        if (state == 2 && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
+                                        if (state == (int)BlockState.Occupied && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
                                         {
                                             //this block could be active and occupied by this train in an earlier section in this transit
                                             //in this case the block should not be available to allocate in the later section
@@ -1387,7 +1395,8 @@ namespace Shuttler
                                                 }
                                             }
                                         }
-                                        else
+
+                                        if (!allocationIssueFound)
                                         {
                                             //check for allocation 
                                             if (value.Length > 0)
@@ -1396,6 +1405,7 @@ namespace Shuttler
                                                 {
                                                     //block is allocated to another train                         
                                                     issue = block.userName + " allocated to " + value;
+                                                    WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to " + value);
                                                     allocationIssueFound = true;
                                                 }
                                                 else
@@ -1413,6 +1423,7 @@ namespace Shuttler
                                                     if (allocatedInPreviousBlock)
                                                     {
                                                         issue = block.userName + " allocated to this train earlier in the transit";
+                                                        WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to this train earlier in the transit");
                                                         allocationIssueFound = true;
                                                     }
                                                 }
@@ -1420,19 +1431,10 @@ namespace Shuttler
 
                                         }
 
-                                        if (!allocationIssueFound)
-                                        {
-                                            block.ClearToAllocate = true;
-                                            block.AllocationIssue = "";
-                                        }
-                                        else
-                                        {
-                                            block.ClearToAllocate = false;
-                                            block.AllocationIssue = issue;
-                                        }
+
                                     }
                                     //else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
-                                    else if (state == 4 && string.IsNullOrEmpty(value))
+                                    else if (state == (int)BlockState.Unoccupied && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued)
                                     {
                                         var currentJourneyBlockSequenceNo = log.AutomatedCurrentBlockIndex;
                                         var sequenceNumberOfCheckedBlock = indexOfSequenceBlock;
@@ -1445,10 +1447,19 @@ namespace Shuttler
                                         }
                                     }
                                 }
+                                else
+                                    errorDuringBlockChecking = true;
+                            }
+                            if (!allocationIssueFound)
+                            {
+                                block.ClearToAllocate = true;
+                                block.AllocationIssue = "";
                             }
                             else
-                                errorDuringBlockChecking = true;
-
+                            {
+                                block.ClearToAllocate = false;
+                                block.AllocationIssue = issue;
+                            }
                             sectionBlockCounter++;
                         }
 
@@ -1456,6 +1467,8 @@ namespace Shuttler
 
                         if (!sectionContainsUnallocatableBlock && !errorDuringBlockChecking && previousSectionAllocated)
                         {
+                            //this is where all blocks for the section get allocated
+                            //WriteToLog("Starting allocation for section " + section.SectionkUserName + " ID " + log.DCCiD);
                             bool allocateFailedAnywhere = false;
 
                             foreach (var block in section.Blocks)
@@ -1476,7 +1489,8 @@ namespace Shuttler
                                     //sectionBlockCounter++;
                                     //continue;
                                 }
-                                var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                                /*
+                                var liveStateBlock = await webClient.GetBlock(block.userName);// LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
                                 if (liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD && !log.AllocatedBlocks.Contains(block.userName) && !processingFirstBlock)
                                 {
                                     //was already allocated so just add the block to allocated blocks
@@ -1488,47 +1502,45 @@ namespace Shuttler
                                         Position = 10
                                     });
                                 }
-                                else
+                                */
+
+                                if (!section.IsAllocated && !processingFirstBlock)
                                 {
-                                    if (!section.IsAllocated && !processingFirstBlock)
+                                    try
                                     {
-                                        try
+                                        var correspondingLogBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                                        blocksToDecorate.Add(new BlockToDecorate
                                         {
-                                            var correspondingLogBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
-                                            blocksToDecorate.Add(new BlockToDecorate
-                                            {
-                                                SetToAlternate = true,
-                                                BlockUserName = block.userName,
-                                                Position = log.AutomatedBlockList.IndexOf(correspondingLogBlock)
-                                            });
-                                            var responseBlock = await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
-                                            if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
-                                            {
-                                                allocateFailedAnywhere = true;
-                                                WriteToLog("Allocation failure for block " + block.userName + " - 1827 no response");
-                                            }
-
-                                            //WriteToLog("Allocated block " + block.userName + " to " + log.Name);
-                                            else
-                                            {
-                                                WriteToLog("Successful allocation for block " + block.userName + " value " + responseBlock.data.value.data.userName);
-                                                if (!log.AllocatedBlocks.Contains(block.userName))
-                                                    log.AllocatedBlocks.Add(block.userName);
-                                                correspondingLogBlock.LastAllocationTime = DateTime.Now;
-                                            }
-
-                                        }
-                                        catch (Exception ex)
+                                            SetToAlternate = true,
+                                            BlockUserName = block.userName,
+                                            Position = log.AutomatedBlockList.IndexOf(correspondingLogBlock)
+                                        });
+                                        var responseBlock = await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                        if (responseBlock == null || responseBlock.data == null || responseBlock.data.value == null || responseBlock.data.value.data.userName != log.DCCiD)
                                         {
-                                            WriteToLog("Allocation Error - " + ex.Message);
                                             allocateFailedAnywhere = true;
+                                            WriteToLog("Allocation failure for block " + block.userName + " - 1827 no response");
+                                        }
+
+                                        //WriteToLog("Allocated block " + block.userName + " to " + log.Name);
+                                        else
+                                        {
+                                            WriteToLog("Successful allocation for block " + block.userName + " value " + responseBlock.data.value.data.userName);
+                                            if (!log.AllocatedBlocks.Contains(block.userName))
+                                                log.AllocatedBlocks.Add(block.userName);
+                                            correspondingLogBlock.LastAllocationTime = DateTime.Now;
                                         }
 
                                     }
+                                    catch (Exception ex)
+                                    {
+                                        WriteToLog("Allocation Error - " + ex.Message);
+                                        allocateFailedAnywhere = true;
+                                    }
+
                                 }
 
-
-                                if (section.IsAllocated && liveStateBlock.data.value != null && liveStateBlock.data.value.data.userName == log.DCCiD)
+                                if (section.IsAllocated)
                                 {
                                     //not occupied and not allocated - set turnouts
                                     //Check all turnouts even if allocated - one may have been set by human error
@@ -1566,10 +1578,23 @@ namespace Shuttler
                                                 to.NumberOfRetries++;
                                                 c.SetTurnout(to.ID, int.Parse(to.RequiredState));
                                                 WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState+" for "+log.DCCiD);
+                                                
                                             }
                                         }
                                     }
 
+                                    //block values seem to be getting lost after the train has activated the block
+                                    var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+
+                                    if (liveStateBlock != null && liveStateBlock.data.state == (int)BlockState.Occupied&& indexOfSequenceBlock == log.AutomatedCurrentBlockIndex 
+                                        && sequenceBlock.SequenceState == JourneySequenceState.Active)
+                                    {
+                                        if (liveStateBlock.data.value == null || string.IsNullOrEmpty(liveStateBlock.data.value.data.userName))
+                                        {
+                                            WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
+                                            await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                        }
+                                    }
                                 }
                                 sectionBlockCounter++;
                             }
@@ -1888,7 +1913,7 @@ namespace Shuttler
                             {
                                 section.AllocationStatus = AllocationStatus.NotAllocated;
                                 section.AllocationStatusReason = "Error during block checking";
-                                WriteToLog("Section " + section.SectionkUserName + " unallocatable due to error during block checking");
+                                //WriteToLog("Section " + section.SectionkUserName + " unallocatable due to error during block checking");
                             }
                             if (!previousSectionAllocated)
                             {
@@ -2864,10 +2889,19 @@ namespace Shuttler
             var rampUpStep = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerRampUpStep");
             var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
             var defaultDirection = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerDefaultDirection");
+            var sectionsAhead = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerSectionsAheadToAllocate");
 
             int fulSpeedMMS = DefaultFullSpeedMMS;
             int cautionMMS = DefaultCautionMMS;
             int crawlMMS = DefaultCrawlMMS;
+            int numberOfSectionsAhead =_sectionsAhead;
+
+            if (sectionsAhead != null)
+            {
+                int.TryParse(sectionsAhead.Value, out numberOfSectionsAhead);
+            }
+
+            trainLog.NumberOfSectionsAheadToAllocate = numberOfSectionsAhead;
 
             if ((transit.Type == TransitType.Triggered || transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
             {
@@ -2891,6 +2925,8 @@ namespace Shuttler
             {
                 int.TryParse(crawlSpeed.Value, out crawlMMS);
             }
+
+
 
             int trainLengthMM = 0;
 
@@ -3104,9 +3140,8 @@ namespace Shuttler
             {
                 finishesInStorageLine = " last section is storage " + lastSection.SectionkUserName+" ";
             }
-            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +" - "+transit.Type.ToString()+" - "+" starting at "+trainLog.StartTime.TimeOfDay.ToString());
-            if (!string.IsNullOrEmpty(transit.NextTransit))
-                WriteToLog("Next transit " + transit.NextTransit);
+            WriteToLog("Started transit " + transit.userName + " for train " + trainLog.Name + " - " + Enum.GetName(typeof(TrainDirection), trainLog.TrainMotionCfg.TrainDirection) +" - "+transit.Type.ToString()+" - "
+                +" secs ahead "+trainLog.NumberOfSectionsAheadToAllocate.ToString() +" - starting at "+trainLog.StartTime.TimeOfDay.ToString());
         }
 
         private void btnStartTransit_Click(object sender, EventArgs e)
@@ -3865,9 +3900,12 @@ namespace Shuttler
         }
         private void WriteToLog(string message)
         {
-            var fullMess = DateTime.Now + " - " + message;
-            lbOutput.Items.Add(message);
+            if (message == LastLogLine) return;
+
+            var fullMess = DateTime.Now.TimeOfDay.ToString() + " - " + message;
+            lbOutput.Items.Add(fullMess);
             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+            LastLogLine = message;
         }
 
         private void UpdateLogPanel()
@@ -4629,82 +4667,92 @@ namespace Shuttler
         private async void ManageStationAutomation(List<BlockRootObject> LiveBlocks)
         {
             if (!sam.StationManagementACRunning && !sam.StationManagementCWRunning) return;
-            var acTriggerSensor = await webClient.GetSensor("AC SA TriggerNextTrain");
-            var cwTriggerSensor = await webClient.GetSensor("CW SA TriggerNextTrain");
+            var acDiff = DateTime.Now - sam.LastACSensorCheck;
+            var cwDiff = DateTime.Now - sam.LastCWSensorCheck;
 
-            if (acTriggerSensor != null && acTriggerSensor.data.state == 2)
+            if (acDiff.TotalMilliseconds > 2000)
             {
-                var yardLines = config.GetYardSections();
-                var acYardLines = yardLines.Where(w => w.userName.Contains("AC")).ToList();
-                var searchResult = FindUsableLaunchBlock(acYardLines, sam.LastACLaunchAttemptSectionIndex, LiveBlocks);
-                sam.LastACLaunchAttemptSectionIndex = searchResult.index;
-                WriteToLog("AC line index now " + sam.LastACLaunchAttemptSectionIndex.ToString());
-
-                if (searchResult.found)
+                var acTriggerSensor = await webClient.GetSensor("AC SA TriggerNextTrain");
+                if (sam.StationManagementACRunning && acTriggerSensor != null && acTriggerSensor.data.state == 2)
                 {
-                    var fullInfo = rosterConfig.FullRoster.FirstOrDefault(f => f.DccAddress == searchResult.DCCID);
+                    var yardLines = config.GetYardSections();
+                    var acYardLines = yardLines.Where(w => w.userName.Contains("AC")).ToList();
+                    var searchResult = FindUsableLaunchBlock(acYardLines, sam.LastACLaunchAttemptSectionIndex, LiveBlocks);
+                    sam.LastACLaunchAttemptSectionIndex = searchResult.index;
+                    WriteToLog("AC line index now " + sam.LastACLaunchAttemptSectionIndex.ToString());
 
-                    var isFreightProp = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "IsFreight");
-                    if (isFreightProp != null && isFreightProp.Value.ToString().ToUpper() == "TRUE")
+                    if (searchResult.found)
                     {
-                        var acTransit = PrepareSATransit(ACSAFreightTransit, searchResult.name);
-                        StartAutoTrain(acTransit, TrainDirection.Forward, DateTime.Now);
+                        var fullInfo = rosterConfig.FullRoster.FirstOrDefault(f => f.DccAddress == searchResult.DCCID);
+
+                        var isFreightProp = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "IsFreight");
+                        if (isFreightProp != null && isFreightProp.Value.ToString().ToUpper() == "TRUE")
+                        {
+                            var acTransit = PrepareSATransit(ACSAFreightTransit, searchResult.name);
+                            StartAutoTrain(acTransit, TrainDirection.Forward, DateTime.Now);
+                        }
+                        else
+                        {
+                            var acTransit = PrepareSATransit(ACSAYardTransit, searchResult.name);
+                            StartAutoTrain(acTransit, TrainDirection.Forward, DateTime.Now);
+                        }
+
+                        await webClient.SetSensor("AC SA TriggerNextTrain", "4");
                     }
-                    else
-                    {
-                        var acTransit = PrepareSATransit(ACSAYardTransit, searchResult.name);
-                        StartAutoTrain(acTransit, TrainDirection.Forward, DateTime.Now);
-                    }                   
-                    
-                    await webClient.SetSensor("AC SA TriggerNextTrain", "4");
                 }
+                sam.LastACSensorCheck = DateTime.Now;
             }
-            
-            if (cwTriggerSensor != null && cwTriggerSensor.data.state == 2)
+
+            if (cwDiff.TotalMilliseconds > 2000)
             {
-                var yardLines = config.GetYardSections();
-                var cwLines = yardLines.Where(w => w.userName.Contains("SA") && w.userName.Contains("CW")).ToList();
-                var searchResult = FindUsableLaunchBlock(cwLines, sam.LastCWLaunchAttemptSectionIndex, LiveBlocks);
-                sam.LastCWLaunchAttemptSectionIndex = searchResult.index;
-                WriteToLog("CW line index now " + sam.LastCWLaunchAttemptSectionIndex.ToString());
-                if (searchResult.found)
+                var cwTriggerSensor = await webClient.GetSensor("CW SA TriggerNextTrain");
+
+                if (sam.StationManagementCWRunning && cwTriggerSensor != null && cwTriggerSensor.data.state == 2)
                 {
-                    if (searchResult.name == "Yard CW Line 5 Block 1")
+                    var yardLines = config.GetYardSections();
+                    var cwLines = yardLines.Where(w => w.userName.Contains("SA") && w.userName.Contains("CW")).ToList();
+                    var searchResult = FindUsableLaunchBlock(cwLines, sam.LastCWLaunchAttemptSectionIndex, LiveBlocks);
+                    sam.LastCWLaunchAttemptSectionIndex = searchResult.index;
+                    WriteToLog("CW line index now " + sam.LastCWLaunchAttemptSectionIndex.ToString());
+                    if (searchResult.found)
                     {
-                        if (searchResult.isFreight)
+                        if (searchResult.name == "Yard CW Line 5 Block 1")
                         {
-                            var cw5FreightTransit = config.GetTransit(CWSAYard5FreightTransit, DispatcherPath);
-                            cw5FreightTransit.Type = TransitType.StationAutomation;
-                            StartAutoTrain(cw5FreightTransit, TrainDirection.Forward, DateTime.Now);
+                            if (searchResult.isFreight)
+                            {
+                                var cw5FreightTransit = config.GetTransit(CWSAYard5FreightTransit, DispatcherPath);
+                                cw5FreightTransit.Type = TransitType.StationAutomation;
+                                StartAutoTrain(cw5FreightTransit, TrainDirection.Forward, DateTime.Now);
+                            }
+                            else
+                            {
+                                var cw5Transit = config.GetTransit(CWSAYard5Transit, DispatcherPath);
+                                cw5Transit.Type = TransitType.StationAutomation;
+                                StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
+                            }
                         }
                         else
                         {
-                            var cw5Transit = config.GetTransit(CWSAYard5Transit, DispatcherPath);
-                            cw5Transit.Type = TransitType.StationAutomation;
-                            StartAutoTrain(cw5Transit, TrainDirection.Forward, DateTime.Now);
-                        }
-                    }
-                    else
-                    {
-                        if (searchResult.isFreight)
-                        {
-                            var cwTransit = PrepareSATransit(CWSAYardFreightTransit, searchResult.name);
-                            cwTransit.Type = TransitType.StationAutomation;
-                            StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
-                        }
-                        else
-                        {
-                            var cwTransit = PrepareSATransit(CWSAYardTransit, searchResult.name);
-                            cwTransit.Type = TransitType.StationAutomation;                            
-                            StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                            if (searchResult.isFreight)
+                            {
+                                var cwTransit = PrepareSATransit(CWSAYardFreightTransit, searchResult.name);
+                                cwTransit.Type = TransitType.StationAutomation;
+                                StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                            }
+                            else
+                            {
+                                var cwTransit = PrepareSATransit(CWSAYardTransit, searchResult.name);
+                                cwTransit.Type = TransitType.StationAutomation;
+                                StartAutoTrain(cwTransit, TrainDirection.Forward, DateTime.Now);
+                            }
+
                         }
 
+                        await webClient.SetSensor("CW SA TriggerNextTrain", "4");
                     }
-
-                    await webClient.SetSensor("CW SA TriggerNextTrain", "4");
                 }
-            }   
-            
+                sam.LastCWSensorCheck = DateTime.Now;
+            }                    
         }
 
         private transit PrepareSATransit(string transitName, string startBlockName)
@@ -4821,6 +4869,7 @@ namespace Shuttler
             sam.LastACLaunchAttemptSectionIndex = -1;
 
             await webClient.SetSensor("AC SA TriggerNextTrain", "2");
+            sam.LastACSensorCheck = DateTime.Now;
 
         }
 
@@ -4869,6 +4918,7 @@ namespace Shuttler
             sam.LastCWLaunchAttemptSectionIndex = -1;
 
             await webClient.SetSensor("CW SA TriggerNextTrain", "2");
+            sam.LastCWSensorCheck = DateTime.Now;
         }
 
         private void btnStopClockwiseSA_Click(object sender, EventArgs e)

@@ -125,5 +125,17 @@
              LOADTRAININFO = 19, // terminate train and run traininfo file
              FORCEALLOCATEPASSSAFESECTION = 20,  // attempt to force allocation to safesection beyond next safe section.
         }
+
+        public enum BlockState
+        {
+            Occupied = 2,
+            Unoccupied = 4
+        }
+
+        public enum TurnoutState
+        {
+            Closed = 2,
+            Thrown = 4
+        }
     }
 }

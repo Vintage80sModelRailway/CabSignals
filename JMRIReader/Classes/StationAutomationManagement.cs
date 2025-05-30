@@ -12,5 +12,7 @@ namespace JMRIReader.Classes
         public bool StationManagementCWRunning { get; set; }
         public int LastACLaunchAttemptSectionIndex { get; set; }
         public int LastCWLaunchAttemptSectionIndex { get; set; }
+        public DateTime LastACSensorCheck { get; set; }
+        public DateTime LastCWSensorCheck { get; set; }
     }
 }
