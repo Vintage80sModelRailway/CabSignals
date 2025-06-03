@@ -29,6 +29,9 @@ namespace JMRIReader.Classes
         public List<BlockNavigationLog> BlockBNLs { get; set; }
         public bool IsTraversed { get; set; }
         public bool IsStorage { get; set; }
+        public bool StorageSlotAllocated { get; set; }
+
+        public bool IsInclineSection { get; set; }
 
     }
 }

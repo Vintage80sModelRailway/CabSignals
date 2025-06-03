@@ -188,10 +188,14 @@ namespace JMRIReader
                 section s = GetSectionBySystemName(transitsection.sectionname);
                 newSection.Section = s;
                 newSection.TransitSection = transitsection;
+                newSection.StorageSlotAllocated = false;
 
-                if (s.comment != null && s.comment.Contains("Storage"))
+                if (s.comment != null)
                 {
-                    newSection.IsStorage = true;
+                    if (s.comment.Contains("Storage"))
+                        newSection.IsStorage = true;
+                    if (s.comment.Contains("Incline"))
+                        newSection.IsInclineSection = true;
                 }                 
 
                 newSection.Blocks = new List<block>();

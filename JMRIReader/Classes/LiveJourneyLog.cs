@@ -66,6 +66,8 @@ namespace JMRIReader.Classes
         public bool HasSpeedProfile { get; set; }
         public TransitType TransitType { get; set; }
         public int NumberOfSectionsAheadToAllocate { get; set; }
+        public bool QueueingForIncline { get; set; }
+        public DateTime TimeEnteredInclineQueue { get; set; }
 
     }
 }
