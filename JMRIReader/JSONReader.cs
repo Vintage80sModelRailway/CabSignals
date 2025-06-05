@@ -204,19 +204,9 @@ namespace JMRIReader
 
         public async Task<BlockRootObject> AllocateBlock(string systemName, string allocatedValue, bool isAutomated = false)
         {
-
             APIAllocationBlock block = new APIAllocationBlock();
             block.value = allocatedValue;
             var responseBlock = new BlockRootObject();
-
-            //var bd = new BlockValueData();
-            //bd.userName = "Testname";
-            //bd.comment = "Testcomment";
-            //var bv = new BlockValue();
-            //bv.data = bd;
-            //bv.type = "IdTag";
-
-            //block.value = bv;
 
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer+"/json/block/"+systemName);
             httpWebRequest.ContentType = "application/json";

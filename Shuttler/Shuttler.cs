@@ -351,6 +351,36 @@ namespace Shuttler
                             foundASingleMatchingLog = true;
                         }
 
+                        //try to recover from a short?
+                        if (!foundASingleMatchingLog)
+                        {
+                            var logsWithThisBlockAsCurrerntBlock = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.CurrentBlock == nab.data.userName);
+                            if (logsWithThisBlockAsCurrerntBlock.Count() == 1)
+                            {
+                                var log = logsWithThisBlockAsCurrerntBlock.First();
+                                WriteToLog("Recoved from a short here? Found " + log.DCCiD + " with this block as current block - " + nab.data.userName);
+                                existingLog = log;
+                                if (string.IsNullOrWhiteSpace(newBlockValue))
+                                {
+                                    WriteToLog("New value empty - could be a late entry, expecting " + log.DCCiD);
+                                }
+                                else if (newBlockValue != log.DCCiD)
+                                {
+                                    WriteToLog("Possibly incorrect block value - expecting " + log.DCCiD + " but got " + newBlockValue);
+                                }
+
+                                var includedInAllocation = log.AllocatedBlocks.Any(a => a == newBlockValue);
+                                WriteToLog("NAB Value mismatch when only one log matched via current block - log ID " + log.DCCiD + " but block value " + newBlockValue + " - included in allocation = " + includedInAllocation.ToString());
+                                if (includedInAllocation)
+                                {
+                                    //probably need to correct a block value here
+
+                                    var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
+
+                                }
+                            }
+                        }
+
                         if (!foundASingleMatchingLog)
                         {
                             var logsWithThisBlockAllocated = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.AllocatedBlocks.Contains(nab.data.userName)).ToList();
@@ -1184,7 +1214,6 @@ namespace Shuttler
         {
             var activeLogs = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete).ToList();
             for (int li = 0; li < activeLogs.Count; li++)
-
             {
                 var log = activeLogs[li];
                 if (log == null || !log.TrainMotionCfg.IsActive || log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.ReadyToDelete)
@@ -1268,10 +1297,11 @@ namespace Shuttler
 
                     //check sections for allocation and turnout setting                    
                     int sectionBlockCounter = 0;
-
+                    var nextSectionAllocationFailureReason = "";
                     for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + log.NumberOfSectionsAheadToAllocate; i++)
                     {
                         sectionCounter++;
+                        var thisSectionFailureAllocationReason = ""; 
                         var section = log.AutomatedSectionList.ElementAtOrDefault(i);
                         if (section == null) continue;
 
@@ -1286,6 +1316,7 @@ namespace Shuttler
 
                         bool errorDuringBlockChecking = false;
                         bool sectionContainsUnallocatableBlock = true;
+                        bool currentlyProcessingNextSection = i == log.AutomatedCurrentSectionIndex + 1 ? true : false;
 
                         //only do block checking and allocation for storage sections if they've been processed and a slot allocated
                         //otherwise, if the first storage section is available, it'll just get fully allocated without measurement checking
@@ -1479,22 +1510,24 @@ namespace Shuttler
                             }
 
                             sectionContainsUnallocatableBlock = section.Blocks.Any(a => !a.ClearToAllocate);
+                            if (sectionContainsUnallocatableBlock)
+                                thisSectionFailureAllocationReason += "; unallocatable block";
 
                             //handle incline queue - if incline is available it will just get allocated straight away which is OK
                             //if it's not, the 'queueingForIncline' value will get set later in the method and a time set for when it entered the queue
                             //so when we get back here the second time 
 
-                            if (section.IsInclineSection && !section.IsAllocated && !log.QueueingForIncline)
+                            if (section.IsInclineSection && !section.IsAllocated && !log.QueueingForIncline && currentlyProcessingNextSection)
                             {
                                 log.QueueingForIncline = true;
                                 log.TimeEnteredInclineQueue = DateTime.Now;
-                                WriteToLog("Section " + section.SectionkUserName + " entered incline queue");
+                                WriteToLog("Section " + section.SectionkUserName + " entered incline queue for "+log.DCCiD);
                             }
 
                             var logsInInclineQueue = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.QueueingForIncline).OrderBy(o => o.TimeEnteredInclineQueue).ToList();
                             
                             var logNextInInclineQueue = true;
-                            if (log.QueueingForIncline)
+                            if (log.QueueingForIncline && currentlyProcessingNextSection)
                             {
                                 var indexOfThisLogInInclineQueue = logsInInclineQueue.IndexOf(log);
                                 if (indexOfThisLogInInclineQueue > 0)
@@ -1618,6 +1651,11 @@ namespace Shuttler
                                                 WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
                                                 await webClient.AllocateBlock(block.systemName, log.DCCiD);
                                             }
+                                            else if (liveStateBlock.data.value.data.userName != log.DCCiD)
+                                            {
+                                                WriteToLog("Incorrect block value in occupied block - " + block.userName + " ID " + log.DCCiD);
+                                                await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                            }
                                         }
                                     }
                                     sectionBlockCounter++;
@@ -1627,21 +1665,53 @@ namespace Shuttler
                                     if (!section.IsAllocated && section.IsInclineSection && log.QueueingForIncline)
                                     {
                                         log.QueueingForIncline = false;
-                                        WriteToLog(section.SectionkUserName + " is an incline section so removed from queue now it's allocated");
+                                        WriteToLog(section.SectionkUserName + " is an incline section so removed from queue now it's allocated to "+log.DCCiD);
                                     }
+
                                     section.IsAllocated = true;
                                     section.AllocationStatus = AllocationStatus.Allocated;
-                                    //previousSectionAllocated = true;
+                                    if (currentlyProcessingNextSection)
+                                    {
+                                        log.NextSectionAllocationStatus = AllocationStatus.Allocated;
+                                        log.NextSection = section.SectionkUserName;
+                                    }
+                                        
                                 }
 
                                 else
                                 {
-                                    //previousSectionAllocated = false;
                                     section.AllocationStatus = AllocationStatus.NotAllocated;
+                                    if (currentlyProcessingNextSection)
+                                    {
+                                        log.NextSection = section.SectionkUserName;
+                                        log.NextSectionAllocationStatus = AllocationStatus.NotAllocated;
+                                    }
                                 }
-
+                            }
+                            else
+                            {
+                                if (currentlyProcessingNextSection)
+                                {
+                                    log.NextSection = section.SectionkUserName;
+                                    log.NextSectionAllocationStatus = AllocationStatus.NotAllocated;
+                                }
+                            }
+                            if (sectionContainsUnallocatableBlock)
+                            {
+                                thisSectionFailureAllocationReason += "; unallocatable block";
+                            }
+                            if (errorDuringBlockChecking)
+                            {
+                                thisSectionFailureAllocationReason += "; block check error";
+                            }
+                            if (!logNextInInclineQueue)
+                            {
+                                thisSectionFailureAllocationReason += "; in incline queue";
                             }
                         }
+
+                        if (currentlyProcessingNextSection)
+                            log.NextSectionAllocationStatusReason = thisSectionFailureAllocationReason;
 
                         //look for alternates
                         if (sectionContainsUnallocatableBlock && previousSectionAllocated && log.AutomatedAlternateSectionList != null)
@@ -3951,6 +4021,11 @@ namespace Shuttler
                 lblSpeedStep.Text = log.TrainMotionCfg.CurrentSpeedStep.ToString()+" / "+log.TrainMotionCfg.TargetSpeedStep.ToString();
                 lblSpeedMMS.Text = decimal.Round(log.TrainMotionCfg.CurrentSpeedMMS, 0, MidpointRounding.AwayFromZero).ToString();
 
+                var nextSectionText = log.NextSection+" - "+log.NextSectionAllocationStatus.ToString();
+                if (log.NextSectionAllocationStatus != AllocationStatus.Allocated)
+                    nextSectionText += " - "+ log.NextSectionAllocationStatusReason;
+                lblNextSectionInfo.Text = nextSectionText;
+
                 if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Scheduled)
                 {
                     var timeUntilStart = log.StartTime - DateTime.Now;
@@ -3980,7 +4055,50 @@ namespace Shuttler
                         lblmmCoveredPercent.Text = "0";
                     }
                 }
+            }
 
+            var inclineQueue = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.QueueingForIncline).OrderBy(o => o.TimeEnteredInclineQueue).ToList();
+            List<Keyvaluepair> queueItems = new List<Keyvaluepair>();
+            bool lbUpdateNeeded = false;
+
+            if (inclineQueue.Count != lbInclineQueue.Items.Count)
+            {
+                lbUpdateNeeded = true;
+            }
+            else
+            {
+                var lbItemsList = lbInclineQueue.Items.Cast<Keyvaluepair>().ToList();
+                for (int i = 0; i < inclineQueue.Count; i++)
+                {
+                    var iqLog = inclineQueue[i];
+                    var correspondingCurrentItem = lbItemsList.ElementAtOrDefault(i) as Keyvaluepair;
+                    if (correspondingCurrentItem.Key != iqLog.DCCiD)
+                    {
+                        lbUpdateNeeded = true;
+                    }
+                }
+            }
+
+            if (lbUpdateNeeded)
+            {
+                foreach (var iqLog in inclineQueue)
+                {
+                    var diff = DateTime.Now - iqLog.TimeEnteredInclineQueue;
+                    var kvp = new Keyvaluepair()
+                    {
+                        Key = iqLog.DCCiD,
+                        Value = iqLog.DCCiD + " (" + diff.TotalSeconds.ToString() + ")"
+                    };
+                    queueItems.Add(kvp);
+                }
+
+                lbInclineQueue.Items.Clear();
+                lbInclineQueue.ValueMember = "Key";
+                lbInclineQueue.DisplayMember = "Value";
+                foreach (var kvp in queueItems)
+                {
+                    lbInclineQueue.Items.Add(kvp);
+                }
             }
         }
 

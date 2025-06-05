@@ -19,6 +19,7 @@ namespace JMRIReader.Classes
         public string PreviousBlock { get; set; }
         public int PreviousBlockIndex { get; set; }
         public string CurrentBlock { get; set; }
+        public string CurrentSection { get; set; }
         public int CurrentBlockIndex { get; set; }
         public int AutomatedCurrentBlockIndex { get; set; }
         public int CurrentSpeedStep { get; set; }
@@ -40,6 +41,7 @@ namespace JMRIReader.Classes
         public DateTime StatusLastChanged { get; set; }
         public string NextBlock { get; set; }
         public string NextNextBlock { get; set; }
+        public string NextSection { get; set; }
         public List<string> History { get; set; }
         public DateTime LastUpdated { get; set; }
         public BlockNavigationLog PreviousBlockBNL { get; set; }
@@ -53,7 +55,6 @@ namespace JMRIReader.Classes
         public bool ProcessingNewBlock { get; set; }     
         public DateTime TimeStarted { get; set; }
         public TrainMotionConfig TrainMotionCfg { get; set; }
-
         public int TrainLengthMM { get; set; }
         public DateTime StartTime { get; set; }
         public bool ReverseWhenDone { get; set; }
@@ -68,6 +69,5 @@ namespace JMRIReader.Classes
         public int NumberOfSectionsAheadToAllocate { get; set; }
         public bool QueueingForIncline { get; set; }
         public DateTime TimeEnteredInclineQueue { get; set; }
-
     }
 }
