@@ -281,8 +281,10 @@ namespace WiThrottleClient
                 return false;
             }
 
-            string rel = "M" + throttle.mtIndex + "-" + rosterEntry.IDType + rosterEntry.IDType + "<;>r\n";
+            string rel = "M" + throttle.mtIndex + "-" + rosterEntry.IDType + rosterEntry.ID + "<;>r\n";
             WriteToStream(rel);
+
+            _throttles.Remove(throttle);
 
             return true;
         }

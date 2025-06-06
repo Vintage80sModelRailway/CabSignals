@@ -53,6 +53,7 @@ namespace Shuttler
         private const string CWSAYard5FreightTransit = "SA CW Yard 5 Freight run";
         private const int SensorHoldBufferPercent = 35;
         private string LastLogLine = "";
+        private DateTime LastRogueBlockValueCheck = DateTime.Now;
 
         List<ViableRouteList> ViableRoutes = new List<ViableRouteList>();
         int routeIndex = -1;
@@ -215,6 +216,12 @@ namespace Shuttler
                 {
                     ManageStationAutomation(newBlockStates);
                 }
+
+                if ((DateTime.Now - LastRogueBlockValueCheck).TotalSeconds > 10)
+                {
+                    PurgeLateBlockValues(newBlockStates);
+                }
+
                 _allBlocks = newBlockStates;
                 await Task.Delay(100);
             }
@@ -895,6 +902,7 @@ namespace Shuttler
                     WriteToLog("Processing completion for " + done.DCCiD+" next transit "+done.NextTransit);
                     done.LastUpdated = DateTime.Now;
                     done.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.ReadyToDelete;
+                    
                     if (!string.IsNullOrEmpty(done.NextTransit))
                     {
                         if (done.AutomatedCurrentBlockIndex < done.AutomatedBlockList.Count - 1)
@@ -917,6 +925,10 @@ namespace Shuttler
                             StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(fullDelay));
                         }
                     }
+
+                    var re = c.Roster.FirstOrDefault(f => f.ID == done.DCCiD);
+                    var rosterIndex = c.Roster.IndexOf(re);
+                    c.ReleaseThrottle(rosterIndex);
                 }
 
                 lbRunningTransits.Items.Clear();
@@ -1250,7 +1262,6 @@ namespace Shuttler
                         var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
                         var rosterIndex = c.Roster.IndexOf(re);
                         c.SetThrottleSpeedStep(rosterIndex, 0);
-                        c.ReleaseThrottle(rosterIndex);
                         log.Terminated = true;
 
                         var mem = await webClient.GetMemory(memoryAllocatedTrainsName);
@@ -5069,6 +5080,32 @@ namespace Shuttler
             btnStartClockwiseSA.Enabled = true;
             sam.StationManagementCWRunning = false;
             btnStopClockwiseSA.Enabled = false;
+        }
+
+        private async void PurgeLateBlockValues(List<BlockRootObject> blocks)
+        {
+            var assignedBlocks = blocks.Where(w => w.data.value != null && !string.IsNullOrEmpty(w.data.value.data.userName) && w.data.state == (int)BlockState.Unoccupied);
+            var allocatedBlocks = new List<string>();
+            foreach (var log in _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete))
+            {
+                allocatedBlocks.AddRange(log.AllocatedBlocks);
+            }
+            
+            foreach (var ass in assignedBlocks)
+            {
+                if (!allocatedBlocks.Contains(ass.data.userName))
+                {                    
+                    var resp = await webClient.AllocateBlock(ass.data.name, "");
+                    if (resp.data.value == null || string.IsNullOrEmpty(resp.data.value.data.userName))
+                    {
+                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removed");
+                    }
+                    else
+                    {
+                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removal failed, value now "+resp.data.value.data.userName);
+                    }
+                }
+            }
         }
     }
 }
