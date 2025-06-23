@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using WiThrottleClient.Classes;
@@ -26,13 +27,28 @@ namespace WiThrottleClient
 
             _roster.RosterList = new List<RosterEntry>();
             _roster.Turnouts = new List<Turnout>();
-            _throttles = new List<Throttle>();
+            SetUpThrottles();
             _ip = ServerAddress;
             _port = ServerPort;
             _name = ThrottleName;
             _throttleIndex = 0;
             _webServerPort = -1;
             Connect();
+        }
+
+        private void SetUpThrottles()
+        {
+            _throttles = new List<Throttle>();
+            for (int i = 0; i < 10; i++)
+            {
+                Throttle t = new Throttle()
+                {
+                    ID = "xx",
+                    RosterIndex = -1,
+                    mtIndex = i.ToString()
+                };
+                _throttles.Add(t);
+            }
         }
 
         private async void Connect()
@@ -252,19 +268,21 @@ namespace WiThrottleClient
                 return "Not found";
             }
 
-            var nt = new Throttle();
-            nt.Name = selectedRosterEntry.Name;
-            nt.ID = selectedRosterEntry.ID;
-            nt.RosterIndex = rosterIndex;
-            nt.mtIndex = _throttleIndex.ToString();
-            
-            _throttles.Add(nt);
-            _throttleIndex++;
+            var nt = _throttles.FirstOrDefault(f => f.ID == "xx");
+            if (nt != null)
+            {
+                nt.Name = selectedRosterEntry.Name;
+                nt.ID = selectedRosterEntry.ID;
+                nt.RosterIndex = rosterIndex;
+                string assign = "M" + nt.mtIndex + "+" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "<;>" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "\n";
+                WriteToStream(assign);
 
-            string assign = "M" + nt.mtIndex + "+" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "<;>" + selectedRosterEntry.IDType + selectedRosterEntry.ID + "\n";
-            WriteToStream(assign);
+                return nt.mtIndex;
+            }
 
-            return nt.mtIndex;
+            else
+                return "No Throttle Available";
+
         }
 
         public bool ReleaseThrottle(int rosterIndex)
@@ -284,7 +302,8 @@ namespace WiThrottleClient
             string rel = "M" + throttle.mtIndex + "-" + rosterEntry.IDType + rosterEntry.ID + "<;>r\n";
             WriteToStream(rel);
 
-            _throttles.Remove(throttle);
+            throttle.ID = "xx";
+            throttle.RosterIndex = -1;
 
             return true;
         }

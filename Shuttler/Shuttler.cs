@@ -983,11 +983,12 @@ namespace Shuttler
                         var rosterIndex = c.Roster.IndexOf(rosterEntry);
 
                         string mtIndex = c.GetThrottle(rosterIndex);
-                        var newThrottle = new Throttle();
-                        newThrottle.mtIndex = mtIndex;
-                        newThrottle.RosterIndex = rosterIndex;
-                        newThrottle.ID = log.DCCiD;
-
+                        if (mtIndex == "No Throttle Available" || mtIndex == "Not found")
+                        {
+                            WriteToLog("Could not get throttle for " + log.DCCiD + " - " + mtIndex);
+                            continue;
+                        }
+                        WriteToLog("Grabbed throttle for " + log.DCCiD + " - mtIndex " + mtIndex);
                         c.SetThrottleDirection(rosterIndex, ((int)log.TrainMotionCfg.TrainDirection).ToString());
                     }
                 }
@@ -4068,6 +4069,7 @@ namespace Shuttler
                 }
             }
 
+            /*
             var inclineQueue = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.QueueingForIncline).OrderBy(o => o.TimeEnteredInclineQueue).ToList();
             List<Keyvaluepair> queueItems = new List<Keyvaluepair>();
             bool lbUpdateNeeded = false;
@@ -4111,6 +4113,7 @@ namespace Shuttler
                     lbInclineQueue.Items.Add(kvp);
                 }
             }
+            */
         }
 
         private void lbRunningTransits_SelectedIndexChanged(object sender, EventArgs e)
