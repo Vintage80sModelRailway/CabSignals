@@ -64,7 +64,8 @@ namespace LayoutMonitor
         private List<RosterEntry> Roster;
         //private List<string> NoValueBlocks = new List<string>();
         private string[] shortBlocks = { "UD Station Approach DS" };
-        private string memoryAllocatedTrainsName;
+        private string memoryAllocatedAutoTrainsName;
+        private string memoryAllocatedManualTrainsName;
         private WiThrottle wt;
         private int _WiThrottlePort;
         private bool UnattendedMode = false;
@@ -134,10 +135,16 @@ namespace LayoutMonitor
                 if (!success) TrackAllocation = false;
             }
 
-            var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedTrainsName"];
+            var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedAutoTrainsName"];
             if (cfgMemName != null)
             {
-                memoryAllocatedTrainsName = cfgMemName.ToString();
+                memoryAllocatedAutoTrainsName = cfgMemName.ToString();
+            }
+
+            var cfgManualMemName = ConfigurationManager.AppSettings["MemoryAllocatedManualTrainsName"];
+            if (cfgManualMemName != null)
+            {
+                memoryAllocatedManualTrainsName = cfgManualMemName.ToString();
             }
 
             var cfgAllocateBlocks = ConfigurationManager.AppSettings["AllocateBlocks"];
@@ -225,6 +232,7 @@ namespace LayoutMonitor
             webClient = new JSONReader("http://" + tbServerIP.Text + ":" + tbServerPort.Text);
             activeBlocks = await webClient.GetOccupiedBlocks();
             allBlocks = await webClient.GetBlocks();
+            await webClient.UpdateMemory(memoryAllocatedManualTrainsName, "");
 
             alerts = new List<Alert>();
             //lbOutput.Items.Add("Monitoring started");
@@ -237,7 +245,7 @@ namespace LayoutMonitor
 
 
             var rosterCfG = new RosterReader(RosterPath);
-            Roster = rosterCfG.GetRoster();
+            Roster = rosterCfG.LocoList;
 
             //await StartAutomationMonitoring();
 
@@ -414,7 +422,7 @@ namespace LayoutMonitor
 
                     //get relative position of new speed step
                     var rosterCfG = new RosterReader(RosterPath);
-                    var roster = rosterCfG.GetRoster();
+                    var roster = rosterCfG.LocoList;
                     var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
 
                     if (fullInfo != null && fullInfo.Speedprofile != null)
@@ -634,7 +642,7 @@ namespace LayoutMonitor
                         if (log.TrainLengthMM <= 0)
                         {
                             var rosterCfG = new RosterReader(RosterPath);
-                            var roster = rosterCfG.GetRoster();
+                            var roster = rosterCfG.LocoList;
                             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
                             if (fullInfo != null)
                             {
@@ -1136,7 +1144,7 @@ namespace LayoutMonitor
         {
             TrainMotionConfig config = new TrainMotionConfig();
             var rosterCfG = new RosterReader(RosterPath);
-            var roster = rosterCfG.GetRoster();
+            var roster = rosterCfG.LocoList;
             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == DCCId);
 
             var fullSpeed = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerFullMMS");
@@ -1411,7 +1419,7 @@ namespace LayoutMonitor
 
             var automatedIDs = new List<string>();
 
-            var automatedMem = await webClient.GetMemory(memoryAllocatedTrainsName);
+            var automatedMem = await webClient.GetMemory(memoryAllocatedAutoTrainsName);
             if (automatedMem != null)
             {
                 var currentVal = automatedMem.data.value;
@@ -1465,145 +1473,6 @@ namespace LayoutMonitor
                     return (false, "No block value");
                 }
             }
-
-            /*
-            if (prevBlockState != null && prevBlockState.data.value != null)
-            {
-                prevBlockAllocatedId = prevBlockState.data.value.data.userName;
-                //lbOutput.Items.Add("Block previously allocated to " + prevBlockState.data.value.data.userName);
-                 existingLog = Log.FirstOrDefault(f => f.NextBlock == block.data.userName);
-
-                existingLog = Log.FirstOrDefault(f => f.DCCiD == prevBlockState.data.value.data.userName);
-                if (existingLog == null)
-                {
-                    existingLog = Log.FirstOrDefault(f => f.OriginalDCCiD == prevBlockState.data.value.data.userName);
-                }
-
-                if (existingLog != null)
-                {
-                    if (prevBlockState.data.state == 2)
-                    {
-                        lbOutput.Items.Add("Previous block state was active so might not be reliable as an allocation");
-                    }
-
-                    var blockIsForAutomatedTrain = automatedIDs.Contains(prevBlockAllocatedId);
-
-                    if (existingLog.IsAutomated != blockIsForAutomatedTrain)
-                    {
-                        lbOutput.Items.Add("Automation mismatch " + prevBlockAllocatedId + " - automated =  " + blockIsForAutomatedTrain.ToString() + " log isAutomated = " + existingLog.IsAutomated.ToString()+ " for "+block.data.userName);
-                    }
-
-                    if (block.data.value == null)
-                    {
-                        lbOutput.Items.Add("Null data value for " + prevBlockAllocatedId + " - potentially a late update for block "+block.data.userName);
-                    }
-                    else
-                    {
-                        if (block.data.value.data.userName != existingLog.DCCiD)
-                        {
-                            int testId = -1;
-                            var newIdIsInt = int.TryParse(block.data.value.data.userName, out testId);
-                            if (existingLog.Name.StartsWith("M-") && newIdIsInt)
-                            {
-                                lbOutput.Items.Add("Potentially correct rename from original manual name, new ID " + block.data.value.data.userName + " old " + existingLog.DCCiD + " block " + block.data.userName);
-                            }
-                            else
-                            {
-                                //lbOutput.Items.Add("Possible incorrect block value - " + block.data.value.data.userName + " - block " + block.data.userName + " - should remain as " + prevBlockAllocatedId);
-                                lbOutput.Items.Add("Potential incorrect block value - log value " + existingLog.DCCiD + " new block value " + block.data.value.data.userName + " block " + block.data.userName);
-                                okToRenameLog = false;
-                            }
-
-                        }
-                    }
-
-                    //JMRI can get the ID wrong after a double slip so worth checking
-                    if (existingLog.NextBlock == block.data.userName)
-                    {
-                        //lbOutput.Items.Add("Matched on next block and previous allocation - " + block.data.userName + " to " + existingLog.DCCiD);
-                    }
-                    else
-                    {
-                        //this could be the resumption of an auto train which could be heading in the opposite direction so would confuse next block etc.
-                        if (existingLog.IsAutomated)
-                        {
-                            if (automatedIDs.Contains(existingLog.DCCiD))
-                            {
-                                lbOutput.Items.Add("Probably the resumption of an auto train");
-                            }
-                        }
-
-                        //possible wrong assignment of ID
-                        if (!string.IsNullOrEmpty(existingLog.NextBlock))
-                        {
-                            if (automatedIDs.Contains(prevBlockAllocatedId))
-                            {
-                                var automatedLogs = Log.Where(w => w.IsAutomated == true && w.DCCiD == prevBlockAllocatedId);
-                                lbOutput.Items.Add("Allocation was for an automated train ID " + prevBlockAllocatedId + " - number of logs found for automated train = " + automatedLogs.Count().ToString());
-                                if (automatedLogs.Count() == 1)
-                                {
-                                    existingLog = automatedLogs.First();
-                                }
-                                else
-                                {
-                                    lbOutput.Items.Add("Still no luck, referring to default");
-                                }
-                            }
-                            else
-                            {
-                                var manualLogs = Log.Where(w => w.IsAutomated == false && w.DCCiD == prevBlockAllocatedId);
-                                lbOutput.Items.Add("Not an automated train ID = " + prevBlockAllocatedId + " - number of logs found for automated train = " + manualLogs.Count().ToString());
-                                if (manualLogs.Count() == 1)
-                                {
-                                    existingLog = manualLogs.First();
-                                }
-                                else
-                                {
-                                    lbOutput.Items.Add("Still no luck, referring to default");
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            //lbOutput.Items.Add("New block " + block.data.userName + " previous allocation - " + prevBlockAllocatedId);
-            if (existingLog == null && potentialLogs != null)
-            {
-                if (potentialLogs.Count() == 1)
-                {
-                    existingLog = potentialLogs.First();
-                    lbOutput.Items.Add("Single matching log for " + block.data.userName + " to " + existingLog.DCCiD);
-                }
-                else if (potentialLogs.Count() > 1)
-                {
-                    var logs = "";
-                    foreach (var log in potentialLogs)
-                    {
-                        logs += "; " + log.Name+" - "+log.DCCiD;
-                    }
-                    lbOutput.Items.Add("More than one potential log for block " + block.data.userName+ " - "+logs);
-
-                    if (existingLog == null && block.data.value != null)
-                    {
-                        var potentialsWithThisId = potentialLogs.Where(w => w.DCCiD == block.data.value.data.userName);
-                        if (potentialsWithThisId != null && potentialsWithThisId.Count() == 1)
-                        {
-                            existingLog = potentialsWithThisId.First();
-                            lbOutput.Items.Add("Found by matching id " + block.data.userName + " to " + existingLog.DCCiD);
-                        }
-                    }
-                    if (existingLog == null)
-                    {
-                        var sorted = potentialLogs.OrderByDescending(o => o.LastUpdated);
-                        existingLog = sorted.FirstOrDefault();
-                        if (existingLog != null)
-                            lbOutput.Items.Add("Had to match on most recently updated - "+block.data.userName+" to "+existingLog.DCCiD);
-                    }
-                }
-            }
-            */
 
             if (existingLog == null && block.data.value != null)
             {
@@ -1673,7 +1542,7 @@ namespace LayoutMonitor
 
                 blockLog.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
                 var rosterCfG = new RosterReader(RosterPath);
-                var roster = rosterCfG.GetRoster();
+                var roster = rosterCfG.LocoList;
                 var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == blockLog.DCCiD);
                 blockLog.HasSpeedProfile = false;
                 if (fullInfo != null)
@@ -1694,6 +1563,38 @@ namespace LayoutMonitor
                         lbOutput.Items.Add("Speed profile found - steps "+fullInfo.Speedprofile.Speeds.Speed.Count.ToString());
                     }
                 }
+
+                var currentMem = await webClient.GetMemory(memoryAllocatedManualTrainsName);
+                if (currentMem != null)
+                {
+                    string updateVal = string.Empty;
+                    var currentVal = currentMem.data.value;
+                    if (currentVal != null)
+                    {
+                        var currentList = currentVal.Split(';').ToList();
+                        if (!currentList.Contains(blockLog.DCCiD))
+                        {
+                            updateVal = currentVal + ";" + blockLog.DCCiD;
+                        }
+                        else
+                        {
+                            updateVal = currentVal;
+                        }
+                    }
+                    else
+                    {
+                        updateVal = blockLog.DCCiD + ";";
+                    }
+                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
+                }
+                else
+                {
+                    var updateVal = blockLog.DCCiD + ";";
+                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
+                }
+
+
+
             }
             else
             {
@@ -3177,6 +3078,25 @@ namespace LayoutMonitor
             //lbOutput.Items.Add("MQtt " + topic + " - Inactive");
             await MQTTClient.SendMQTTMessage(MQTTServer, topic, "Inactive", false);
 
+            var mem = await webClient.GetMemory(memoryAllocatedManualTrainsName);
+            if (mem != null)
+            {
+                var idList = mem.data.value.Split(';').ToList();
+                var instances = idList.Where(f => f == log.DCCiD).ToList();
+                foreach (var instance in instances)
+                {
+                    idList.Remove(instance);
+                }
+
+                var updateString = "";
+                foreach (var id in idList)
+                {
+                    if (!string.IsNullOrEmpty(id))
+                        updateString += id + ";";
+                }
+                await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateString);
+            }
+
             ddlTrainSelector.Items.Clear();
             foreach (var remainingLog in Log)
             {
@@ -3209,7 +3129,7 @@ namespace LayoutMonitor
         private void btnRosterTest_Click(object sender, EventArgs e)
         {
             var roster = new RosterReader(RosterPath);
-            var r = roster.GetRoster();
+            var r = roster.LocoList;
 
             var test = AlertSeverity.Caution.ToString();
         }
@@ -3245,7 +3165,7 @@ namespace LayoutMonitor
 
             //get relative position of new speed step
             var rosterCfG = new RosterReader(RosterPath);
-            var roster = rosterCfG.GetRoster();
+            var roster = rosterCfG.LocoList;
             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == dccId);
 
             if (fullInfo != null && fullInfo.Speedprofile != null)

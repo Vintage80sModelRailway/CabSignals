@@ -41,7 +41,8 @@ namespace Shuttler
         private int dangerBlockPercentToBeginRampDown;
         private int shortBlockThresholdMM;
         private int shortTrainThresholdMM = 1200;
-        private string memoryAllocatedTrainsName;
+        private string memoryAllocatedAutoTrainsName;
+        private string memoryAllocatedManualTrainsName;
         private string SensorHoldTopic;
         private DateTime LastTimeYardWasCheckedForShuffle;
         private StationAutomationManagement sam;
@@ -120,10 +121,16 @@ namespace Shuttler
                 SensorHoldTopic = cfgSensorHoldTopic;
             }
 
-            var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedTrainsName"];
+            var cfgMemName = ConfigurationManager.AppSettings["MemoryAllocatedAutoTrainsName"];
             if (cfgMemName != null)
             {
-                memoryAllocatedTrainsName = cfgMemName.ToString();
+                memoryAllocatedAutoTrainsName = cfgMemName.ToString();
+            }
+
+            var cfgManualMemName = ConfigurationManager.AppSettings["MemoryAllocatedManualTrainsName"];
+            if (cfgManualMemName != null)
+            {
+                memoryAllocatedManualTrainsName = cfgManualMemName.ToString();
             }
 
             var cfgdefaultCrawlMMS = ConfigurationManager.AppSettings["DefaultCrawlMMS"];
@@ -175,7 +182,7 @@ namespace Shuttler
             {
                 var serverAddress = "http://" + _JMRIServerIP + ":" + c.WebServerPort.ToString();
                 webClient = new JSONReader(serverAddress);
-                await webClient.UpdateMemory(memoryAllocatedTrainsName, "");
+                await webClient.UpdateMemory(memoryAllocatedAutoTrainsName, "");
                 LoadStartBlocks();
                 _allBlocks = await webClient.GetBlocks();
             }
@@ -220,6 +227,7 @@ namespace Shuttler
                 if ((DateTime.Now - LastRogueBlockValueCheck).TotalSeconds > 10)
                 {
                     PurgeLateBlockValues(newBlockStates);
+                    LastRogueBlockValueCheck = DateTime.Now;
                 }
 
                 _allBlocks = newBlockStates;
@@ -1265,7 +1273,7 @@ namespace Shuttler
                         c.SetThrottleSpeedStep(rosterIndex, 0);
                         log.Terminated = true;
 
-                        var mem = await webClient.GetMemory(memoryAllocatedTrainsName);
+                        var mem = await webClient.GetMemory(memoryAllocatedAutoTrainsName);
                         if (mem != null)
                         {
                             var idList = mem.data.value.Split(';').ToList();
@@ -1281,7 +1289,7 @@ namespace Shuttler
                                 if (!string.IsNullOrEmpty(id))
                                     updateString += id + ";";
                             }
-                            await webClient.UpdateMemory(memoryAllocatedTrainsName, updateString);
+                            await webClient.UpdateMemory(memoryAllocatedAutoTrainsName, updateString);
                         }
 
                         WriteToLog("Terminated train " + log.Name);
@@ -3211,7 +3219,7 @@ namespace Shuttler
                 Value = trainLog.DCCiD
             });
 
-            var currentMem = await webClient.GetMemory(memoryAllocatedTrainsName);
+            var currentMem = await webClient.GetMemory(memoryAllocatedAutoTrainsName);
             if (currentMem != null)
             {
                 string updateVal = string.Empty;
@@ -3232,12 +3240,12 @@ namespace Shuttler
                 {
                     updateVal = trainLog.DCCiD+";";
                 }
-                await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
+                await webClient.UpdateMemory(memoryAllocatedAutoTrainsName, updateVal);
             }
             else
             {
                 var updateVal = trainLog.DCCiD + ";";
-                await webClient.UpdateMemory(memoryAllocatedTrainsName, updateVal);
+                await webClient.UpdateMemory(memoryAllocatedAutoTrainsName, updateVal);
             }
 
             var lastSection = trainLog.AutomatedSectionList.LastOrDefault();
@@ -5089,15 +5097,29 @@ namespace Shuttler
         {
             var assignedBlocks = blocks.Where(w => w.data.value != null && !string.IsNullOrEmpty(w.data.value.data.userName) && w.data.state == (int)BlockState.Unoccupied);
             var allocatedBlocks = new List<string>();
+            var manualAllocatedBlocks = new List<string>();
+
+            /*
+            var manualTrains = await webClient.GetMemory(memoryAllocatedManualTrainsName);
+
+            if (manualTrains != null)
+            {
+                manualAllocatedBlocks = manualTrains.data.value.Split(';').ToList();
+            }
+
             foreach (var log in _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete))
             {
                 allocatedBlocks.AddRange(log.AllocatedBlocks);
             }
-            
+            */
+
             foreach (var ass in assignedBlocks)
             {
                 if (!allocatedBlocks.Contains(ass.data.userName))
-                {                    
+                {
+                    if (ass.data.value == null) continue;
+                    if (ass.data.value.type == "Manual") continue;
+
                     var resp = await webClient.AllocateBlock(ass.data.name, "");
                     if (resp.data.value == null || string.IsNullOrEmpty(resp.data.value.data.userName))
                     {
@@ -5105,8 +5127,9 @@ namespace Shuttler
                     }
                     else
                     {
-                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removal failed, value now "+resp.data.value.data.userName);
+                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removal failed, value now " + resp.data.value.data.userName);
                     }
+
                 }
             }
         }

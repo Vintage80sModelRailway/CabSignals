@@ -13,7 +13,6 @@ C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.L
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.Properties.Resources.resources
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.GenerateResource.cache
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CoreCompileInputs.cache
-C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CopyComplete
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.pdb
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Release\Assets\Caution.wav
@@ -62,3 +61,10 @@ C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\LayoutMonitor\ob
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.csproj.CopyComplete
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.pdb
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Release\Assets\cabsig_ico2.ico
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Release\MQTTnet.dll
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Release\WiThrottleClient.dll
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Release\WiThrottleClient.pdb
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Release\MQTTnet.xml
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Release\LayoutMo.F66FE17C.Up2Date
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Release\LayoutMonitor.exe.config

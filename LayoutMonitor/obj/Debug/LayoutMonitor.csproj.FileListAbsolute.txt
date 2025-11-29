@@ -10,7 +10,6 @@ C:\Users\chris\source\repos\CabSignals\LayoutMonitor\bin\Debug\JMRIReader.dll
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\bin\Debug\Newtonsoft.Json.dll
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\bin\Debug\JMRIReader.pdb
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\bin\Debug\Newtonsoft.Json.xml
-C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.csproj.CopyComplete
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.exe
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.pdb
 C:\Users\chris\source\repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Caution.wav
@@ -39,3 +38,10 @@ M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.xml
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\WiThrottleClient.dll
 M:\Documents\Trains\Arduino\Code Git\CabSignals\LayoutMonitor\bin\Debug\WiThrottleClient.pdb
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\cabsig_ico2.ico
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.dll
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\WiThrottleClient.dll
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\WiThrottleClient.pdb
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.xml
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMo.F66FE17C.Up2Date
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.exe.config
