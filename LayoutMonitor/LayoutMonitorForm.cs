@@ -247,8 +247,6 @@ namespace LayoutMonitor
             var rosterCfG = new RosterReader(RosterPath);
             Roster = rosterCfG.LocoList;
 
-            //await StartAutomationMonitoring();
-
             wt = new WiThrottle(tbServerIP.Text, _WiThrottlePort, "Monitor");
 
             while (monitorRuning)
@@ -275,215 +273,6 @@ namespace LayoutMonitor
             else
             {
                 lbOutput.Items.Add(text);
-            }
-        }
-        public byte[] ConvertToByteArray(IList<ArraySegment<byte>> list)
-        {
-            var bytes = new byte[list.Sum(asb => asb.Count)];
-            int pos = 0;
-
-            foreach (var asb in list)
-            {
-                Buffer.BlockCopy(asb.Array, asb.Offset, bytes, pos, asb.Count);
-                pos += asb.Count;
-            }
-
-            return bytes;
-        }
-
-        private void CalculateSpeedForTrains()
-        {
-            foreach (var log in Log.ToList())
-            {
-                if (log.TrainMotionCfg == null) continue;
-
-                if (log.AutomatedTrainRunningStatus == AutomatedTrainRunningStatus.Resuming)
-                {
-                    continue;
-                    var timeSinceStarted = DateTime.Now - log.StatusLastChanged;
-                    if (timeSinceStarted.TotalSeconds < 5)
-                    {
-                        log.TrainMotionCfg.CurrentSpeedStep = 0;
-                        log.TrainMotionCfg.TargetSpeedStep = 0;
-                        //WriteToLog("Start delay " + log.Name + " - " + timeSinceStarted.TotalSeconds.ToString()+" - "+log.AutomatedTrainRunningStatus.ToString());
-                        continue;
-                    }
-                    else
-                    {
-                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Running;
-                        log.StatusLastChanged = DateTime.Now;
-
-                        var rosterEntry = wt.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
-                        var rosterIndex = wt.Roster.IndexOf(rosterEntry);
-
-                        string mtIndex = wt.GetThrottle(rosterIndex);
-                        var newThrottle = new Throttle();
-                        newThrottle.mtIndex = mtIndex;
-                        newThrottle.RosterIndex = rosterIndex;
-                        newThrottle.ID = log.DCCiD;
-
-                        wt.SetThrottleDirection(rosterIndex, ((int)log.TrainMotionCfg.TrainDirection).ToString());
-                    }
-                }
-
-                if (log.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.Running)
-                    continue;
-
-                bool emergencyStopRequired = false;
-                bool speedChangeRequired = false;
-
-                int targetSpeedRequired = 0;
-                switch (log.AutomatedTrainRunningSpeed)
-                {
-                    case AutomatedTrainRunningSpeed.EmergencyStop:
-                        emergencyStopRequired = true;
-                        speedChangeRequired = true;
-                        break;
-                    case AutomatedTrainRunningSpeed.Stop:
-                        targetSpeedRequired = 0;
-                        speedChangeRequired = true;
-                        break;
-                    case AutomatedTrainRunningSpeed.Crawl:
-                        targetSpeedRequired = log.TrainMotionCfg.TrainDirection == TrainDirection.Forward
-                            ? log.TrainMotionCfg.ForwardCrawlSpeedStep : log.TrainMotionCfg.ReverseCrawlSpeedStep;
-                        speedChangeRequired = true;
-                        break;
-                    case AutomatedTrainRunningSpeed.Caution:
-                        targetSpeedRequired = log.TrainMotionCfg.TrainDirection == TrainDirection.Forward
-                            ? log.TrainMotionCfg.ForwardCautionSpeedStep : log.TrainMotionCfg.ReverseCautionSpeedStep;
-                        speedChangeRequired = true;
-                        break;
-                }
-
-                if (targetSpeedRequired < log.TrainMotionCfg.CurrentSpeedStep && !emergencyStopRequired)
-                {
-                    log.TrainMotionCfg.InRampDown = true;
-                }
-
-                if (log.TrainMotionCfg.TargetSpeedStep > targetSpeedRequired)
-                {
-                    log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
-                    int actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep;
-
-                    if (targetSpeedRequired != log.TrainMotionCfg.CurrentSpeedStep)
-                    {
-                        var timeSinceLastChange = DateTime.Now - log.TrainMotionCfg.RampSpeedLastSet;
-
-                        if (log.TrainMotionCfg.InRampDown)
-                        {
-                            if (timeSinceLastChange.TotalMilliseconds > log.TrainMotionCfg.RampDownIntervalMS)
-                            {
-                                actualSpeedRequired = log.TrainMotionCfg.CurrentSpeedStep - log.TrainMotionCfg.RampDownSpeedStepDecrease;
-                                // WriteToLog(log.Name + " ramp down from " + actualSpeedRequired.ToString() + " step " + log.TrainMotionCfg.RampUpSpeedStepIncrease.ToString());
-                                if (actualSpeedRequired < 0)
-                                    actualSpeedRequired = 0;
-                                if (actualSpeedRequired <= targetSpeedRequired)
-                                {
-                                    actualSpeedRequired = targetSpeedRequired;
-                                    log.TrainMotionCfg.InRampDown = false;
-                                    //WriteToLog("Ramp down complete speed = "+actualSpeedRequired.ToString());
-                                }
-                                log.TrainMotionCfg.RampSpeedLastSet = DateTime.Now;
-                            }
-                        }
-                    }
-
-                    log.TrainMotionCfg.TargetSpeedStep = targetSpeedRequired;
-                    log.TrainMotionCfg.RequiredSpeedStep = actualSpeedRequired;
-
-                    if (emergencyStopRequired && (log.TrainMotionCfg.TargetSpeedStep == 0 || log.TrainMotionCfg.RequiredSpeedStep == 0))
-                    {
-                        log.TrainMotionCfg.TargetSpeedStep = 0;
-                        log.TrainMotionCfg.RequiredSpeedStep = 0;
-                        log.TrainMotionCfg.InRampDown = false;
-                        log.TrainMotionCfg.InRampUp = false;
-                        lbOutput.Items.Add("Emergency stop executed for " + log.Name);
-                    }
-
-                    if (log.TrainMotionCfg.TargetSpeedStep == 0 && log.TrainMotionCfg.RequiredSpeedStep == 0)
-                    {
-                        log.AutomatedTrainRunningStatus = AutomatedTrainRunningStatus.Waiting;
-                    }
-                }
-            }
-        }
-
-        private void SetTrainSpeeds()
-        {
-            //if current speed < target speed and not ramping up, set ramp up
-            foreach (var log in Log.ToList())
-            {
-                if (log.TrainMotionCfg.RequiredSpeedStep != log.TrainMotionCfg.CurrentSpeedStep)
-                {
-                    var re = wt.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
-                    var rosterIndex = wt.Roster.IndexOf(re);
-                    wt.SetThrottleSpeedStep(rosterIndex, log.TrainMotionCfg.RequiredSpeedStep);
-                    log.TrainMotionCfg.CurrentSpeedStep = log.TrainMotionCfg.RequiredSpeedStep;
-
-                    //get relative position of new speed step
-                    var rosterCfG = new RosterReader(RosterPath);
-                    var roster = rosterCfG.LocoList;
-                    var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
-
-                    if (fullInfo != null && fullInfo.Speedprofile != null)
-                    {
-                        decimal prevForwardSpeed = 0.0M;
-                        decimal prevReverseSpeed = 0.0M;
-                        decimal prevStep = 0.0M;
-                        var mmPerSecond = 0.0M;
-
-                        foreach (var step in fullInfo.Speedprofile.Speeds.Speed)
-                        {
-                            var tStep = step.Step;
-                            var speed = step.Forward;
-                            decimal dForward = 0.0M;
-                            decimal dReverse = 0.0M;
-                            decimal dStep = 0.0M;
-
-                            bool fSuccess = decimal.TryParse(step.Forward, out dForward);
-                            bool rSuccess = decimal.TryParse(step.Reverse, out dReverse);
-                            bool dSuccess = decimal.TryParse(step.Step, out dStep);
-                            var asPerc1 = dStep / 1000;
-                            var beforeRound = asPerc1 * 128;
-                            int dSS = (int)decimal.Round((asPerc1 * 128), 0, MidpointRounding.AwayFromZero);
-                            var actualSpeedStep = dSS;
-
-                            if (fSuccess && rSuccess)
-                            {
-                                if ((log.TrainMotionCfg.CurrentSpeedStep < actualSpeedStep && log.TrainMotionCfg.CurrentSpeedStep >= prevStep))
-                                {
-                                    var percent = GetRelativeSpeedStepPosition(log.TrainMotionCfg.CurrentSpeedStep, prevStep, actualSpeedStep);
-                                    if (log.TrainMotionCfg.TrainDirection == TrainDirection.Forward)
-                                    {
-                                        mmPerSecond = GetRelativeSpeedMM(percent, dForward, prevForwardSpeed);
-                                    }
-                                    else
-                                    {
-                                        mmPerSecond = GetRelativeSpeedMM(percent, dReverse, prevReverseSpeed);
-                                    }
-                                    break;
-                                }
-                            }
-                            prevStep = actualSpeedStep;
-                            prevReverseSpeed = dReverse;
-                            prevForwardSpeed = dForward;
-                        }
-
-                        log.TrainMotionCfg.CurrentSpeedMMS = mmPerSecond;
-                        var speedStep = log.TrainMotionCfg.RequiredSpeedStep;
-
-                        var activeBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex);
-                        if (activeBlock != null)
-                        {
-                            activeBlock.SpeedLog.Add(new SpeedStepLog()
-                            {
-                                SpeedMMS = mmPerSecond,
-                                start = DateTime.Now,
-                                SpeedStep = speedStep
-                            });
-                        }
-                    }
-                }
             }
         }
 
@@ -588,8 +377,8 @@ namespace LayoutMonitor
 
             foreach (var nab in newBlocksToProcess.OrderBy(o => o.MultiBlockPriority).ToList())
             {
-                //try
-                //{
+                try
+                {
                 if (nab.data.value != null && nab.data.value.data.comment == "Automated")
                 {
                     continue;
@@ -608,11 +397,11 @@ namespace LayoutMonitor
 
                     }
                 }
-                //}
-                //catch (Exception ex)
-                //{
-                //    lbOutput.Items.Add("New active block processing exception " + ex.Message);
-                //}
+                }
+                catch (Exception ex)
+                {
+                    lbOutput.Items.Add("New active block processing exception " + ex.Message);
+                }
             }
 
             //Check current journeys for re-routing
@@ -636,11 +425,13 @@ namespace LayoutMonitor
 
                         }
 
+                        //Try to get train length from roster config if it's currently 0
                         if (log.TrainLengthMM <= 0)
                         {
-                            var rosterCfG = new RosterReader(RosterPath);
-                            var roster = rosterCfG.LocoList;
-                            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
+                            //var rosterCfG = new RosterReader(RosterPath);
+                            //var roster = rosterCfG.LocoList;
+                            var fullInfo = log.fullRosterInfo;
+                            //var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == log.DCCiD);
                             if (fullInfo != null)
                             {
                                 var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
@@ -674,8 +465,11 @@ namespace LayoutMonitor
                                 TrainDirection dir = TrainDirection.Forward;
                                 if (throttle.Direction != "1") dir = TrainDirection.Reverse;
 
-                                var mms = GetMMSFromSpeedStep(throttle.Speed, log.DCCiD, dir);
-                                ssl.SpeedMMS = mms;
+                                if (log.fullRosterInfo != null)
+                                {
+                                    var mms = GetMMSFromSpeedStep(log.fullRosterInfo, throttle.Speed, log.DCCiD, dir);
+                                    ssl.SpeedMMS = mms;
+                                }
                                 var currentBlock = log.AutomatedBlockList.LastOrDefault();
                                 if (currentBlock != null)
                                 {
@@ -729,28 +523,6 @@ namespace LayoutMonitor
                                         }
                                     }
 
-                                    //for (int i = indexOfpbso+1; i <log.AutomatedBlockList.Count; i++)
-                                    //{
-                                    //    decimal mmCoveredSoFarThisBlock = 0.0M;
-                                    //    var thisLogBlock = log.AutomatedBlockList.ElementAtOrDefault(i);
-                                    //    if (thisLogBlock != null)
-                                    //    {
-                                    //        for (int b = 0; b < thisLogBlock.SpeedLog.Count; b++)
-                                    //        {
-                                    //            var dateTimeTo = DateTime.Now;
-                                    //            if (b + 1 < thisLogBlock.SpeedLog.Count)
-                                    //            {
-                                    //                dateTimeTo = thisLogBlock.SpeedLog.ElementAt(b + 1).start;
-                                    //            }
-
-                                    //            var timeDiff = dateTimeTo - thisLogBlock.SpeedLog.ElementAt(b).start;
-                                    //            mmCoveredSoFarThisBlock += thisLogBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
-                                    //            thisLogBlock.mmCovered = mmCoveredSoFarThisBlock;
-                                    //            totalMMCoveredSinceExitingPBSO += mmCoveredSoFarThisBlock;
-                                    //        }
-                                    //    }
-
-                                    //}
                                     if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                                     {
                                         var liveBlock = allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
@@ -789,18 +561,6 @@ namespace LayoutMonitor
                             //lbOutput.Items.Add("Train length issue - " + log.TrainLengthMM.ToString());
                         }
 
-
-
-                        //in case it's needed - could refresh memory variable for automated trains and if the log DCC ID is no longer in it, terminate the log
-
-                        //if (existingLog.IsAutomated && !automatedIDs.Contains(existingLog.DCCiD))
-                        //{
-                        //    lbOutput.Items.Add("Detected end of journey for " + existingLog.DCCiD);
-                        //    existingLog.Terminated = true;
-                        //    existingLog.TerminatedReason = "Detected end of automated train journey";
-                        //    return (true, "End of automated train journey");
-                        //}
-
                         if (log.CurrentBlockBNL == null || log.NextBlockBNL == null || log.TwoBlocksBNL == null) continue;
                         else if (log.IsAutomated) continue;
 
@@ -836,11 +596,7 @@ namespace LayoutMonitor
                         var allocateNextBlock = false;
                         var allocateTwoBlocks = false;
 
-                        //var newLog = log;
                         //Go back to the start of the block in case we're joining it in the middle
-                        //var currentBlockReverse = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
-
-                        //var currentBlockRoute = await NavigateThroughBlockItems(currentBlockReverse.BlockChecked, currentBlockReverse.PreviousBlock, currentBlockReverse.EdgeConnectorDirectionConnector, currentBlockReverse.EdgeConnector, log.CurrentBlockBNL.EdgeConnector);
                         var currentBlockRoute = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector);
                         var nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                         var twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
@@ -1214,12 +970,12 @@ namespace LayoutMonitor
             return true;
         }
 
-        private TrainMotionConfig GetTrainMotionConfig(string trainName, string DCCId)
+        private TrainMotionConfig GetTrainMotionConfig(Locomotive fullInfo, string trainName, string DCCId)
         {
             TrainMotionConfig config = new TrainMotionConfig();
-            var rosterCfG = new RosterReader(RosterPath);
-            var roster = rosterCfG.LocoList;
-            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == DCCId);
+            //var rosterCfG = new RosterReader(RosterPath);
+            //var roster = rosterCfG.LocoList;
+            //var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == DCCId);
 
             if (fullInfo == null)
             {
@@ -1630,7 +1386,7 @@ namespace LayoutMonitor
 
 
                 blockLog.AutomatedBlockList = new List<BlockJourneyLog>();
-                blockLog.TrainMotionCfg = GetTrainMotionConfig(blockLog.Name, blockLog.DCCiD);
+                
                 blockLog.HasSpeedProfile = false;
 
                 var rosterCfG = new RosterReader(RosterPath);
@@ -1639,6 +1395,8 @@ namespace LayoutMonitor
 
                 if (fullInfo != null)
                 {
+                    blockLog.TrainMotionCfg = GetTrainMotionConfig(fullInfo, blockLog.Name,blockLog.DCCiD);
+                    blockLog.fullRosterInfo = fullInfo;
                     var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
                     int trainLengthMM = 0;
 
@@ -1895,7 +1653,7 @@ namespace LayoutMonitor
                 TrainDirection dir = TrainDirection.Forward;
                 if (existingThrottle.Direction != "1") dir = TrainDirection.Reverse;
 
-                var mms = GetMMSFromSpeedStep(existingThrottle.Speed, blockLog.DCCiD, dir);
+                var mms = GetMMSFromSpeedStep(blockLog.fullRosterInfo, existingThrottle.Speed, blockLog.DCCiD, dir);
                 ssl.SpeedMMS = mms;
                 bjl.SpeedLog.Add(ssl);
                 blockLog.CurrentSpeedStep = existingThrottle.Speed;
@@ -3273,16 +3031,16 @@ namespace LayoutMonitor
             }
         }
 
-        private decimal GetMMSFromSpeedStep(int speedStep, string dccId, TrainDirection dir)
+        private decimal GetMMSFromSpeedStep(Locomotive fullInfo, int speedStep, string dccId, TrainDirection dir)
         {
             var re = wt.Roster.FirstOrDefault(f => f.ID == dccId);
             var rosterIndex = wt.Roster.IndexOf(re);
             var mmPerSecond = 0.0M;
 
             //get relative position of new speed step
-            var rosterCfG = new RosterReader(RosterPath);
-            var roster = rosterCfG.LocoList;
-            var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == dccId);
+            //var rosterCfG = new RosterReader(RosterPath);
+            //var roster = rosterCfG.LocoList;
+            //var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == dccId);
 
             if (fullInfo != null && fullInfo.Speedprofile != null)
             {
@@ -3375,6 +3133,8 @@ namespace LayoutMonitor
 
             if (fullInfo != null)
             {
+                log.TrainMotionCfg = GetTrainMotionConfig(fullInfo, log.Name, log.DCCiD);
+                log.fullRosterInfo = fullInfo;
                 var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
                 int trainLengthMM = 0;
 

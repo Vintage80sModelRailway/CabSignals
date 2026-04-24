@@ -87,6 +87,7 @@
             this.label12 = new System.Windows.Forms.Label();
             this.label13 = new System.Windows.Forms.Label();
             this.lblNextSectionInfo = new System.Windows.Forms.Label();
+            this.cbRepeatTransitWhenComplete = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // lbRoster
@@ -645,11 +646,22 @@
             this.lblNextSectionInfo.TabIndex = 61;
             this.lblNextSectionInfo.Text = "label14";
             // 
+            // cbRepeatTransitWhenComplete
+            // 
+            this.cbRepeatTransitWhenComplete.AutoSize = true;
+            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(613, 184);
+            this.cbRepeatTransitWhenComplete.Name = "cbRepeatTransitWhenComplete";
+            this.cbRepeatTransitWhenComplete.Size = new System.Drawing.Size(61, 17);
+            this.cbRepeatTransitWhenComplete.TabIndex = 62;
+            this.cbRepeatTransitWhenComplete.Text = "Repeat";
+            this.cbRepeatTransitWhenComplete.UseVisualStyleBackColor = true;
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 462);
+            this.Controls.Add(this.cbRepeatTransitWhenComplete);
             this.Controls.Add(this.lblNextSectionInfo);
             this.Controls.Add(this.label13);
             this.Controls.Add(this.label12);
@@ -776,5 +788,6 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.Label lblNextSectionInfo;
+        private System.Windows.Forms.CheckBox cbRepeatTransitWhenComplete;
     }
 }

@@ -926,7 +926,20 @@ namespace Shuttler
                         {
                             var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
                             newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
-                            newTransit.Type = TransitType.Triggered;
+                            if (done.TransitType == TransitType.ManualRepeating)
+                            {
+                                newTransit.Type = TransitType.ManualRepeating;
+                            }
+                            else
+                                newTransit.Type = TransitType.TriggeredFromShuttleTrausit;
+
+                            if (done.RestartWhenDone)
+                            {
+                                newTransit.RestartWhenDone = true;
+                                newTransit.NextTransit = done.NextTransit;
+                                newTransit.NextTransitDirection = done.NextTransitDirection;
+                                newTransit.NextTransitDelayMS = done.NextTransitDelayMS;
+                            }
 
                             var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
                             WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " + fullDelay.ToString());
@@ -2152,7 +2165,7 @@ namespace Shuttler
                                                 WriteToLog("Found block trigger block " + thisLogBlock.BlockUserName + " transit " + bt.TransitName);
                                                 var transit = _transits.FirstOrDefault(f => f.userName == bt.TransitName);
                                                 var newTransit = config.GetTransit(bt.TransitName, DispatcherPath);
-                                                newTransit.Type = TransitType.Triggered;
+                                                newTransit.Type = TransitType.TriggeredFromShuttleTrausit;
                                                 //newTransit.NextTransitDelayMS = log.NextTransitDelayMS;
                                                 newTransit.NextTransitAdditionalDelayMS = log.NextTransitAdditionalDelayMS;
                                                 WriteToLog("Starting new triggered BLOCKENTRY transit passing on delay " + (newTransit.NextTransitAdditionalDelayMS + newTransit.NextTransitDelayMS).ToString());
@@ -3019,7 +3032,7 @@ namespace Shuttler
 
             trainLog.NumberOfSectionsAheadToAllocate = numberOfSectionsAhead;
 
-            if ((transit.Type == TransitType.Triggered || transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
+            if ((transit.Type == TransitType.TriggeredFromShuttleTrausit || transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
             {
                 var textDir = defaultDirection.Value;
                 if (textDir == "Forward")
@@ -3147,26 +3160,7 @@ namespace Shuttler
             if (fullInfo == null || fullInfo.Speedprofile == null || trainLog.TrainMotionCfg.ForwardCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardCautionSpeedStep == 0 
                 || trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0 || trainLog.TrainMotionCfg.ForwardFullSpeedStep == 0 || trainLog.TrainMotionCfg.ReverseFullSpeedStep == 0)
             {
-                /*
-                if (fullInfo != null && fullInfo.Speedprofile != null)
-                {
-                    var firstStep = fullInfo.Speedprofile.Speeds.Speed.First();
-                    if (trainLog.TrainMotionCfg.ForwardCrawlSpeedStep == 0)
-                    {
-                        int ss = 0;
-                        var success = int.TryParse(firstStep.Step, out ss);
-                        if (success)
-                            trainLog.TrainMotionCfg.ForwardCrawlSpeedStep = ss;
-                    }
-                    if (trainLog.TrainMotionCfg.ReverseCrawlSpeedStep == 0)
-                    {
-                        int ss = 0;
-                        var success = int.TryParse(firstStep.Step, out ss);
-                        if (success)
-                            trainLog.TrainMotionCfg.ReverseCrawlSpeedStep = ss;
-                    }
-                }
-                */
+
                 WriteToLog("Speed profile not complete for" + trainLog.DCCiD+ "- can't run it");
                 return;
             }
@@ -3210,6 +3204,16 @@ namespace Shuttler
 
             trainLog.TransitName = transit.userName;
             trainLog.LogId = Guid.NewGuid();
+
+            if (cbRepeatTransitWhenComplete.Checked || transit.RestartWhenDone)
+            {
+                trainLog.NextTransit = trainLog.TransitName;
+                trainLog.NextTransitDirection = direction;
+                trainLog.NextTransitDelayMS = transit.NextTransitDelayMS;
+                trainLog.NextTransitAdditionalDelayMS = 0;  
+                trainLog.RestartWhenDone = true;
+                cbRepeatTransitWhenComplete.Checked = false;
+            }
 
             _logs.Add(trainLog);
 
@@ -3275,6 +3279,13 @@ namespace Shuttler
 
             newTransit.Type = TransitType.UserSelected;
             //newTransit.NextTransitDelayMS = newTransit.NextTransitDelayMS + additionalDelayMS;
+            if (cbRepeatTransitWhenComplete.Checked)
+            {
+                newTransit.RestartWhenDone = true;
+                newTransit.NextTransit = newTransit.userName;
+                newTransit.NextTransitDelayMS = additionalDelayMS * 1000;
+                newTransit.Type = TransitType.ManualRepeating;
+            }
             newTransit.NextTransitAdditionalDelayMS = additionalDelayMS * 1000;
 
             TrainDirection dir = TrainDirection.Forward;

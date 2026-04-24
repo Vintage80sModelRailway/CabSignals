@@ -42,7 +42,10 @@
         {
             Scripted,
             Generated,
-            Triggered,
+            TriggeredFromUserTransit,
+            TriggeredFromShuttleTrausit,
+            ManualRepeating,
+            //Triggered,
             UserSelected,
             YardShuffle,
             StationAutomation

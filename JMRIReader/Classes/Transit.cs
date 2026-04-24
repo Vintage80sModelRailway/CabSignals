@@ -32,6 +32,7 @@ public partial class transit
     public TrainDirection NextTransitDirection { get; set; }
     public int NextTransitDelayMS { get; set; }
     public int NextTransitAdditionalDelayMS { get; set; }
+    public bool RestartWhenDone { get; set; }
 
     public transit GetCopy() { return (transit)this.MemberwiseClone(); }
 

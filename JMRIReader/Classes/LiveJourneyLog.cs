@@ -69,5 +69,6 @@ namespace JMRIReader.Classes
         public int NumberOfSectionsAheadToAllocate { get; set; }
         public bool QueueingForIncline { get; set; }
         public DateTime TimeEnteredInclineQueue { get; set; }
+        public Locomotive fullRosterInfo { get; set; }
     }
 }
