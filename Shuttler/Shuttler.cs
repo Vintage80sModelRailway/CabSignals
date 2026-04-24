@@ -5099,20 +5099,6 @@ namespace Shuttler
             var allocatedBlocks = new List<string>();
             var manualAllocatedBlocks = new List<string>();
 
-            /*
-            var manualTrains = await webClient.GetMemory(memoryAllocatedManualTrainsName);
-
-            if (manualTrains != null)
-            {
-                manualAllocatedBlocks = manualTrains.data.value.Split(';').ToList();
-            }
-
-            foreach (var log in _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete))
-            {
-                allocatedBlocks.AddRange(log.AllocatedBlocks);
-            }
-            */
-
             foreach (var ass in assignedBlocks)
             {
                 if (!allocatedBlocks.Contains(ass.data.userName))

@@ -52,7 +52,12 @@
             this.btnClearOutputLog = new System.Windows.Forms.Button();
             this.lbJourneyLog = new System.Windows.Forms.ListBox();
             this.btnClearJourneyListBox = new System.Windows.Forms.Button();
-            this.btnUnattendedToggle = new System.Windows.Forms.Button();
+            this.label4 = new System.Windows.Forms.Label();
+            this.tbTrainDCCID = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.tbTrainName = new System.Windows.Forms.TextBox();
+            this.btnUpdateTrainIDAndName = new System.Windows.Forms.Button();
+            this.tbPrevDCCID = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -60,12 +65,12 @@
             this.lbOutput.FormattingEnabled = true;
             this.lbOutput.Location = new System.Drawing.Point(12, 589);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1869, 147);
+            this.lbOutput.Size = new System.Drawing.Size(1688, 147);
             this.lbOutput.TabIndex = 0;
             // 
             // tbServerIP
             // 
-            this.tbServerIP.Location = new System.Drawing.Point(1374, 20);
+            this.tbServerIP.Location = new System.Drawing.Point(1188, 24);
             this.tbServerIP.Name = "tbServerIP";
             this.tbServerIP.Size = new System.Drawing.Size(125, 20);
             this.tbServerIP.TabIndex = 1;
@@ -73,7 +78,7 @@
             // 
             // tbServerPort
             // 
-            this.tbServerPort.Location = new System.Drawing.Point(1399, 46);
+            this.tbServerPort.Location = new System.Drawing.Point(1213, 50);
             this.tbServerPort.Name = "tbServerPort";
             this.tbServerPort.Size = new System.Drawing.Size(100, 20);
             this.tbServerPort.TabIndex = 2;
@@ -82,7 +87,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(1317, 23);
+            this.label1.Location = new System.Drawing.Point(1131, 27);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(51, 13);
             this.label1.TabIndex = 3;
@@ -92,7 +97,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(1367, 49);
+            this.label2.Location = new System.Drawing.Point(1181, 53);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 4;
@@ -102,7 +107,7 @@
             // btnStartMonitoring
             // 
             this.btnStartMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnStartMonitoring.Location = new System.Drawing.Point(1560, 14);
+            this.btnStartMonitoring.Location = new System.Drawing.Point(1374, 18);
             this.btnStartMonitoring.Name = "btnStartMonitoring";
             this.btnStartMonitoring.Size = new System.Drawing.Size(89, 62);
             this.btnStartMonitoring.TabIndex = 5;
@@ -114,15 +119,16 @@
             // 
             this.lblBlockWarning.AutoSize = true;
             this.lblBlockWarning.BackColor = System.Drawing.SystemColors.ActiveCaption;
-            this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblBlockWarning.Location = new System.Drawing.Point(12, 85);
+            this.lblBlockWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockWarning.Location = new System.Drawing.Point(15, 106);
             this.lblBlockWarning.Name = "lblBlockWarning";
-            this.lblBlockWarning.Size = new System.Drawing.Size(0, 63);
+            this.lblBlockWarning.Size = new System.Drawing.Size(283, 46);
             this.lblBlockWarning.TabIndex = 6;
+            this.lblBlockWarning.Text = "Block warning";
             // 
             // tbConfigLocation
             // 
-            this.tbConfigLocation.Location = new System.Drawing.Point(1231, 72);
+            this.tbConfigLocation.Location = new System.Drawing.Point(1045, 76);
             this.tbConfigLocation.Name = "tbConfigLocation";
             this.tbConfigLocation.Size = new System.Drawing.Size(268, 20);
             this.tbConfigLocation.TabIndex = 7;
@@ -131,7 +137,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(1188, 75);
+            this.label3.Location = new System.Drawing.Point(1002, 79);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(37, 13);
             this.label3.TabIndex = 8;
@@ -143,7 +149,7 @@
             this.btnStopMonitoring.BackColor = System.Drawing.Color.Red;
             this.btnStopMonitoring.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnStopMonitoring.ForeColor = System.Drawing.Color.White;
-            this.btnStopMonitoring.Location = new System.Drawing.Point(1655, 11);
+            this.btnStopMonitoring.Location = new System.Drawing.Point(1469, 15);
             this.btnStopMonitoring.Name = "btnStopMonitoring";
             this.btnStopMonitoring.Size = new System.Drawing.Size(104, 66);
             this.btnStopMonitoring.TabIndex = 9;
@@ -156,7 +162,7 @@
             this.btnAcknowledgeAlert.BackColor = System.Drawing.Color.LimeGreen;
             this.btnAcknowledgeAlert.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAcknowledgeAlert.ForeColor = System.Drawing.Color.White;
-            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1765, 11);
+            this.btnAcknowledgeAlert.Location = new System.Drawing.Point(1579, 15);
             this.btnAcknowledgeAlert.Name = "btnAcknowledgeAlert";
             this.btnAcknowledgeAlert.Size = new System.Drawing.Size(121, 66);
             this.btnAcknowledgeAlert.TabIndex = 10;
@@ -168,22 +174,23 @@
             // 
             this.lblLikelyIssue.AutoSize = true;
             this.lblLikelyIssue.BackColor = System.Drawing.SystemColors.ActiveCaption;
-            this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblLikelyIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLikelyIssue.ImageAlign = System.Drawing.ContentAlignment.BottomRight;
-            this.lblLikelyIssue.Location = new System.Drawing.Point(12, 225);
+            this.lblLikelyIssue.Location = new System.Drawing.Point(12, 253);
             this.lblLikelyIssue.Name = "lblLikelyIssue";
-            this.lblLikelyIssue.Size = new System.Drawing.Size(0, 63);
+            this.lblLikelyIssue.Size = new System.Drawing.Size(336, 46);
             this.lblLikelyIssue.TabIndex = 11;
+            this.lblLikelyIssue.Text = "Issue description";
             // 
             // lvUpdates
             // 
             this.lvUpdates.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lvUpdates.ForeColor = System.Drawing.Color.White;
             this.lvUpdates.HideSelection = false;
-            this.lvUpdates.Location = new System.Drawing.Point(12, 331);
+            this.lvUpdates.Location = new System.Drawing.Point(12, 332);
             this.lvUpdates.MultiSelect = false;
             this.lvUpdates.Name = "lvUpdates";
-            this.lvUpdates.Size = new System.Drawing.Size(1869, 252);
+            this.lvUpdates.Size = new System.Drawing.Size(1688, 252);
             this.lvUpdates.TabIndex = 12;
             this.lvUpdates.UseCompatibleStateImageBehavior = false;
             this.lvUpdates.View = System.Windows.Forms.View.Details;
@@ -193,18 +200,19 @@
             // 
             this.lblBlockContainingDanger.AutoSize = true;
             this.lblBlockContainingDanger.BackColor = System.Drawing.SystemColors.ActiveCaption;
-            this.lblBlockContainingDanger.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockContainingDanger.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblBlockContainingDanger.ForeColor = System.Drawing.Color.Black;
-            this.lblBlockContainingDanger.Location = new System.Drawing.Point(12, 151);
+            this.lblBlockContainingDanger.Location = new System.Drawing.Point(15, 179);
             this.lblBlockContainingDanger.Name = "lblBlockContainingDanger";
-            this.lblBlockContainingDanger.Size = new System.Drawing.Size(0, 63);
+            this.lblBlockContainingDanger.Size = new System.Drawing.Size(125, 46);
             this.lblBlockContainingDanger.TabIndex = 13;
+            this.lblBlockContainingDanger.Text = "Block";
             // 
             // ddlTrainSelector
             // 
             this.ddlTrainSelector.Font = new System.Drawing.Font("Microsoft Sans Serif", 15F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ddlTrainSelector.FormattingEnabled = true;
-            this.ddlTrainSelector.Location = new System.Drawing.Point(1560, 88);
+            this.ddlTrainSelector.Location = new System.Drawing.Point(1374, 92);
             this.ddlTrainSelector.Name = "ddlTrainSelector";
             this.ddlTrainSelector.Size = new System.Drawing.Size(321, 33);
             this.ddlTrainSelector.TabIndex = 16;
@@ -215,7 +223,7 @@
             this.btnTerminateTrain.BackColor = System.Drawing.Color.Red;
             this.btnTerminateTrain.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnTerminateTrain.ForeColor = System.Drawing.Color.White;
-            this.btnTerminateTrain.Location = new System.Drawing.Point(1715, 127);
+            this.btnTerminateTrain.Location = new System.Drawing.Point(1529, 131);
             this.btnTerminateTrain.Name = "btnTerminateTrain";
             this.btnTerminateTrain.Size = new System.Drawing.Size(166, 44);
             this.btnTerminateTrain.TabIndex = 17;
@@ -227,7 +235,7 @@
             // btnTrainInfo
             // 
             this.btnTrainInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnTrainInfo.Location = new System.Drawing.Point(1613, 127);
+            this.btnTrainInfo.Location = new System.Drawing.Point(1427, 131);
             this.btnTrainInfo.Name = "btnTrainInfo";
             this.btnTrainInfo.Size = new System.Drawing.Size(96, 44);
             this.btnTrainInfo.TabIndex = 18;
@@ -238,7 +246,7 @@
             // 
             this.btnCancelAllocations.BackColor = System.Drawing.Color.Gold;
             this.btnCancelAllocations.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnCancelAllocations.Location = new System.Drawing.Point(1593, 178);
+            this.btnCancelAllocations.Location = new System.Drawing.Point(1407, 182);
             this.btnCancelAllocations.Name = "btnCancelAllocations";
             this.btnCancelAllocations.Size = new System.Drawing.Size(288, 43);
             this.btnCancelAllocations.TabIndex = 19;
@@ -248,7 +256,7 @@
             // 
             // btnRosterTest
             // 
-            this.btnRosterTest.Location = new System.Drawing.Point(1806, 227);
+            this.btnRosterTest.Location = new System.Drawing.Point(1620, 231);
             this.btnRosterTest.Name = "btnRosterTest";
             this.btnRosterTest.Size = new System.Drawing.Size(75, 23);
             this.btnRosterTest.TabIndex = 20;
@@ -264,12 +272,13 @@
             this.lblTrainName.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTrainName.Location = new System.Drawing.Point(12, 14);
             this.lblTrainName.Name = "lblTrainName";
-            this.lblTrainName.Size = new System.Drawing.Size(0, 63);
+            this.lblTrainName.Size = new System.Drawing.Size(302, 63);
             this.lblTrainName.TabIndex = 21;
+            this.lblTrainName.Text = "Loco name";
             // 
             // btnClearOutputLog
             // 
-            this.btnClearOutputLog.Location = new System.Drawing.Point(1806, 742);
+            this.btnClearOutputLog.Location = new System.Drawing.Point(1582, 742);
             this.btnClearOutputLog.Name = "btnClearOutputLog";
             this.btnClearOutputLog.Size = new System.Drawing.Size(75, 23);
             this.btnClearOutputLog.TabIndex = 22;
@@ -280,14 +289,14 @@
             // lbJourneyLog
             // 
             this.lbJourneyLog.FormattingEnabled = true;
-            this.lbJourneyLog.Location = new System.Drawing.Point(1893, 14);
+            this.lbJourneyLog.Location = new System.Drawing.Point(1718, 121);
             this.lbJourneyLog.Name = "lbJourneyLog";
-            this.lbJourneyLog.Size = new System.Drawing.Size(174, 719);
+            this.lbJourneyLog.Size = new System.Drawing.Size(174, 615);
             this.lbJourneyLog.TabIndex = 23;
             // 
             // btnClearJourneyListBox
             // 
-            this.btnClearJourneyListBox.Location = new System.Drawing.Point(1992, 739);
+            this.btnClearJourneyListBox.Location = new System.Drawing.Point(1777, 742);
             this.btnClearJourneyListBox.Name = "btnClearJourneyListBox";
             this.btnClearJourneyListBox.Size = new System.Drawing.Size(75, 23);
             this.btnClearJourneyListBox.TabIndex = 24;
@@ -295,24 +304,68 @@
             this.btnClearJourneyListBox.UseVisualStyleBackColor = true;
             this.btnClearJourneyListBox.Click += new System.EventHandler(this.btnClearJourneyListBox_Click);
             // 
-            // btnUnattendedToggle
+            // label4
             // 
-            this.btnUnattendedToggle.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnUnattendedToggle.Location = new System.Drawing.Point(1560, 264);
-            this.btnUnattendedToggle.Name = "btnUnattendedToggle";
-            this.btnUnattendedToggle.Size = new System.Drawing.Size(321, 61);
-            this.btnUnattendedToggle.TabIndex = 25;
-            this.btnUnattendedToggle.Text = "Unattended";
-            this.btnUnattendedToggle.UseVisualStyleBackColor = true;
-            this.btnUnattendedToggle.Click += new System.EventHandler(this.btnUnattendedToggle_Click);
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(1727, 64);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(43, 13);
+            this.label4.TabIndex = 26;
+            this.label4.Text = "DCC ID";
+            // 
+            // tbTrainDCCID
+            // 
+            this.tbTrainDCCID.Location = new System.Drawing.Point(1792, 61);
+            this.tbTrainDCCID.Name = "tbTrainDCCID";
+            this.tbTrainDCCID.Size = new System.Drawing.Size(100, 20);
+            this.tbTrainDCCID.TabIndex = 27;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(1727, 31);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(35, 13);
+            this.label5.TabIndex = 28;
+            this.label5.Text = "Name";
+            // 
+            // tbTrainName
+            // 
+            this.tbTrainName.Location = new System.Drawing.Point(1792, 31);
+            this.tbTrainName.Name = "tbTrainName";
+            this.tbTrainName.Size = new System.Drawing.Size(100, 20);
+            this.tbTrainName.TabIndex = 29;
+            // 
+            // btnUpdateTrainIDAndName
+            // 
+            this.btnUpdateTrainIDAndName.Location = new System.Drawing.Point(1817, 87);
+            this.btnUpdateTrainIDAndName.Name = "btnUpdateTrainIDAndName";
+            this.btnUpdateTrainIDAndName.Size = new System.Drawing.Size(75, 23);
+            this.btnUpdateTrainIDAndName.TabIndex = 30;
+            this.btnUpdateTrainIDAndName.Text = "Update";
+            this.btnUpdateTrainIDAndName.UseVisualStyleBackColor = true;
+            this.btnUpdateTrainIDAndName.Click += new System.EventHandler(this.btnUpdateTrainIDAndName_Click);
+            // 
+            // tbPrevDCCID
+            // 
+            this.tbPrevDCCID.Enabled = false;
+            this.tbPrevDCCID.Location = new System.Drawing.Point(1730, 92);
+            this.tbPrevDCCID.Name = "tbPrevDCCID";
+            this.tbPrevDCCID.Size = new System.Drawing.Size(77, 20);
+            this.tbPrevDCCID.TabIndex = 31;
             // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
-            this.ClientSize = new System.Drawing.Size(2079, 771);
-            this.Controls.Add(this.btnUnattendedToggle);
+            this.ClientSize = new System.Drawing.Size(1904, 771);
+            this.Controls.Add(this.tbPrevDCCID);
+            this.Controls.Add(this.btnUpdateTrainIDAndName);
+            this.Controls.Add(this.tbTrainName);
+            this.Controls.Add(this.label5);
+            this.Controls.Add(this.tbTrainDCCID);
+            this.Controls.Add(this.label4);
             this.Controls.Add(this.btnClearJourneyListBox);
             this.Controls.Add(this.lbJourneyLog);
             this.Controls.Add(this.btnClearOutputLog);
@@ -369,7 +422,12 @@
         private System.Windows.Forms.Button btnClearOutputLog;
         private System.Windows.Forms.ListBox lbJourneyLog;
         private System.Windows.Forms.Button btnClearJourneyListBox;
-        private System.Windows.Forms.Button btnUnattendedToggle;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.TextBox tbTrainDCCID;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.TextBox tbTrainName;
+        private System.Windows.Forms.Button btnUpdateTrainIDAndName;
+        private System.Windows.Forms.TextBox tbPrevDCCID;
     }
 }
 
