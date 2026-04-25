@@ -23,7 +23,6 @@ C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutp
 C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.Properties.Resources.resources
 C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.GenerateResource.cache
 C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.CoreCompileInputs.cache
-C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.CopyComplete
 C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.exe
 C:\Users\chris\source\repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.pdb
 M:\Documents\Trains\Arduino\Code Git\CabSignals\JMRIDebugOutput\bin\Release\Assets\Caution.png
@@ -86,3 +85,7 @@ C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIDebugOutput\
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.csproj.CopyComplete
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.exe
 C:\Users\chris\Documents\Visual Studio 2022\Projects\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.pdb
+C:\Users\chris\Source\Repos\CabSignals\JMRIDebugOutput\bin\Release\MQTTnet.dll
+C:\Users\chris\Source\Repos\CabSignals\JMRIDebugOutput\bin\Release\MQTTnet.xml
+C:\Users\chris\Source\Repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebugOutput.exe.config
+C:\Users\chris\Source\Repos\CabSignals\JMRIDebugOutput\obj\Release\JMRIDebu.41F8431B.Up2Date

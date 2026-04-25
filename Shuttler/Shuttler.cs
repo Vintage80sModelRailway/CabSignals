@@ -1666,7 +1666,8 @@ namespace Shuttler
                                                 if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
                                                 {
                                                     to.NumberOfRetries++;
-                                                    c.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                                    //c.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                                    await webClient.SetTurnout(to.ID, int.Parse(to.RequiredState));
                                                     WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState + " for " + log.DCCiD);
 
                                                 }
@@ -3393,11 +3394,12 @@ namespace Shuttler
             //need to go the other way
             else if (firstBoundaryFromMiddle.LikelyIssue != null && firstBoundaryFromMiddle.LikelyIssue.Contains("AGAINST"))
             {
-                firstBoundaryFromMiddle = NavigateThroughBlockItems(firstBlock, secondBlock, connector2, previousConnector, firstBoundaryFromMiddle.EdgeConnector);
+                firstBoundaryFromMiddle = NavigateThroughBlockItems(firstBlock, secondBlock, connector2, previousConnector, breadcrumbStart);
             }
 
 
-            var secondBoundaryFromMiddle = NavigateThroughBlockItems(firstBlock, secondBlock, connector2, previousConnector, firstBoundaryFromMiddle.EdgeConnector);
+            // var secondBoundaryFromMiddle = NavigateThroughBlockItems(firstBlock, secondBlock, connector2, previousConnector, firstBoundaryFromMiddle.EdgeConnector);
+            var secondBoundaryFromMiddle = NavigateThroughBlockItems(firstBlock, secondBlock, connector2, previousConnector, breadcrumbStart);
             if (secondBoundaryFromMiddle == null)
             {
                 return null;
@@ -3445,6 +3447,7 @@ namespace Shuttler
                 bnlto.ID = configTurnout.systemName;
                 bnlto.Name = configTurnout.userName;
                 bnlto.CurrentState = liveTurnout.State;
+                var turnoutAtEdgeOfBlockDetected = false;
 
                 if (to.Type.Contains("XOVER"))
                 {
@@ -3466,13 +3469,29 @@ namespace Shuttler
                     }
 
                 }
-                else derivedXoverBlockName = to.Blockname;
+                else
+                {
+                    //turnout
+                    derivedXoverBlockName = to.Blockname;
+                    if (derivedXoverBlockName != currentBlock)
+                    {
+                        turnoutAtEdgeOfBlockDetected = true;
+                    }
+                }
+                
 
-                if (derivedXoverBlockName != currentBlock && (derivedXoverBlockName == nextBlock || nextBlock == "") && to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
+                if (derivedXoverBlockName != currentBlock &&
+                    (((derivedXoverBlockName == nextBlock || nextBlock == "") 
+                    && to.Connectaname != breadcrumbStart 
+                    && to.Connectbname != breadcrumbStart 
+                    && to.Connectcname != breadcrumbStart 
+                    && to.Connectdname != breadcrumbStart)
+                    || turnoutAtEdgeOfBlockDetected)
+                    )
                 {
                     bnl.EdgeConnector = to.Ident;
                     bnl.EdgeConnectorDirectionConnector = previousLayoutItem;
-                    if (derivedXoverBlockName == nextBlock)
+                    if (!string.IsNullOrEmpty(derivedXoverBlockName) && !string.IsNullOrEmpty(nextBlock))
                         bnl.BlockFound = to.Blockname;
                     else
                     {
@@ -5106,28 +5125,35 @@ namespace Shuttler
 
         private async void PurgeLateBlockValues(List<BlockRootObject> blocks)
         {
-            var assignedBlocks = blocks.Where(w => w.data.value != null && !string.IsNullOrEmpty(w.data.value.data.userName) && w.data.state == (int)BlockState.Unoccupied);
-            var allocatedBlocks = new List<string>();
-            var manualAllocatedBlocks = new List<string>();
-
-            foreach (var ass in assignedBlocks)
+            try
             {
-                if (!allocatedBlocks.Contains(ass.data.userName))
+                var assignedBlocks = blocks.Where(w => w.data.value != null && !string.IsNullOrEmpty(w.data.value.data.userName) && w.data.state == (int)BlockState.Unoccupied);
+                var allocatedBlocks = new List<string>();
+                var manualAllocatedBlocks = new List<string>();
+
+                foreach (var ass in assignedBlocks)
                 {
-                    if (ass.data.value == null) continue;
-                    if (ass.data.value.type == "Manual") continue;
-
-                    var resp = await webClient.AllocateBlock(ass.data.name, "");
-                    if (resp.data.value == null || string.IsNullOrEmpty(resp.data.value.data.userName))
+                    if (!allocatedBlocks.Contains(ass.data.userName))
                     {
-                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removed");
-                    }
-                    else
-                    {
-                        WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removal failed, value now " + resp.data.value.data.userName);
-                    }
+                        if (ass.data.value == null) continue;
+                        if (ass.data.value.type == "Manual") continue;
 
+                        var resp = await webClient.AllocateBlock(ass.data.name, "");
+                        if (resp.data.value == null || string.IsNullOrEmpty(resp.data.value.data.userName))
+                        {
+                            WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removed");
+                        }
+                        else
+                        {
+                            WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removal failed, value now " + resp.data.value.data.userName);
+                        }
+
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+
             }
         }
     }
