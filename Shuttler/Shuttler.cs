@@ -1848,6 +1848,47 @@ namespace Shuttler
                                         section.AllocationStatusReason = "Section contains unallocatable block";
                                     }
 
+                                    if (alternateSectionWasAllocated)
+                                    {
+                                        //Need to go through the journey from this point on to make sure everything is connected up properly
+                                        var indexOfSection = log.AutomatedSectionList.IndexOf(section);
+
+                                        for (int s = indexOfSection - 1; s < log.AutomatedSectionList.Count; s++)
+                                        {
+                                            var sec = log.AutomatedSectionList.ElementAt(s);
+
+                                        }
+
+                                        var firstBlock = log.AutomatedBlockList.First();
+                                        var secondBlock = log.AutomatedBlockList.ElementAt(1);
+                                        var prevBNL = GetFirstBNL(firstBlock.BlockUserName, secondBlock.BlockUserName);
+                                        foreach (var sec in log.AutomatedSectionList)
+                                        {
+                                            foreach (var block in sec.Blocks)
+                                            {
+                                                var nm = block.userName;
+                                                var blockInSequence = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == sec.Sequence);
+                                                if (blockInSequence == null) continue;
+                                                var seqIndex = log.AutomatedBlockList.IndexOf(blockInSequence);
+                                                if (seqIndex == -1) continue;
+                                                if (seqIndex == 0)
+                                                {
+                                                    block.BNL = prevBNL;
+                                                }
+                                                else
+                                                {
+                                                    var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(seqIndex + 1);
+                                                    if (nextBlockInSequence != null)
+                                                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                                    else
+                                                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+
+                                                }
+                                                prevBNL = block.BNL;
+                                            }
+                                        }
+                                    }
+
                                     if (!alternateSectionWasAllocated)
                                     {
                                         if (section.IsStorage && !section.StorageSlotAllocated)
@@ -2951,9 +2992,54 @@ namespace Shuttler
 
             var originalSections = transit.Sections.ToList();
             var originalBlocksInOrder = transit.BlocksInOrder.ToList();
-            
 
             if (transit.AlternateSections != null)
+            {
+                foreach (var altSection in transit.AlternateSections)
+                {
+                    altSection.AlternateSectionFullBlocksInOrder = new List<BlockJourneyLog>();
+                    var alternateBlockList = new List<BlockJourneyLog>();
+                    var primarySection = transit.Sections.FirstOrDefault(f => f.Sequence == altSection.Sequence);
+                    if (primarySection == null || primarySection.SectionSystemname == altSection.SectionSystemname)
+                        continue;
+                    if (primarySection != null)
+                    {
+                        var index = transit.Sections.IndexOf(primarySection);
+                        if (index == -1) continue;
+                        var altSequence = -1;
+                        var altBlockSequence = 0;
+                        var originalBlockCounter = 0;
+
+                        foreach (var sec in transit.Sections)
+                        {
+                            if (sec.Sequence == altSection.Sequence)
+                            {
+                                foreach (var altBlock in altSection.Blocks)
+                                {
+                                    var altJLBlock = transit.AlternateBlocks.FirstOrDefault(f => f.BlockSystemname == altBlock.systemName && f.SectionId == altSection.SectionID);
+                                    var copyOfAltBlock = altJLBlock.Clone();
+                                    copyOfAltBlock.Sequence = altBlockSequence;
+                                    altSection.AlternateSectionFullBlocksInOrder.Add(copyOfAltBlock);
+                                    altBlockSequence++;
+                                }
+                            }
+                            else
+                            {
+                                foreach (var originalBlock in sec.Blocks)
+                                {
+                                    var sequenceOriginalBlock = transit.BlocksInOrder.FirstOrDefault(f => f.SectionId == sec.SectionID && f.BlockSystemname == originalBlock.systemName);
+                                    var copyOfBlock = sequenceOriginalBlock.Clone();
+                                    copyOfBlock.Sequence = altBlockSequence;
+                                    altSection.AlternateSectionFullBlocksInOrder.Add(copyOfBlock);
+                                    altBlockSequence++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (transit.AlternateSections != null && 1 == 2)
             {
 
                 foreach (var altSection in transit.AlternateSections)
@@ -3021,26 +3107,75 @@ namespace Shuttler
                                 if (seqIndex == -1) continue;
                                 if (seqIndex == 0)
                                 {
+                                    var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
+                                    firstBlockBNL = GetFirstBNL(blockInSequence.BlockUserName, nextBlockInSequence.BlockUserName);
                                     block.BNL = firstBlockBNL;
                                 }
                                 else
                                 {
                                     var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
                                     if (nextBlockInSequence != null)
-                                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                    {
+                                        var bnl = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                        block.BNL = bnl;
+                                    }
+                                        
                                     else
-                                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                    {
+                                        var bnl = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                        block.BNL = bnl;
+                                    }
+                                        
                                 }
 
                                 prevBNL = block.BNL;
 
                             }
+                            var secName = section.SectionSystemname;
+                            var secUname = section.SectionkUserName;
                             var originalAltSection = transit.AlternateSections.FirstOrDefault(f => f.SectionSystemname == section.SectionSystemname);
                             if (originalAltSection != null)
                             {
                                 originalAltSection.Blocks = section.Blocks;
                             }
                         }
+                    }
+                }
+
+                prevBNL = firstBlockBNL;
+                foreach (var section in transit.Sections)
+                {
+                    foreach (var block in section.Blocks)
+                    {
+                        var blockInSequence = transit.BlocksInOrder.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                        if (blockInSequence == null) continue;
+                        var seqIndex = transit.BlocksInOrder.IndexOf(blockInSequence);
+                        if (seqIndex == -1) continue;
+                        if (seqIndex == 0)
+                        {
+                            var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
+                            firstBlockBNL = GetFirstBNL(blockInSequence.BlockUserName, nextBlockInSequence.BlockUserName);
+                            block.BNL = firstBlockBNL;
+                        }
+                        else
+                        {
+                            var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
+                            if (nextBlockInSequence != null)
+                            {
+                                var bnl = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                block.BNL = bnl;
+                            }
+
+                            else
+                            {
+                                var bnl = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                block.BNL = bnl;
+                            }
+
+                        }
+
+                        prevBNL = block.BNL;
+
                     }
                 }
             }
