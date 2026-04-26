@@ -256,6 +256,7 @@
             // 
             // btnRosterTest
             // 
+            this.btnRosterTest.Enabled = false;
             this.btnRosterTest.Location = new System.Drawing.Point(1620, 231);
             this.btnRosterTest.Name = "btnRosterTest";
             this.btnRosterTest.Size = new System.Drawing.Size(75, 23);

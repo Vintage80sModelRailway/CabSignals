@@ -36,5 +36,10 @@ namespace JMRIReader.Classes
         public bool StorageBlock { get; set; }
         public bool EmergencyStopOnly { get; set; }
 
+        public BlockJourneyLog Clone()
+        {
+            return (BlockJourneyLog)MemberwiseClone();
+        }
+
     }
 }

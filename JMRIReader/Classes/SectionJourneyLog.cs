@@ -32,6 +32,7 @@ namespace JMRIReader.Classes
         public bool StorageSlotAllocated { get; set; }
 
         public bool IsInclineSection { get; set; }
+        public List<BlockJourneyLog> AlternateSectionFullBlocksInOrder { get; set; }
 
     }
 }

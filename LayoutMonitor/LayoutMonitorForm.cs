@@ -3218,12 +3218,17 @@ namespace LayoutMonitor
             }
         }
 
-        private void btnRosterTest_Click(object sender, EventArgs e)
+        private async void btnRosterTest_Click(object sender, EventArgs e)
         {
             var roster = new RosterReader(RosterPath);
             var r = roster.LocoList;
 
             var test = AlertSeverity.Caution.ToString();
+
+            //for (int i = 0; i < 200; i++)
+            //{
+            //    await MQTTClient.SendMQTTMessage(MQTTServer, "debug/overload/"+i.ToString(), "Test "+i.ToString(), false);
+            //}
         }
 
         private void btnClearOutputLog_Click(object sender, EventArgs e)

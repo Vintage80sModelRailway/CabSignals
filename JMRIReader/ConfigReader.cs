@@ -152,14 +152,17 @@ namespace JMRIReader
             int blockCounter = -1;
             int altSectionCounter = 0;
             int blockCounterAtStartOfAltSections = 0;
+            int simpleRecordCounter = -1;
 
-            if (tr.userName == "SA CW Platform to CW Yard")
+            if (tr.userName == "SA CW Platform Lower Deck Loops")
             {
                 var stop = "here";
             }
 
             foreach (var transitsection in tr.transitsection)
             {
+                simpleRecordCounter++;
+
                 var newSection = new SectionJourneyLog();
                 int blockSequenceCounterAtAltSectionStart = blockCounter;
                
@@ -170,7 +173,7 @@ namespace JMRIReader
                     sectionCounter++;
 
                 var hasAlternate = false;
-                var nextSection = tr.transitsection.ElementAtOrDefault(sectionCounter+1);
+                var nextSection = tr.transitsection.ElementAtOrDefault(simpleRecordCounter + 1);
                 if (nextSection != null && nextSection.alternate == "yes")
                 {
                     hasAlternate = true;
@@ -183,7 +186,12 @@ namespace JMRIReader
                 }
 
                 if (transitsection.alternate.Equals("yes"))
-                    altSectionCounter++;
+                {
+                    //altSectionCounter++;
+                }
+
+                else 
+                    altSectionCounter = sectionCounter;
 
                 section s = GetSectionBySystemName(transitsection.sectionname);
                 newSection.Section = s;
@@ -390,7 +398,7 @@ namespace JMRIReader
                 newSection.SectionSystemname = s.systemName;
                 newSection.HasAlternate = hasAlternate;
                 newSection.PossibleAlternate = transitsection.alternate == "yes" ? true : false;
-                newSection.Sequence = sectionCounter;
+                newSection.Sequence = transitsection.alternate == "yes" ? altSectionCounter :  sectionCounter;
                 newSection.Traversed = false;
 
                 //alternates need to have the same section sequence as the original alt section - but the section counter increments with each section parsed

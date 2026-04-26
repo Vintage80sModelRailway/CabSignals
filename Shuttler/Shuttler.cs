@@ -1808,17 +1808,35 @@ namespace Shuttler
                                                 section = potentialAlt;
                                                 log.AutomatedSectionList[i] = section;
                                                 log.CurrentAlternateIndex = log.CurrentAlternateIndex;
+                                                //log.AutomatedBlockList = section.AlternateSectionFullBlocksInOrder;
 
-                                                var sectionAltBlocks = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == section.SectionID);
-                                                foreach (var altBlock in sectionAltBlocks)
+                                                var altBlockList = new List<BlockJourneyLog>();
+                                                int changeoverIndex = 0;
+                                                foreach (var block in log.AutomatedBlockList)
                                                 {
-                                                    var existingBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == altBlock.Sequence);
-                                                    if (existingBlock != null)
+                                                    if (block.SectionSequenceId < section.Sequence)
                                                     {
-                                                        var index = log.AutomatedBlockList.IndexOf(existingBlock);
-                                                        log.AutomatedBlockList[index] = altBlock;
+                                                        altBlockList.Add(block);
+                                                        changeoverIndex++;
                                                     }
+                                                    else break;
                                                 }
+                                                for (int c = changeoverIndex; c < section.AlternateSectionFullBlocksInOrder.Count; c++)
+                                                {
+                                                    altBlockList.Add(section.AlternateSectionFullBlocksInOrder[c]);
+                                                }
+
+                                                log.AutomatedBlockList = altBlockList;
+                                                //var sectionAltBlocks = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == section.SectionID);
+                                                //foreach (var altBlock in sectionAltBlocks)
+                                                //{
+                                                //    var existingBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == altBlock.Sequence);
+                                                //    if (existingBlock != null)
+                                                //    {
+                                                //        var index = log.AutomatedBlockList.IndexOf(existingBlock);
+                                                //        log.AutomatedBlockList[index] = altBlock;
+                                                //    }
+                                                //}
                                                 alternateSectionWasAllocated = true;
                                                 break;
                                             }
@@ -2933,11 +2951,15 @@ namespace Shuttler
 
             var originalSections = transit.Sections.ToList();
             var originalBlocksInOrder = transit.BlocksInOrder.ToList();
+            
 
             if (transit.AlternateSections != null)
             {
+
                 foreach (var altSection in transit.AlternateSections)
                 {
+                    altSection.AlternateSectionFullBlocksInOrder = new List<BlockJourneyLog>();
+                    var alternateBlockList = new List<BlockJourneyLog>();
                     var primarySection = transit.Sections.FirstOrDefault(f => f.Sequence == altSection.Sequence);
                     if (primarySection == null || primarySection.SectionSystemname == altSection.SectionSystemname)
                         continue;
@@ -2945,18 +2967,48 @@ namespace Shuttler
                     {
                         var index = transit.Sections.IndexOf(primarySection);
                         if (index == -1) continue;
+                        var replacedSection = transit.Sections[index];
+
                         transit.Sections[index] = altSection;
 
-                        var altBlocks = transit.AlternateBlocks.Where(w => w.SectionId == altSection.SectionID);
-                        foreach (var altBlock in altBlocks)
+                        var altSequence = -1;
+                        var altBlockSequence = 0;
+
+                        foreach (var sec in transit.Sections)
                         {
-                            var existingBlock = transit.BlocksInOrder.FirstOrDefault(f => f.Sequence == altBlock.Sequence);
-                            if (existingBlock != null)
+                            foreach (var block in sec.Blocks)
                             {
-                                var bIndex = transit.BlocksInOrder.IndexOf(existingBlock);
-                                transit.BlocksInOrder[bIndex] = altBlock;
+                                var sequenceBlock = transit.BlocksInOrder.ElementAtOrDefault(altBlockSequence);
+                                if (sequenceBlock != null && sequenceBlock.BlockSystemname == block.systemName)
+                                {
+                                    var copyOfBlock = sequenceBlock.Clone();
+                                    copyOfBlock.Sequence = altSequence;
+                                    altSection.AlternateSectionFullBlocksInOrder.Add(copyOfBlock);
+                                    altBlockSequence++;
+                                }
+                                else
+                                {
+                                    var altBlock = transit.AlternateBlocks.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionId == altSection.SectionID);
+                                    if (altBlock != null)
+                                    {
+                                        var copyOfAltBlock = altBlock.Clone();
+                                        copyOfAltBlock.Sequence = altSequence;
+                                        altSection.AlternateSectionFullBlocksInOrder.Add(altBlock);
+                                        altBlockSequence++;
+                                    }
+                                    else
+                                    {
+                                        var outOfSequenceBlock = transit.BlocksInOrder.FirstOrDefault(f => f.SectionId == sec.SectionID && f.BlockSystemname == block.systemName);
+                                        var copyOfOOSBlock = outOfSequenceBlock.Clone();
+                                        copyOfOOSBlock.Sequence = altBlockSequence;
+                                        altSection.AlternateSectionFullBlocksInOrder.Add(copyOfOOSBlock);
+                                        altBlockSequence++;
+                                    }
+                                }
                             }
                         }
+
+                        transit.BlocksInOrder = altSection.AlternateSectionFullBlocksInOrder;
 
                         prevBNL = firstBlockBNL;
                         foreach (var section in transit.Sections)
