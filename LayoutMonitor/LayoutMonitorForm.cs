@@ -290,8 +290,8 @@ namespace LayoutMonitor
         private async Task<bool> MonitorLayout()
         {
             var newBlockStates = await webClient.GetBlocks();
-            var newActiveBlocks = newBlockStates.Where(w => w.data.state == 2).ToList();
-            var oldActiveBlocks = allBlocks.Where(w => w.data.state == 2).ToList();
+            var newActiveBlocks = newBlockStates.Where(w => w.data.state == (int)BlockState.Occupied).ToList();
+            var oldActiveBlocks = allBlocks.Where(w => w.data.state == (int)BlockState.Occupied).ToList();
 
             var activeBlocks = oldActiveBlocks.Union(newActiveBlocks).ToList();
 
@@ -472,6 +472,7 @@ namespace LayoutMonitor
 
                                 TrainDirection dir = TrainDirection.Forward;
                                 if (throttle.Direction != "1") dir = TrainDirection.Reverse;
+                                ssl.Direction = dir;
 
                                 if (log.fullRosterInfo != null)
                                 {
@@ -576,17 +577,17 @@ namespace LayoutMonitor
                         var liveThisBlock = newBlockStates.FirstOrDefault(f => f.data.userName == log.CurrentBlock);
                         if (liveThisBlock != null && liveThisBlock.data != null)
                         {
-                            if (liveThisBlock.data.state == 2)
+                            if (liveThisBlock.data.state == (int)BlockState.Occupied)
                             {
                                 if (liveThisBlock.data.value != null && liveThisBlock.data.value.data != null)
                                 {
                                     if (liveThisBlock.data.value.data.userName != log.DCCiD)
                                     {
                                         var test = "changed alert";
-                                        var newTrainLogName = "M-"+liveThisBlock.data.value.data.userName;
-                                        if (!string.IsNullOrEmpty(liveThisBlock.data.value.data.name))
+                                        var newTrainLogName = liveThisBlock.data.value.data.userName;
+                                        if (!string.IsNullOrEmpty(liveThisBlock.data.value.data.comment))
                                         {
-                                            newTrainLogName = liveThisBlock.data.value.data.name;
+                                            newTrainLogName = liveThisBlock.data.value.data.comment;
                                         }
                                         log = await UpdateTrainNameAndIDInLog(log,newTrainLogName, log.DCCiD, liveThisBlock.data.value.data.userName);
                                     }
@@ -658,15 +659,13 @@ namespace LayoutMonitor
                             var alertsForNextBlock = alerts.Where(w => w.BNL.BlockChecked == nextBlock.BlockChecked && w.TrainName == log.Name);
                             foreach (var alert in alertsForNextBlock)
                             {
-                                lbOutput.Items.Add("468 deactivate alert (route change)");
-                                DeactivateAlert(alert, false);
+                                DeactivateAlert(alert, false, "468 deactivate alert (route change)");
                             }
 
                             var alertsForTwoBlock = alerts.Where(w => w.BNL.BlockChecked == twoBlock.BlockChecked && w.TrainName == log.Name);
                             foreach (var alert in alertsForTwoBlock)
                             {
-                                lbOutput.Items.Add("475 deactivate alert (route change)");
-                                DeactivateAlert(alert, false);
+                                DeactivateAlert(alert, false, "475 deactivate alert (route change)");
                             }
                             if (AllocateBlocks)
                             {
@@ -713,7 +712,7 @@ namespace LayoutMonitor
                             var liveNextBlock = newBlockStates.FirstOrDefault(f => f.data.userName == nextBlock.BlockChecked);
                             if (liveNextBlock != null)
                             {
-                                if (liveNextBlock.data.state == 2)
+                                if (liveNextBlock.data.state == (int)BlockState.Occupied)
                                 {
                                     issueFoundNextBlock = true;
                                     if (liveNextBlock.data.value != null)
@@ -755,7 +754,7 @@ namespace LayoutMonitor
                             var liveTwoBlocks = newBlockStates.FirstOrDefault(f => f.data.userName == twoBlock.BlockChecked);
                             if (liveTwoBlocks != null)
                             {
-                                if (liveTwoBlocks.data.state == 2)
+                                if (liveTwoBlocks.data.state == (int)BlockState.Occupied)
                                 {
                                     issueFoundTwoBlocks = true;
                                     twoBlockAvailable = false;
@@ -1306,6 +1305,7 @@ namespace LayoutMonitor
             blockLog.AllocatedBlocks = new List<string>();
             BlockRootObject previousBlock = new BlockRootObject();
             bool okToRenameLog = true;
+            bool hasChangedDirection = false;
 
             LiveJourneyLog existingLog = null;
             string prevBlockAllocatedId = string.Empty;
@@ -1336,7 +1336,87 @@ namespace LayoutMonitor
                 {
                     lbOutput.Items.Add("New block " + block.data.userName + " found simplest way for DCC ID " + existingLog.DCCiD);
                 }
-                else
+
+                if (existingLog == null)
+                {
+                    //Could be reversing?
+                    existingLog = Log.FirstOrDefault(f => f.DCCiD == block.data.value.data.userName && f.PreviousBlock == block.data.userName);
+                    if (existingLog != null)
+                    {
+                        lbOutput.Items.Add("New block " + block.data.userName + " found with possible change of direction for DCC ID " + existingLog.DCCiD);
+                        
+                        //log hasn't been updated for this block yet so most recent block in the log will be the one before the one that's just gone live
+                        var previousBlockCheck = existingLog.AutomatedBlockList.LastOrDefault();
+                        if (previousBlockCheck != null)
+                        {
+                            var trainThrottle = wt.GetThrottleInfoByDCCID(existingLog.DCCiD);
+                            if (trainThrottle != null)
+                            {
+                                TrainDirection currentDir = TrainDirection.Forward;
+                                if (trainThrottle.Direction != "1") currentDir = TrainDirection.Reverse;
+
+                                if (previousBlockCheck.DirectionWhenBlockEntered != currentDir)
+                                {
+                                    hasChangedDirection = true;
+                                }
+                            }
+                        }
+
+                        if (!hasChangedDirection)
+                        {
+                            //try to work out if another train is following closely and it's activated the block
+                            var blockBeforeUpdate = allBlocks.FirstOrDefault(f => f.data.name == block.data.name);
+
+                            //check to see if the block was allocated before it went occupied
+                            //Our train wouldn't have had it allocated as it's just changed direction
+                            if (blockBeforeUpdate != null)
+                            {
+                                if (blockBeforeUpdate.data.value != null && blockBeforeUpdate.data.value.data != null)
+                                {
+                                    var dccIDOfPreviousOccupant = blockBeforeUpdate.data.value.data.userName;
+                                    var realOwnersLog = Log.FirstOrDefault(f => f.DCCiD == dccIDOfPreviousOccupant);
+                                    //assign the block to a different owner here?
+                                }
+                            }
+                        }
+                        else
+                        {
+                            //Remove sensor holds on any previous blocks
+                            var heldBlocks = existingLog.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock || w.SequenceState == JourneySequenceState.Active);
+                            if (existingLog.HasSpeedProfile && existingLog.TrainLengthMM > 0)
+                            {
+                                foreach (var hb in heldBlocks)
+                                {
+                                    if (usingMQTT)
+                                        MQTTMessages.Enqueue(new MQTTMessage { Topic = SensorHoldTopic + "/" + hb.OccupationSensorSystemName, Payload = "0", Retain = false });
+                                }
+                            }
+
+                            //clear previous allocations
+                            if (Log.Count > 0 && AllocateBlocks)
+                            {
+                                foreach (var blockToUnallocate in existingLog.AllocatedBlocks)
+                                {
+                                    var blockState = allBlocks.FirstOrDefault(f => f.data.userName == blockToUnallocate);
+                                    if (blockState != null && blockState.data != null)
+                                    {
+                                        //clear block values for unoccupied blocks (ie remove allocation)
+                                        if (blockState.data.state != (int)BlockState.Occupied)
+                                        {
+                                            await webClient.AllocateBlock(blockToUnallocate, "");
+                                            var sysName = config.GetBlockByUserName(blockToUnallocate);
+                                            if (usingMQTT)
+                                                MQTTMessages.Enqueue(new MQTTMessage { Topic = BlockReleaseTopic + "/" + sysName.userName, Payload = sysName.userName, Retain = false });
+                                        }
+                                    }
+                                }
+                            }                           
+                            
+                        }
+                    }
+                }
+
+                if (existingLog == null)
                 {
                     //Handle possible incorrect block value assignment by JMRI?
                     //Here we're checking if the block had a value before it went active (ie it was allocated to something)
@@ -1409,15 +1489,16 @@ namespace LayoutMonitor
                     else
                     {
                         //this should never happen
-                        blockLog.Name = block.data.value.data.userName;
-                        blockLog.DCCiD = block.data.value.data.comment;
-                        blockLog.OriginalName = block.data.value.data.userName;
-                        blockLog.OriginalDCCiD = block.data.value.data.comment;
+                        blockLog.Name = block.data.value.data.comment;
+                        blockLog.DCCiD = block.data.value.data.userName;
+                        blockLog.OriginalName = block.data.value.data.comment;
+                        blockLog.OriginalDCCiD = block.data.value.data.userName;
                     }
                 }
                 else
                 {
-                    //No ID found, give it a random ID
+                    //No ID found, give it a random ID - but it might be a block gone live because some fool put a train down in a block that an active train is approaching
+
                     var newTrainRandomId = "";
                     while (newTrainRandomId == "" || Log.Any(a => a.DCCiD == newTrainRandomId) || automatedIDs.Contains(newTrainRandomId))
                     {
@@ -1425,98 +1506,14 @@ namespace LayoutMonitor
                         newTrainRandomId = guid.Substring(0, 3);
                     }
 
-                    blockLog.Name = "M-" + newTrainRandomId;
+                    //T for temporary
+                    blockLog.Name = "T-" + newTrainRandomId;
                     blockLog.DCCiD = newTrainRandomId;
-                    blockLog.OriginalName = "M-" + newTrainRandomId;
+                    blockLog.OriginalName = "T-" + newTrainRandomId;
                     blockLog.OriginalDCCiD = newTrainRandomId;
 
                     //Populate ID in current block
-                    await webClient.AllocateBlock(block.data.name, blockLog.DCCiD, false);
-                }
-
-                if (automatedIDs.Contains(blockLog.DCCiD))
-                {
-                    blockLog.IsAutomated = true;
-                    ListViewItem aItem = new ListViewItem();
-                    aItem.Text = blockLog.Name + " - automated train - not tracking";
-                    aItem.BackColor = Color.LimeGreen;
-
-                    lvUpdates.Items.Add(aItem);
-                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-                }
-
-                if (!blockLog.IsAutomated)
-                {
-                    ListViewItem item = new ListViewItem();
-                    item.Text = blockLog.Name + " - started tracking";
-                    item.BackColor = Color.LimeGreen;
-
-                    lbOutput.Items.Add("Started new journey tracking for " + blockLog.Name + " ID " + blockLog.DCCiD);
-                    lvUpdates.Items.Add(item);
-                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
-                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-                    ddlTrainSelector.Items.Add(blockLog.Name);
-                }
-
-                //Set up route object that will track the train's journey
-                blockLog.AutomatedBlockList = new List<BlockJourneyLog>();                
-                blockLog.HasSpeedProfile = false;
-
-                var rosterCfG = new RosterReader(RosterPath);
-                var roster = rosterCfG.LocoList;
-                var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == blockLog.DCCiD);
-
-                if (fullInfo != null)
-                {
-                    blockLog.TrainMotionCfg = GetTrainMotionConfig(fullInfo, blockLog.Name,blockLog.DCCiD);
-                    blockLog.fullRosterInfo = fullInfo;
-                    var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
-                    int trainLengthMM = 0;
-
-                    if (trainLength != null)
-                    {
-                        int.TryParse(trainLength.Value, out trainLengthMM);
-                    }
-
-                    blockLog.TrainLengthMM = trainLengthMM;
-                    lbOutput.Items.Add("Train length " + blockLog.TrainLengthMM.ToString());
-                    if (fullInfo.Speedprofile != null && fullInfo.Speedprofile.Speeds.Speed.Count > 0)
-                    {
-                        blockLog.HasSpeedProfile = true;
-                        lbOutput.Items.Add("Speed profile found - steps " + fullInfo.Speedprofile.Speeds.Speed.Count.ToString());
-                    }
-                }
-
-                //A JMRI journey variable holds IDs for manually tracked trains
-                //This is so the automated app can identify which trains are manual and ignore then
-                var currentMem = await webClient.GetMemory(memoryAllocatedManualTrainsName);
-                if (currentMem != null)
-                {
-                    string updateVal = string.Empty;
-                    var currentVal = currentMem.data.value;
-                    if (currentVal != null)
-                    {
-                        var currentList = currentVal.Split(';').ToList();
-                        if (!currentList.Contains(blockLog.DCCiD))
-                        {
-                            updateVal = currentVal + ";" + blockLog.DCCiD;
-                        }
-                        else
-                        {
-                            updateVal = currentVal;
-                        }
-                    }
-                    else
-                    {
-                        updateVal = blockLog.DCCiD + ";";
-                    }
-                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
-                }
-                else
-                {
-                    var updateVal = blockLog.DCCiD + ";";
-                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
+                    //await webClient.AllocateBlock(block.data.name, blockLog.DCCiD, false);
                 }
             }
             else
@@ -1530,8 +1527,8 @@ namespace LayoutMonitor
                 if (block.data.value != null && !string.IsNullOrEmpty(block.data.value.data.userName) && !string.IsNullOrEmpty(block.data.value.data.comment) &&
                     (block.data.value.data.userName != blockLog.DCCiD || block.data.value.data.comment != blockLog.Name))
                 {
-                    if (okToRenameLog)
-                    {
+                    //if (okToRenameLog)
+                    //{
                         lbOutput.Items.Add("Name change on value acquisition - " + blockLog.Name + " & " + blockLog.DCCiD + " - to " + block.data.value.data.comment + " & " + block.data.value.data.userName);
                         if (blockLog != null && blockLog.Name != null && blockLog.Name != "" && ddlTrainSelector.Items.Contains(blockLog.Name))
                         {
@@ -1544,12 +1541,12 @@ namespace LayoutMonitor
 
                         blockLog.DCCiD = block.data.value.data.userName;
                         ddlTrainSelector.Items.Add(blockLog.Name);
-                    }
-                    else
-                    {
-                        lbOutput.Items.Add("Ignored rename, bad block value? Sending " + existingLog.DCCiD + " to replace it");
-                        await webClient.AllocateBlock(block.data.name, existingLog.DCCiD, false);
-                    }
+                    //}
+                    //else
+                    //{
+                    //    lbOutput.Items.Add("Ignored rename, bad block value? Sending " + existingLog.DCCiD + " to replace it");
+                    //    await webClient.AllocateBlock(block.data.name, existingLog.DCCiD, false);
+                    //}
                 }
             }
 
@@ -1687,7 +1684,7 @@ namespace LayoutMonitor
                 {
                     var configBlock = config.GetBlockBySystemName(connectedBlock.block);
                     var livePathBlock = activeBlocks.FirstOrDefault(f => f.data.name == connectedBlock.block);
-                    if (livePathBlock != null && livePathBlock.data != null && livePathBlock.data.state == 2) //occupied
+                    if (livePathBlock != null && livePathBlock.data != null && livePathBlock.data.state == (int)BlockState.Occupied)
                     {
                         numberOfOccupiedBlocks++;
                         oneConnectedBlockOccupied = true;
@@ -1748,7 +1745,96 @@ namespace LayoutMonitor
                 }
             }
 
-            //update the journey log with what we've found
+            //update the journey log with what we've found - at this point a journey is confirmed, rather than just a random block going active
+            //This is the stuff for new trains, it couldn't be done until this point because we've only just rejected any new active block that had no connecting active blocks and that had to be done first
+            if (handlingNewTrain)
+            {
+                if (automatedIDs.Contains(blockLog.DCCiD))
+                {
+                    blockLog.IsAutomated = true;
+                    ListViewItem aItem = new ListViewItem();
+                    aItem.Text = blockLog.Name + " - automated train - not tracking";
+                    aItem.BackColor = Color.LimeGreen;
+
+                    lvUpdates.Items.Add(aItem);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                }
+
+                if (!blockLog.IsAutomated)
+                {
+                    ListViewItem item = new ListViewItem();
+                    item.Text = blockLog.Name + " - started tracking";
+                    item.BackColor = Color.LimeGreen;
+
+                    lbOutput.Items.Add("Started new journey tracking for " + blockLog.Name + " ID " + blockLog.DCCiD);
+                    lvUpdates.Items.Add(item);
+                    lvUpdates.Items[lvUpdates.Items.Count - 1].EnsureVisible();
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                    ddlTrainSelector.Items.Add(blockLog.Name);
+                }
+
+                //Set up route object that will track the train's journey
+                blockLog.AutomatedBlockList = new List<BlockJourneyLog>();
+                blockLog.HasSpeedProfile = false;
+
+                var rosterCfG = new RosterReader(RosterPath);
+                var roster = rosterCfG.LocoList;
+                var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == blockLog.DCCiD);
+
+                if (fullInfo != null)
+                {
+                    blockLog.TrainMotionCfg = GetTrainMotionConfig(fullInfo, blockLog.Name, blockLog.DCCiD);
+                    blockLog.fullRosterInfo = fullInfo;
+                    var trainLength = fullInfo.Attributepairs.Keyvaluepair.FirstOrDefault(f => f.Key == "ShuttlerTrainLengthMM");
+                    int trainLengthMM = 0;
+
+                    if (trainLength != null)
+                    {
+                        int.TryParse(trainLength.Value, out trainLengthMM);
+                    }
+
+                    blockLog.TrainLengthMM = trainLengthMM;
+                    lbOutput.Items.Add("Train length " + blockLog.TrainLengthMM.ToString());
+                    if (fullInfo.Speedprofile != null && fullInfo.Speedprofile.Speeds.Speed.Count > 0)
+                    {
+                        blockLog.HasSpeedProfile = true;
+                        lbOutput.Items.Add("Speed profile found - steps " + fullInfo.Speedprofile.Speeds.Speed.Count.ToString());
+                    }
+                }
+
+                //A JMRI journey variable holds IDs for manually tracked trains
+                //This is so the automated app can identify which trains are manual and ignore then
+                var currentMem = await webClient.GetMemory(memoryAllocatedManualTrainsName);
+                if (currentMem != null)
+                {
+                    string updateVal = string.Empty;
+                    var currentVal = currentMem.data.value;
+                    if (currentVal != null)
+                    {
+                        var currentList = currentVal.Split(';').ToList();
+                        if (!currentList.Contains(blockLog.DCCiD))
+                        {
+                            updateVal = currentVal + ";" + blockLog.DCCiD;
+                        }
+                        else
+                        {
+                            updateVal = currentVal;
+                        }
+                    }
+                    else
+                    {
+                        updateVal = blockLog.DCCiD + ";";
+                    }
+                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
+                }
+                else
+                {
+                    var updateVal = blockLog.DCCiD + ";";
+                    await webClient.UpdateMemory(memoryAllocatedManualTrainsName, updateVal);
+                }
+            }
+
             blockLog.PreviousBlock = likelyPreviousBlock;
             blockLog.History.Add(block.data.userName);
             blockLog.CurrentBlock = block.data.userName;
@@ -1783,8 +1869,11 @@ namespace LayoutMonitor
 
                 var mms = GetMMSFromSpeedStep(blockLog.fullRosterInfo, existingThrottle.Speed, blockLog.DCCiD, dir);
                 ssl.SpeedMMS = mms;
+                ssl.Direction = dir;
                 bjl.SpeedLog.Add(ssl);
+                
                 blockLog.CurrentSpeedStep = existingThrottle.Speed;
+                bjl.DirectionWhenBlockEntered = dir;
             }
 
             blockLog.AutomatedBlockList.Add(bjl);
@@ -1792,7 +1881,7 @@ namespace LayoutMonitor
 
             //If we have the data and we know we can calculate when the train will exit the previous block, here we send the MQTT message to tell the occupancy sensor for the previous block to hold, and stop sending occupancy data to JMRI
             //This effectively holds the block as occupied, even if current is not being drawn in it (the likelyhood is it's still occupied by non-current drawing wagons, coaches etc)
-            if (indexOfBJL > 0 && blockLog.TrainLengthMM > 0 && blockLog.HasSpeedProfile)
+            if (indexOfBJL > 0 && blockLog.TrainLengthMM > 0 && blockLog.HasSpeedProfile && existingThrottle != null)
             {
                 //Get the previous block - the one that's just being exited - from the block log
                 var previousBlockLog = blockLog.AutomatedBlockList.ElementAtOrDefault(indexOfBJL - 1);
@@ -1850,7 +1939,7 @@ namespace LayoutMonitor
                     var previousBlockLive = await webClient.GetBlock(likelyPreviousBlock);
                     if (nextBlockLive != null && previousBlockLive != null)
                     {
-                        if (nextBlockLive.data.state == 2 && previousBlockLive.data.state == 2) return (false, "Surrounded by active blocks");
+                        if (nextBlockLive.data.state == (int)BlockState.Occupied && previousBlockLive.data.state == (int)BlockState.Occupied) return (false, "Surrounded by active blocks");
                     }
                 }
 
@@ -1914,7 +2003,7 @@ namespace LayoutMonitor
                     if (liveNextBlock != null && liveNextBlock.data != null)
                     {
                         BNLNextBlock.BlockCheckedSystemName = liveNextBlock.data.name;
-                        if ((liveNextBlock.data.value == null || liveNextBlock.data.value == null || liveNextBlock.data.value.data.userName != blockLog.DCCiD) && liveNextBlock.data.state == 2)//occupied
+                        if ((liveNextBlock.data.value == null || liveNextBlock.data.value == null || liveNextBlock.data.value.data.userName != blockLog.DCCiD) && liveNextBlock.data.state == (int)BlockState.Occupied)
                         {
                             issueFoundNextBlock = true;
                             likelyIssueNextBlock += "Collision ";
@@ -1924,7 +2013,7 @@ namespace LayoutMonitor
                         //JMRI only has 2 states for blocks - occupied and unoccupied, it has no state for allocated
                         //So we assume that if a block has a value but is not occupied, it is allocated to the train with a DCC ID matching the value recorded in the block data
                         if (liveNextBlock.data.value != null && TrackAllocation && !string.IsNullOrEmpty(liveNextBlock.data.value.data.userName)
-                            && liveNextBlock.data.value.data.userName != blockLog.DCCiD && liveNextBlock.data.value.data.userName != blockLog.OriginalDCCiD && TrackAllocation && liveNextBlock.data.state == 4)
+                            && liveNextBlock.data.value.data.userName != blockLog.DCCiD && liveNextBlock.data.value.data.userName != blockLog.OriginalDCCiD && TrackAllocation && liveNextBlock.data.state == (int)BlockState.Unoccupied)
                         {
                             issueFoundNextBlock = true;
                             BNLNextBlock.BlockCheckedAllocatedTo = liveNextBlock.data.value.data.userName;
@@ -1962,14 +2051,14 @@ namespace LayoutMonitor
                         if (twoBlocksLiveBlock != null && twoBlocksLiveBlock.data != null)
                         {
                             BNLTwoBlocks.BlockCheckedSystemName = twoBlocksLiveBlock.data.name;
-                            if ((twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD) && twoBlocksLiveBlock.data.state == 2)//occupied
+                            if ((twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value == null || twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD) && twoBlocksLiveBlock.data.state == (int)BlockState.Occupied)
                             {
                                 issueFoundTwoBlocks = true;
                                 likelyIssueTwoBlocks += "Collision ";
                                 BNLTwoBlocks.LikelyIssue = likelyIssueTwoBlocks;
                             }
                             if (twoBlocksLiveBlock.data.value != null && TrackAllocation && !string.IsNullOrEmpty(twoBlocksLiveBlock.data.value.data.userName)
-                                && twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD && twoBlocksLiveBlock.data.value.data.userName != blockLog.OriginalDCCiD && TrackAllocation && twoBlocksLiveBlock.data.state == 4)
+                                && twoBlocksLiveBlock.data.value.data.userName != blockLog.DCCiD && twoBlocksLiveBlock.data.value.data.userName != blockLog.OriginalDCCiD && TrackAllocation && twoBlocksLiveBlock.data.state == (int)BlockState.Unoccupied)
                             {
                                 issueFoundTwoBlocks = true;
                                 likelyIssueTwoBlocks += "Allocated to " + twoBlocksLiveBlock.data.value + " ";
@@ -2139,7 +2228,7 @@ namespace LayoutMonitor
                 var alertsForThisBlock = alerts.Where(w => w.BlockSystemName == block.data.name && !w.Deactivated);
                 foreach (var alert in alertsForThisBlock)
                 {
-                    DeactivateAlert(alert, true);
+                    DeactivateAlert(alert, true, "2231 no alerts detected for this block");
                 }
             }
 
@@ -2255,7 +2344,7 @@ namespace LayoutMonitor
                     {
                         bnl.NextBlockEdgeConnector = to.Connectaname;
                     }
-                    else if (liveTurnout.data.state == 2)
+                    else if (liveTurnout.data.state == (int)TurnoutState.Closed)
                     {
                         bnl.NextBlockEdgeConnector = to.Connectbname;
                     }
@@ -2272,7 +2361,7 @@ namespace LayoutMonitor
                     {
                         if (to.Connectaname == previousLayoutItem)
                         {
-                            if (liveTurnout.data.state == 2)
+                            if (liveTurnout.data.state == (int)TurnoutState.Closed)
                             {
                                 //closed
                                 nextItemIdent = to.Connectbname;
@@ -2293,7 +2382,7 @@ namespace LayoutMonitor
                         }
                         else if (to.Connectbname == previousLayoutItem)
                         {
-                            if (liveTurnout.data.state == 2)
+                            if (liveTurnout.data.state == (int)TurnoutState.Closed)
                             {
                                 nextItemIdent = to.Connectaname;
                             }
@@ -2313,7 +2402,7 @@ namespace LayoutMonitor
                         }
                         else if (to.Connectcname == previousLayoutItem)
                         {
-                            if (liveTurnout.data.state == 2)
+                            if (liveTurnout.data.state == (int)TurnoutState.Closed)
                             {
                                 //closed
                                 nextItemIdent = to.Connectdname;
@@ -2334,7 +2423,7 @@ namespace LayoutMonitor
                         }
                         else if (to.Connectdname == previousLayoutItem)
                         {
-                            if (liveTurnout.data.state == 2)
+                            if (liveTurnout.data.state == (int)TurnoutState.Closed)
                             {
                                 //closed
                                 nextItemIdent = to.Connectcname;
@@ -2389,7 +2478,7 @@ namespace LayoutMonitor
                     else
                     {
                         //turnout
-                        if (liveTurnout.data.state == 4)
+                        if (liveTurnout.data.state == (int)TurnoutState.Thrown)
                         {
                             //thrown                        
                             //need to determine direction of travel. If one of the C or B connectors matches the previousLayout Item, we're traversing head on which means our next layout item is connected to the A connector.
@@ -2587,7 +2676,7 @@ namespace LayoutMonitor
                     else
                     {
                         string state = " THROWN";
-                        if (liveTA.data.state == 2) state = " CLOSED";
+                        if (liveTA.data.state == (int)TurnoutState.Closed) state = " CLOSED";
                         if (slip.States.AC.Turnout == astate)
                         {
                             nextItem = slip.Connectcname;
@@ -2612,7 +2701,7 @@ namespace LayoutMonitor
                     else
                     {
                         string state = " THROWN";
-                        if (liveTA.data.state == 2) state = " CLOSED";
+                        if (liveTA.data.state == (int)TurnoutState.Closed) state = " CLOSED";
                         if (slip.States.BC.Turnout == astate)
                         {
                             nextItem = slip.Connectcname;
@@ -2637,7 +2726,7 @@ namespace LayoutMonitor
                     else
                     {
                         string state = " THROWN";
-                        if (liveTB.data.state == 2) state = " CLOSED";
+                        if (liveTB.data.state == (int)TurnoutState.Closed) state = " CLOSED";
                         if (slip.States.AC.TurnoutB == bstate)
                         {
                             nextItem = slip.Connectaname;
@@ -2662,7 +2751,7 @@ namespace LayoutMonitor
                     else
                     {
                         string state = " THROWN";
-                        if (liveTB.data.state == 2) state = " CLOSED";
+                        if (liveTB.data.state == (int)TurnoutState.Closed) state = " CLOSED";
                         if (slip.States.AD.TurnoutB == bstate)
                         {
                             nextItem = slip.Connectaname;
@@ -2796,11 +2885,9 @@ namespace LayoutMonitor
                     bool alertWasFromADifferentPath = false;
                     if (log != null)
                     {
-
                         if (log.Terminated)
                         {
-                            lbOutput.Items.Add("2345 deactivate alert");
-                            DeactivateAlert(alert, false);
+                            DeactivateAlert(alert, false, "2345 deactivate alert, log terminated");
                         }
                         else
                         {
@@ -2810,7 +2897,9 @@ namespace LayoutMonitor
                                 checkAlert = log.NextBlockBNL;
                             else if (log.TwoBlocksBNL.BlockChecked == alert.BNL.BlockChecked)
                                 checkAlert = log.TwoBlocksBNL;
-                            else if (log.CurrentBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null && log.NextBlockBNL.LikelyIssue == null)
+                            else if ((log.CurrentBlockBNL.LikelyIssue == null || string.IsNullOrEmpty(log.CurrentBlockBNL.LikelyIssue))
+                                && (log.NextBlockBNL.LikelyIssue == null || string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue))
+                                && (log.TwoBlocksBNL.LikelyIssue == null || string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue)))
                             {
                                 alertWasFromADifferentPath = true;
                                 checkAlert = log.CurrentBlockBNL;
@@ -2824,7 +2913,11 @@ namespace LayoutMonitor
                         lbOutput.Items.Add("Alert deactivated - no issue or BNL found - 1982 - " + alert.LikelyIssue);
                     }
 
-                    if (!alertWasFromADifferentPath)
+                    if (alertWasFromADifferentPath)
+                    {
+                        DeactivateAlert(alert, true, "Alert deactivated for " + alert.BlockUserName + " - train route likely just changed - " + alert.LikelyIssue + " - " + log.DCCiD);
+                    }
+                    else
                     {
                         alert.BNL = checkAlert;
                     }
@@ -2838,14 +2931,19 @@ namespace LayoutMonitor
                         currentAlertReason = checkAlert.LikelyIssue;
                         alertStillActive = true;
                     }
-                    if (checkAlertLiveBlock.data.state == 2)
+
+                    //if the checked alert block is occupied, need to determine if it's occupied by the right train, and if so, deactivate the alert
+                    //But it could be occupied by the right train at the wrong time - if a current drawing wagon has decoupled from the back and is waiting to be hit next time around a loop
+                    //so if the alert is for the block the train is in, or an allocated block (a block couldn't have been allocated if it had something in it) the alert doesn't need to still be active
+                    if (checkAlertLiveBlock.data.state == (int)BlockState.Occupied)
                     {
                         if (checkAlertLiveBlock.data.value != null && !string.IsNullOrEmpty(checkAlertLiveBlock.data.value.data.userName))
                         {
-                            if (checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
+                            //if (checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
+                            if (checkAlertLiveBlock.data.userName != log.CurrentBlock)
                             {
                                 if (!currentAlertReason.Contains("occupied"))
-                                    currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " occupied by " + checkAlertLiveBlock.data.value.data.userName;
+                                    currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " 2853 occupied by " + checkAlertLiveBlock.data.value.data.userName;
                                 alertStillActive = true;
                             }
                         }
@@ -2857,7 +2955,7 @@ namespace LayoutMonitor
                         }
                     }
 
-                    if (TrackAllocation && checkAlertLiveBlock.data.value != null && log != null && checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
+                    else if (TrackAllocation && checkAlertLiveBlock.data.value != null && log != null && checkAlertLiveBlock.data.value.data.userName != log.DCCiD)
                     {
                         if (!currentAlertReason.Contains("allocated"))
                             currentAlertReason += "; " + checkAlertLiveBlock.data.userName + " allocated to " + checkAlertLiveBlock.data.value.data.userName;
@@ -2882,8 +2980,7 @@ namespace LayoutMonitor
 
                     if (!alertStillActive && !alert.Deactivated)
                     {
-                        lbOutput.Items.Add("2282 deactivate alert - no longer active - " + log.DCCiD + " - " + alert.LikelyIssue);
-                        DeactivateAlert(alert, true);
+                        DeactivateAlert(alert, true, "2282 deactivate alert - no longer active - " + log.DCCiD + " - " + alert.LikelyIssue);
                         continue;
                     }
 
@@ -2984,7 +3081,7 @@ namespace LayoutMonitor
             }              
         }
 
-        private async void DeactivateAlert(Alert alert, bool displayListViewItem)
+        private async void DeactivateAlert(Alert alert, bool displayListViewItem, string debugMessage)
         {
             if (displayListViewItem)
             {
@@ -3004,7 +3101,9 @@ namespace LayoutMonitor
                 lblBlockContainingDanger.Text = "";
                 lblLikelyIssue.Text = "";
                 lblTrainName.Text = "";
-            }            
+            }
+
+            lbOutput.Items.Add(DateTime.Now.ToString()+ " - "+ debugMessage);
 
             //alert is deactivated, tell the knob box to display the 'proceed' aspect for the relevant train
             if (usingMQTT)
@@ -3143,7 +3242,7 @@ namespace LayoutMonitor
                     if (blockState != null && blockState.data != null)
                     {
                         //clear block values for unoccupied blocks (ie remove allocation)
-                        if (blockState.data.state != 2)
+                        if (blockState.data.state != (int)BlockState.Occupied)
                         {
                             await webClient.AllocateBlock(blockToUnallocate, "");
                             var sysName = config.GetBlockByUserName(blockToUnallocate);
@@ -3225,10 +3324,23 @@ namespace LayoutMonitor
 
             var test = AlertSeverity.Caution.ToString();
 
-            //for (int i = 0; i < 200; i++)
-            //{
-            //    await MQTTClient.SendMQTTMessage(MQTTServer, "debug/overload/"+i.ToString(), "Test "+i.ToString(), false);
-            //}
+            var seconds = 0;
+            bool sentThisSecond = false;
+            DateTime start = DateTime.Now;
+            while (seconds < 20)
+            {                
+                if (!sentThisSecond)
+                {
+                    for (int i = 0; i < 200; i++)
+                    {
+                        await MQTTClient.SendMQTTMessage(MQTTServer, "debug/overload/" + i.ToString(), "Test " + i.ToString(), false);
+                    }
+                    sentThisSecond = true;
+                }
+                var diff = (DateTime.Now - start).TotalSeconds;
+                if (diff > 1.0)
+                    sentThisSecond = false;
+            }
         }
 
         private void btnClearOutputLog_Click(object sender, EventArgs e)

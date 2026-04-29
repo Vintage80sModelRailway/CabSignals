@@ -562,6 +562,8 @@ namespace Shuttler
 
                         if (existingLog.AutomatedBlockList.ElementAt(0).SequenceState == JourneySequenceState.Queued)
                             existingLog.AutomatedBlockList.ElementAt(0).SequenceState = JourneySequenceState.Active;
+
+
                     }
                     catch (Exception ex)
                     {
@@ -654,16 +656,26 @@ namespace Shuttler
                     existingLog.PreviousBlockBNL = existingLog.CurrentBlockBNL;
                     existingLog.CurrentBlockBNL = newBlockBNL;
 
+                    if (lbRunningTransits.SelectedIndex >= 0 && logsByNextBlock.Count == 1)
+                    {
+                        dynamic rt = lbRunningTransits.SelectedItem;
+                        if (rt != null)
+                        {
+                            string dccId = rt.Value;
+                            if (existingLog.DCCiD == dccId)
+                            {
+                                lbRoute.SelectedIndex = existingLog.AutomatedCurrentBlockIndex;
+                            }
+                        }
+
+                    }
+
                     WriteToLog("NAB " + nab.data.userName + " next block in log " + existingLog.NextBlock + " ID " + existingLog.DCCiD + " index " + existingLog.AutomatedCurrentBlockIndex.ToString());
                 }
                 catch (Exception ex)
                 {
                     WriteToLog("Exception processing " + nab.data.name + " - " + ex.Message);
                 }
- 
-
-                //WriteToLog("New block " + nab.data.userName + " block index "+existingLog.AutomatedCurrentBlockIndex.ToString()+ " for train " + existingLog.Name + " next block " + existingLog.NextBlock 
-                //    + " speed "+existingLog.AutomatedTrainRunningSpeed.ToString()+" - reason "+existingLog.AutomatedTrainSpeedReason);
             }
             return newBlockStates;
 
@@ -762,13 +774,6 @@ namespace Shuttler
             {
                 WriteToLog("Exited block holds exception - " + ex.Message);
             }
-
-            /*
-            foreach (var log in _logs.ToList())
-            {
-
-            }
-            */
         }
         private async void ManageYardLines(List<BlockRootObject> LiveBlocks)
         {
@@ -950,6 +955,20 @@ namespace Shuttler
                     var re = c.Roster.FirstOrDefault(f => f.ID == done.DCCiD);
                     var rosterIndex = c.Roster.IndexOf(re);
                     c.ReleaseThrottle(rosterIndex);
+
+                    if (lbRunningTransits.SelectedIndex >= 0)
+                    {
+                        dynamic rt = lbRunningTransits.SelectedItem;
+                        if (rt != null)
+                        {
+                            string dccId = rt.Value;
+                            if (done.DCCiD == dccId)
+                            {
+                                lbRoute.Items.Clear();
+                            }
+                        }
+
+                    }
                 }
 
                 lbRunningTransits.Items.Clear();
@@ -1808,7 +1827,6 @@ namespace Shuttler
                                                 section = potentialAlt;
                                                 log.AutomatedSectionList[i] = section;
                                                 log.CurrentAlternateIndex = log.CurrentAlternateIndex;
-                                                //log.AutomatedBlockList = section.AlternateSectionFullBlocksInOrder;
 
                                                 var altBlockList = new List<BlockJourneyLog>();
                                                 int changeoverIndex = 0;
@@ -1827,16 +1845,7 @@ namespace Shuttler
                                                 }
 
                                                 log.AutomatedBlockList = altBlockList;
-                                                //var sectionAltBlocks = log.AutomatedAlternativeBlockList.Where(w => w.SectionId == section.SectionID);
-                                                //foreach (var altBlock in sectionAltBlocks)
-                                                //{
-                                                //    var existingBlock = log.AutomatedBlockList.FirstOrDefault(f => f.Sequence == altBlock.Sequence);
-                                                //    if (existingBlock != null)
-                                                //    {
-                                                //        var index = log.AutomatedBlockList.IndexOf(existingBlock);
-                                                //        log.AutomatedBlockList[index] = altBlock;
-                                                //    }
-                                                //}
+
                                                 alternateSectionWasAllocated = true;
                                                 break;
                                             }
@@ -1846,47 +1855,6 @@ namespace Shuttler
                                     {
                                         section.AllocationStatus = AllocationStatus.NotAllocated;
                                         section.AllocationStatusReason = "Section contains unallocatable block";
-                                    }
-
-                                    if (alternateSectionWasAllocated)
-                                    {
-                                        //Need to go through the journey from this point on to make sure everything is connected up properly
-                                        var indexOfSection = log.AutomatedSectionList.IndexOf(section);
-
-                                        for (int s = indexOfSection - 1; s < log.AutomatedSectionList.Count; s++)
-                                        {
-                                            var sec = log.AutomatedSectionList.ElementAt(s);
-
-                                        }
-
-                                        var firstBlock = log.AutomatedBlockList.First();
-                                        var secondBlock = log.AutomatedBlockList.ElementAt(1);
-                                        var prevBNL = GetFirstBNL(firstBlock.BlockUserName, secondBlock.BlockUserName);
-                                        foreach (var sec in log.AutomatedSectionList)
-                                        {
-                                            foreach (var block in sec.Blocks)
-                                            {
-                                                var nm = block.userName;
-                                                var blockInSequence = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == sec.Sequence);
-                                                if (blockInSequence == null) continue;
-                                                var seqIndex = log.AutomatedBlockList.IndexOf(blockInSequence);
-                                                if (seqIndex == -1) continue;
-                                                if (seqIndex == 0)
-                                                {
-                                                    block.BNL = prevBNL;
-                                                }
-                                                else
-                                                {
-                                                    var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(seqIndex + 1);
-                                                    if (nextBlockInSequence != null)
-                                                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-                                                    else
-                                                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-
-                                                }
-                                                prevBNL = block.BNL;
-                                            }
-                                        }
                                     }
 
                                     if (!alternateSectionWasAllocated)
@@ -2058,6 +2026,7 @@ namespace Shuttler
                                                         sectionToUse.AllocationStatus = AllocationStatus.NotAllocated;
                                                         sectionToUse.AllocationStatusReason = "Found suitable space in storage yard";
                                                         log.AutomatedSectionList[secIndex] = sectionToUse;
+                                                        alternateSectionWasAllocated = true;
                                                         // WriteToLog("Sections and blocks updated for " + log.DCCiD + " now using " + sectionToUse.SectionkUserName);
                                                     }
                                                     else
@@ -2079,6 +2048,40 @@ namespace Shuttler
                                                 WriteToLog("Storage space allocation exception ID " + dccId + " - " + ex.Message);
                                             }
 
+                                        }
+                                    }
+                                    if (alternateSectionWasAllocated)
+                                    {
+                                        //Need to go through the journey from this point on to make sure everything is connected up properly
+                                        var indexOfSection = log.AutomatedSectionList.IndexOf(section);
+
+                                        var firstBlock = log.AutomatedBlockList.First();
+                                        var secondBlock = log.AutomatedBlockList.ElementAt(1);
+                                        var prevBNL = GetFirstBNL(firstBlock.BlockUserName, secondBlock.BlockUserName);
+                                        foreach (var sec in log.AutomatedSectionList)
+                                        {
+                                            foreach (var block in sec.Blocks)
+                                            {
+                                                var nm = block.userName;
+                                                var blockInSequence = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == sec.Sequence);
+                                                if (blockInSequence == null) continue;
+                                                var seqIndex = log.AutomatedBlockList.IndexOf(blockInSequence);
+                                                if (seqIndex == -1) continue;
+                                                if (seqIndex == 0)
+                                                {
+                                                    block.BNL = prevBNL;
+                                                }
+                                                else
+                                                {
+                                                    var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(seqIndex + 1);
+                                                    if (nextBlockInSequence != null)
+                                                        block.BNL = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+                                                    else
+                                                        block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
+
+                                                }
+                                                prevBNL = block.BNL;
+                                            }
                                         }
                                     }
                                 }
@@ -2962,6 +2965,7 @@ namespace Shuttler
             trainLog.AutomatedBlockList = transit.BlocksInOrder.ToList();
             trainLog.AutomatedAlternativeBlockList = transit.AlternateBlocks;
 
+            //Set BNLs for the whole journey - these will contain all turnouts for each block and what state those turnouts need to be in
             var firstBlockBNL = GetFirstBNL(trainLog.CurrentBlock, trainLog.NextBlock);
             if (firstBlockBNL == null) return;
             var prevBNL = firstBlockBNL;
@@ -2990,9 +2994,7 @@ namespace Shuttler
                 }
             }
 
-            var originalSections = transit.Sections.ToList();
-            var originalBlocksInOrder = transit.BlocksInOrder.ToList();
-
+            //if there are alt sections, prepare alt block lists and store them against the alt sections so they can be quickly swapped in if needed
             if (transit.AlternateSections != null)
             {
                 foreach (var altSection in transit.AlternateSections)
@@ -3038,150 +3040,6 @@ namespace Shuttler
                     }
                 }
             }
-
-            if (transit.AlternateSections != null && 1 == 2)
-            {
-
-                foreach (var altSection in transit.AlternateSections)
-                {
-                    altSection.AlternateSectionFullBlocksInOrder = new List<BlockJourneyLog>();
-                    var alternateBlockList = new List<BlockJourneyLog>();
-                    var primarySection = transit.Sections.FirstOrDefault(f => f.Sequence == altSection.Sequence);
-                    if (primarySection == null || primarySection.SectionSystemname == altSection.SectionSystemname)
-                        continue;
-                    if (primarySection != null)
-                    {
-                        var index = transit.Sections.IndexOf(primarySection);
-                        if (index == -1) continue;
-                        var replacedSection = transit.Sections[index];
-
-                        transit.Sections[index] = altSection;
-
-                        var altSequence = -1;
-                        var altBlockSequence = 0;
-
-                        foreach (var sec in transit.Sections)
-                        {
-                            foreach (var block in sec.Blocks)
-                            {
-                                var sequenceBlock = transit.BlocksInOrder.ElementAtOrDefault(altBlockSequence);
-                                if (sequenceBlock != null && sequenceBlock.BlockSystemname == block.systemName)
-                                {
-                                    var copyOfBlock = sequenceBlock.Clone();
-                                    copyOfBlock.Sequence = altSequence;
-                                    altSection.AlternateSectionFullBlocksInOrder.Add(copyOfBlock);
-                                    altBlockSequence++;
-                                }
-                                else
-                                {
-                                    var altBlock = transit.AlternateBlocks.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionId == altSection.SectionID);
-                                    if (altBlock != null)
-                                    {
-                                        var copyOfAltBlock = altBlock.Clone();
-                                        copyOfAltBlock.Sequence = altSequence;
-                                        altSection.AlternateSectionFullBlocksInOrder.Add(altBlock);
-                                        altBlockSequence++;
-                                    }
-                                    else
-                                    {
-                                        var outOfSequenceBlock = transit.BlocksInOrder.FirstOrDefault(f => f.SectionId == sec.SectionID && f.BlockSystemname == block.systemName);
-                                        var copyOfOOSBlock = outOfSequenceBlock.Clone();
-                                        copyOfOOSBlock.Sequence = altBlockSequence;
-                                        altSection.AlternateSectionFullBlocksInOrder.Add(copyOfOOSBlock);
-                                        altBlockSequence++;
-                                    }
-                                }
-                            }
-                        }
-
-                        transit.BlocksInOrder = altSection.AlternateSectionFullBlocksInOrder;
-
-                        prevBNL = firstBlockBNL;
-                        foreach (var section in transit.Sections)
-                        {
-                            foreach (var block in section.Blocks)
-                            {
-                                var blockInSequence = transit.BlocksInOrder.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
-                                if (blockInSequence == null) continue;
-                                var seqIndex = transit.BlocksInOrder.IndexOf(blockInSequence);
-                                if (seqIndex == -1) continue;
-                                if (seqIndex == 0)
-                                {
-                                    var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                                    firstBlockBNL = GetFirstBNL(blockInSequence.BlockUserName, nextBlockInSequence.BlockUserName);
-                                    block.BNL = firstBlockBNL;
-                                }
-                                else
-                                {
-                                    var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                                    if (nextBlockInSequence != null)
-                                    {
-                                        var bnl = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-                                        block.BNL = bnl;
-                                    }
-                                        
-                                    else
-                                    {
-                                        var bnl = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-                                        block.BNL = bnl;
-                                    }
-                                        
-                                }
-
-                                prevBNL = block.BNL;
-
-                            }
-                            var secName = section.SectionSystemname;
-                            var secUname = section.SectionkUserName;
-                            var originalAltSection = transit.AlternateSections.FirstOrDefault(f => f.SectionSystemname == section.SectionSystemname);
-                            if (originalAltSection != null)
-                            {
-                                originalAltSection.Blocks = section.Blocks;
-                            }
-                        }
-                    }
-                }
-
-                prevBNL = firstBlockBNL;
-                foreach (var section in transit.Sections)
-                {
-                    foreach (var block in section.Blocks)
-                    {
-                        var blockInSequence = transit.BlocksInOrder.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
-                        if (blockInSequence == null) continue;
-                        var seqIndex = transit.BlocksInOrder.IndexOf(blockInSequence);
-                        if (seqIndex == -1) continue;
-                        if (seqIndex == 0)
-                        {
-                            var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                            firstBlockBNL = GetFirstBNL(blockInSequence.BlockUserName, nextBlockInSequence.BlockUserName);
-                            block.BNL = firstBlockBNL;
-                        }
-                        else
-                        {
-                            var nextBlockInSequence = transit.BlocksInOrder.ElementAtOrDefault(seqIndex + 1);
-                            if (nextBlockInSequence != null)
-                            {
-                                var bnl = NavigateThroughBlockItems(block.userName, nextBlockInSequence.BlockUserName, prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-                                block.BNL = bnl;
-                            }
-
-                            else
-                            {
-                                var bnl = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
-                                block.BNL = bnl;
-                            }
-
-                        }
-
-                        prevBNL = block.BNL;
-
-                    }
-                }
-            }
-
-            transit.Sections = originalSections;
-            transit.BlocksInOrder = originalBlocksInOrder;
 
             trainLog.AutomatedTrainActive = true;
             trainLog.LastUpdated = DateTime.Now;
@@ -4343,7 +4201,19 @@ namespace Shuttler
 
         private void lbRunningTransits_SelectedIndexChanged(object sender, EventArgs e)
         {
+            dynamic rt = lbRunningTransits.SelectedItem;
+            if (rt == null) return;
+            string dccId = rt.Value;
+            var log = _logs.FirstOrDefault(f => f.DCCiD == dccId && f.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete);
+            if (log == null) return;
 
+            lbRoute.Items.Clear();
+            foreach (var block in log.AutomatedBlockList)
+            {
+                lbRoute.Items.Add(block.BlockUserName);
+            }
+
+            lbRoute.SelectedIndex = log.CurrentBlockIndex;
         }
 
         private BlockNavigationLog SearchForBlock(string currentBlock, string targetBlock, List<List<string>> traversedBlocks,  string LayoutItem, string previousLayoutItem, string breadcrumbStart, int branchLevel)

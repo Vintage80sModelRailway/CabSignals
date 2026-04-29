@@ -256,14 +256,12 @@
             // 
             // btnRosterTest
             // 
-            this.btnRosterTest.Enabled = false;
             this.btnRosterTest.Location = new System.Drawing.Point(1620, 231);
             this.btnRosterTest.Name = "btnRosterTest";
             this.btnRosterTest.Size = new System.Drawing.Size(75, 23);
             this.btnRosterTest.TabIndex = 20;
             this.btnRosterTest.Text = "RosterTest";
             this.btnRosterTest.UseVisualStyleBackColor = true;
-            this.btnRosterTest.Visible = false;
             this.btnRosterTest.Click += new System.EventHandler(this.btnRosterTest_Click);
             // 
             // lblTrainName
