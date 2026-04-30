@@ -18,6 +18,8 @@ namespace JMRIReader.Classes
         public string StartPreviousItem { get; set; }
         public string EdgeConnector { get; set; }
         public string EdgeConnectorDirectionConnector { get; set; }
+        public string StartOfBlockEdgeConnector { get; set; }
+        public string StartOfBlockDirectionConnector { get; set; }
         public string Breadcrumb { get; set; }
         public string LikelyIssue { get; set; }
         public string OccupiedBy { get; set; }

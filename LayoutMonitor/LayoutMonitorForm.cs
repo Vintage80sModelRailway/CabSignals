@@ -679,7 +679,11 @@ namespace LayoutMonitor
 
                         //Now examine the route ahead to see if the train has been re-routed since the last scan - if so, we need to update the log and allocated blocks accordingly and cancel any alerts for blocks that are no longer on the route
                         //Go back to the start of the block in case we're joining it in the middle
-                        var currentBlockRoute = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.EdgeConnector, log.CurrentBlockBNL.EdgeConnectorDirectionConnector, log.CurrentBlockBNL.EdgeConnector);
+
+                        var currentBlockRoute = await NavigateThroughBlockItems(log.CurrentBlockBNL.BlockChecked, log.CurrentBlockBNL.PreviousBlock, log.CurrentBlockBNL.StartOfBlockEdgeConnector, log.CurrentBlockBNL.StartOfBlockDirectionConnector, log.CurrentBlockBNL.EdgeConnector);
+                        currentBlockRoute.StartOfBlockEdgeConnector = log.CurrentBlockBNL.StartOfBlockEdgeConnector;
+                        currentBlockRoute.StartOfBlockDirectionConnector = log.CurrentBlockBNL.StartOfBlockDirectionConnector;
+
                         var nextBlock = await NavigateThroughBlockItems(currentBlockRoute.BlockFound, currentBlockRoute.BlockFound, currentBlockRoute.EdgeConnector, currentBlockRoute.EdgeConnectorDirectionConnector, currentBlockRoute.EdgeConnector);
                         var twoBlock = await NavigateThroughBlockItems(nextBlock.BlockFound, nextBlock.BlockChecked, nextBlock.EdgeConnector, nextBlock.EdgeConnectorDirectionConnector, nextBlock.EdgeConnector);
 
@@ -2079,10 +2083,14 @@ namespace LayoutMonitor
                 {
                     //Switch over the 'next' and 'previous' connectors, and try again - we can use the edge connectors returned by the previous attempt, this way we know we're starting from the boundary between our previous and current block
                     BNLThisBlock = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
+                    BNLThisBlock.StartOfBlockEdgeConnector = firstBoundary.EdgeConnectorDirectionConnector;
+                    BNLThisBlock.StartOfBlockDirectionConnector = firstBoundary.EdgeConnector;
                 }
                 else
                 {
                     BNLThisBlock = bnl;
+                    BNLThisBlock.StartOfBlockEdgeConnector = secondBoundary.EdgeConnectorDirectionConnector;
+                    BNLThisBlock.StartOfBlockDirectionConnector = secondBoundary.EdgeConnector;
                 }
 
                 likelyNextBlock = BNLThisBlock.BlockFound;
@@ -2142,6 +2150,8 @@ namespace LayoutMonitor
                 //Here, 'BNLNextBlock' is the block after the one that has just been entered / is being entered
                 //Because we had a successful BNL from the current log, we now have confidence in direction based on the far edge connectors returned by the BNL of the current block - we don't need to test for direction any more
                 BNLNextBlock = await NavigateThroughBlockItems(likelyNextBlock, BNLThisBlock.BlockChecked, BNLThisBlock.EdgeConnector, BNLThisBlock.EdgeConnectorDirectionConnector, BNLThisBlock.EdgeConnector);
+                BNLNextBlock.StartOfBlockEdgeConnector = BNLThisBlock.EdgeConnectorDirectionConnector;
+                BNLNextBlock.StartOfBlockDirectionConnector = BNLThisBlock.EdgeConnector;
                 if (BNLNextBlock != null && !noMoreBlocks)
                 {
                     blockLog.NextNextBlock = BNLNextBlock.BlockFound;
@@ -2196,6 +2206,8 @@ namespace LayoutMonitor
 
                     //Now look at the next next block (the caution block)
                     BNLTwoBlocks = await NavigateThroughBlockItems(BNLNextBlock.BlockFound, BNLNextBlock.BlockChecked, BNLNextBlock.EdgeConnector, BNLNextBlock.EdgeConnectorDirectionConnector, BNLNextBlock.EdgeConnector);
+                    BNLTwoBlocks.StartOfBlockEdgeConnector = BNLNextBlock.EdgeConnectorDirectionConnector;
+                    BNLTwoBlocks.StartOfBlockDirectionConnector = BNLNextBlock.EdgeConnector;
                     if (BNLTwoBlocks != null)
                     {
                         if (!String.IsNullOrEmpty(BNLTwoBlocks.LikelyIssue))
@@ -2491,7 +2503,7 @@ namespace LayoutMonitor
                 else derivedXoverBlockName = to.Blockname;
 
                 //if the derived block name baseed on the live turnout states is different to the current one, mission accomplished
-                //Record the edge connectors and stop the recustion (by not calling the method again - we'll then start moving back up the recursive calls)
+                //Record the edge connectors and stop the recursion (by not calling the method again - we'll then start moving back up the recursive calls)
                 if (derivedXoverBlockName != currentBlock && derivedXoverBlockName != previousBlock && to.Connectaname != breadcrumbStart && to.Connectbname != breadcrumbStart && to.Connectcname != breadcrumbStart && to.Connectdname != breadcrumbStart)
                 {
                     bnl.EdgeConnector = to.Ident;
