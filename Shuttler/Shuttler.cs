@@ -804,7 +804,7 @@ namespace Shuttler
                             {
                                 WriteToLog("Yard sensor override for " + liveBlock.data.userName + " ID " + previousBlockTrainId);
                                 var sensorToHack = liveBlock.data.sensor;
-                                await webClient.AllocateBlock(liveBlock.data.name, previousBlockTrainId);
+                                await webClient.AllocateBlock(liveBlock.data.name, previousBlockTrainId,true);
                                 await webClient.SetSensor(sensorToHack, "2");
                             }                        
                         }
@@ -1702,12 +1702,12 @@ namespace Shuttler
                                             if (liveStateBlock.data.value == null || string.IsNullOrEmpty(liveStateBlock.data.value.data.userName))
                                             {
                                                 WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
-                                                await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                                await webClient.AllocateBlock(block.systemName, log.DCCiD,true);
                                             }
                                             else if (liveStateBlock.data.value.data.userName != log.DCCiD)
                                             {
                                                 WriteToLog("Incorrect block value in occupied block - " + block.userName + " ID " + log.DCCiD);
-                                                await webClient.AllocateBlock(block.systemName, log.DCCiD);
+                                                await webClient.AllocateBlock(block.systemName, log.DCCiD,true);
                                             }
                                         }
                                     }
@@ -4902,7 +4902,7 @@ namespace Shuttler
                         Position = 1
                     });
                     var bl = config.GetBlockByUserName(b);
-                    await webClient.AllocateBlock(bl.systemName, "");
+                    await webClient.AllocateBlock(bl.systemName, "", true);
                 }
                 lblActiveTransitID.Text = "";
                 lblActiveTransitName.Text = "";
@@ -5195,7 +5195,7 @@ namespace Shuttler
                         if (ass.data.value == null) continue;
                         if (ass.data.value.type == "Manual") continue;
 
-                        var resp = await webClient.AllocateBlock(ass.data.name, "");
+                        var resp = await webClient.AllocateBlock(ass.data.name, "", true);
                         if (resp.data.value == null || string.IsNullOrEmpty(resp.data.value.data.userName))
                         {
                             WriteToLog("Possible rogue block value " + ass.data.value.data.userName + " in " + ass.data.userName + " - removed");

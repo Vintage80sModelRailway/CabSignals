@@ -58,6 +58,8 @@
             this.tbTrainName = new System.Windows.Forms.TextBox();
             this.btnUpdateTrainIDAndName = new System.Windows.Forms.Button();
             this.tbPrevDCCID = new System.Windows.Forms.TextBox();
+            this.lblSpeed = new System.Windows.Forms.Label();
+            this.label6 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -288,9 +290,9 @@
             // lbJourneyLog
             // 
             this.lbJourneyLog.FormattingEnabled = true;
-            this.lbJourneyLog.Location = new System.Drawing.Point(1718, 121);
+            this.lbJourneyLog.Location = new System.Drawing.Point(1718, 147);
             this.lbJourneyLog.Name = "lbJourneyLog";
-            this.lbJourneyLog.Size = new System.Drawing.Size(174, 615);
+            this.lbJourneyLog.Size = new System.Drawing.Size(174, 589);
             this.lbJourneyLog.TabIndex = 23;
             // 
             // btnClearJourneyListBox
@@ -353,12 +355,31 @@
             this.tbPrevDCCID.Size = new System.Drawing.Size(77, 20);
             this.tbPrevDCCID.TabIndex = 31;
             // 
+            // lblSpeed
+            // 
+            this.lblSpeed.AutoSize = true;
+            this.lblSpeed.Location = new System.Drawing.Point(1848, 122);
+            this.lblSpeed.Name = "lblSpeed";
+            this.lblSpeed.Size = new System.Drawing.Size(0, 13);
+            this.lblSpeed.TabIndex = 32;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(1804, 122);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(38, 13);
+            this.label6.TabIndex = 33;
+            this.label6.Text = "Speed";
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1904, 771);
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this.lblSpeed);
             this.Controls.Add(this.tbPrevDCCID);
             this.Controls.Add(this.btnUpdateTrainIDAndName);
             this.Controls.Add(this.tbTrainName);
@@ -427,6 +448,8 @@
         private System.Windows.Forms.TextBox tbTrainName;
         private System.Windows.Forms.Button btnUpdateTrainIDAndName;
         private System.Windows.Forms.TextBox tbPrevDCCID;
+        private System.Windows.Forms.Label lblSpeed;
+        private System.Windows.Forms.Label label6;
     }
 }
 

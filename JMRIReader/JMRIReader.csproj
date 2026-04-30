@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="Class1.cs" />
     <Compile Include="Classes\APIAllocationBlock.cs" />
+    <Compile Include="Classes\ApiAllocationBlockWithComplexValue.cs" />
     <Compile Include="Classes\APIBlock.cs" />
     <Compile Include="Classes\APIMemory.cs" />
     <Compile Include="Classes\APISensor.cs" />

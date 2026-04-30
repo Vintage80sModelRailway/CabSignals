@@ -202,11 +202,14 @@ namespace JMRIReader
             return bro;
         }
 
-        public async Task<BlockRootObject> AllocateBlock(string systemName, string allocatedValue, bool isAutomated = false)
+        public async Task<BlockRootObject> AllocateBlock(string systemName, string allocatedValue, bool isAutomated)
         {
             APIAllocationBlock block = new APIAllocationBlock();
             block.value = allocatedValue;
             var responseBlock = new BlockRootObject();
+
+            var blockValueObject = new BlockValue();
+            blockValueObject.type = isAutomated ? "Auto" : "Manual";
 
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer+"/json/block/"+systemName);
             httpWebRequest.ContentType = "application/json";
@@ -226,6 +229,47 @@ namespace JMRIReader
                     var result = streamReader.ReadToEnd();
                     var initBlock = JsonConvert.DeserializeObject<BlockRootObjectInitial>(result);
                    responseBlock = InitialBlockToAPIBlock(initBlock);
+                }
+            }
+            catch (Exception ex)
+            {
+                var m = ex.Message;
+            }
+            return responseBlock;
+        }
+
+        public async Task<BlockRootObject> AllocateBlockWithComplexValue (string systemName, string allocatedValue, bool isAutomated)
+        {
+            ApiAllocationBlockWithComplexValue block = new ApiAllocationBlockWithComplexValue();
+            block.value = new BlockValue();
+            var responseBlock = new BlockRootObject();
+
+            var blockValueObject = new BlockValue();
+            blockValueObject.data = new BlockValueData();
+            blockValueObject.type = isAutomated ? "Auto" : "Manual";
+            //blockValueObject.data.userName = allocatedValue;
+            //blockValueObject.data.name = "NameTest";
+            blockValueObject.data.comment = "CommentTest";
+            block.value = blockValueObject;
+
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(jmriServer + "/json/block/" + systemName);
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+
+            var blockString = JsonConvert.SerializeObject(block, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+            try
+            {
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+                    await streamWriter.WriteAsync(blockString);
+                }
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                    var initBlock = JsonConvert.DeserializeObject<BlockRootObjectInitial>(result);
+                    responseBlock = InitialBlockToAPIBlock(initBlock);
                 }
             }
             catch (Exception ex)
