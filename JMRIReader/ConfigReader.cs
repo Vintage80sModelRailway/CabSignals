@@ -223,7 +223,10 @@ namespace JMRIReader
                         switch (a.whatcode)
                         {
                             case 19: //trigger another train
-                                bt.DelayMilliseconds = int.Parse(a.whendata);
+                                //Transit config in JMRI only allows for delays up to 60 seconds, which isn't enough
+                                //so I enter the number of seconds delay I want in the UI which are then multiplied by 10 here
+                                //if I want a delay of 180 seconds, I would enter '18' in the delay in the JMRI UI
+                                bt.DelayMilliseconds = (int.Parse(a.whendata)*10);
                                 bt.TriggerBlock = a.whenstring;
                                 if (DispatcherPath != "")
                                 {

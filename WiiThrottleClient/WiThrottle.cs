@@ -21,6 +21,7 @@ namespace WiThrottleClient
         private List<Throttle> _throttles;
         private int _throttleIndex;
         private int _webServerPort;
+        private bool _connected;
         public WiThrottle(string ServerAddress, int ServerPort, string ThrottleName)
         {
             _roster = new Roster();
@@ -66,6 +67,7 @@ namespace WiThrottleClient
                 Int32 bytes = await _stream.ReadAsync(data, 0, data.Length);
                 var responseData = Encoding.ASCII.GetString(data, 0, bytes); 
                 ProcessRoster(responseData);
+                _connected = true;
             }
         }
 
@@ -251,6 +253,16 @@ namespace WiThrottleClient
             get
             {
                 return _webServerPort;
+            }
+        }
+
+        public bool CheckConnection
+        {
+            get
+            {
+                _connected = false;
+                Connect();
+                return _connected;
             }
         }
         

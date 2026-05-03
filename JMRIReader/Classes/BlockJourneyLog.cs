@@ -24,6 +24,7 @@ namespace JMRIReader.Classes
         public decimal BlockLengthMM { get; set; }
         public List<SpeedStepLog> SpeedLog { get; set; }
         public TrainDirection DirectionWhenBlockEntered { get; set; }
+        public bool DirectionWasKnownWhenBlockEntered { get; set; }
         public AutomatedTrainRunningSpeed SpeedLimit { get; set; }
         public decimal mmCovered { get; set; }
         public bool PreviousBlockExited { get; set; }

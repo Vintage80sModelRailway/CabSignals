@@ -51,6 +51,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CabForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CabForm.Designer.cs">
+      <DependentUpon>CabForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Classes\Alert.cs" />
     <Compile Include="Classes\Enums.cs" />
     <Compile Include="Classes\MQTTMessage.cs" />
@@ -62,6 +68,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="CabForm.resx">
+      <DependentUpon>CabForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="LayoutMonitorForm.resx">
       <DependentUpon>LayoutMonitorForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -103,10 +112,25 @@
     <Content Include="Assets\cabsig_ico2.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Caution.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Caution.wav">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Danger.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Danger.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Extreme.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\off.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Proceed.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Proceed.wav">

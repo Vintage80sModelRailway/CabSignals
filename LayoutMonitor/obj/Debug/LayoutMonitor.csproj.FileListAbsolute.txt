@@ -45,3 +45,8 @@ C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\WiThrottleClient.
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\MQTTnet.xml
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMo.F66FE17C.Up2Date
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.exe.config
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\obj\Debug\LayoutMonitor.CabForm.resources
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Caution.png
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Danger.png
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\off.png
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Proceed.png

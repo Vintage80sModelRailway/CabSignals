@@ -12,6 +12,5 @@ namespace LayoutMonitor.Classes
         Caution = 1,
         Danger = 2,
         Extreme = 3
-
     }
 }

@@ -243,6 +243,7 @@
             this.btnTrainInfo.TabIndex = 18;
             this.btnTrainInfo.Text = "Info";
             this.btnTrainInfo.UseVisualStyleBackColor = true;
+            this.btnTrainInfo.Click += new System.EventHandler(this.btnTrainInfo_Click);
             // 
             // btnCancelAllocations
             // 
