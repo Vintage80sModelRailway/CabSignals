@@ -28,6 +28,7 @@ namespace JMRIReader.Classes
         public AutomatedTrainRunningSpeed SpeedLimit { get; set; }
         public decimal mmCovered { get; set; }
         public bool PreviousBlockExited { get; set; }
+        public DateTime LastSensorHoldSentAt { get; set; }
         public List<BlockTrigger> BlockTriggers { get; set; }
         public string ForwardStoppingSensor { get; set; }
         public string reverseStoppingSensor { get; set; }

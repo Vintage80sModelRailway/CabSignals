@@ -60,6 +60,7 @@
             this.tbPrevDCCID = new System.Windows.Forms.TextBox();
             this.lblSpeed = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
+            this.btnCopyToClipboard = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -373,12 +374,23 @@
             this.label6.TabIndex = 33;
             this.label6.Text = "Speed";
             // 
+            // btnCopyToClipboard
+            // 
+            this.btnCopyToClipboard.Location = new System.Drawing.Point(1407, 742);
+            this.btnCopyToClipboard.Name = "btnCopyToClipboard";
+            this.btnCopyToClipboard.Size = new System.Drawing.Size(98, 23);
+            this.btnCopyToClipboard.TabIndex = 34;
+            this.btnCopyToClipboard.Text = "Clip";
+            this.btnCopyToClipboard.UseVisualStyleBackColor = true;
+            this.btnCopyToClipboard.Click += new System.EventHandler(this.btnCopyToClipboard_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1904, 771);
+            this.Controls.Add(this.btnCopyToClipboard);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.lblSpeed);
             this.Controls.Add(this.tbPrevDCCID);
@@ -451,6 +463,7 @@
         private System.Windows.Forms.TextBox tbPrevDCCID;
         private System.Windows.Forms.Label lblSpeed;
         private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Button btnCopyToClipboard;
     }
 }
 

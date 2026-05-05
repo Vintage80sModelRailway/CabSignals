@@ -45,6 +45,12 @@ namespace LayoutMonitor
         {
             set { lblCurrentBlock.Text = value; }
         }
+
+        public string PrevBlock
+        {
+            set { lblPrevBlock.Text = value; }
+        }
+
         public CabForm()
         {
             InitializeComponent();

@@ -28,7 +28,7 @@ namespace Shuttler
         private RosterReader rosterConfig;
         private List<BlockRootObject> _startBlocks;
         private List<transit> _transits;
-        private int _sectionsAhead = 3;
+        private int _sectionsAhead = 2;
         private List<BlockRootObject> _allBlocks;
         private List<LiveJourneyLog> _logs;
         private string MQTTServer;
@@ -734,9 +734,11 @@ namespace Shuttler
                             if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM)
                             {
                                 var additionalPercent = (totalMMCoveredSinceExitingPBSO / 100) * SensorHoldBufferPercent;
+                                var additionalBuffer = (log.TrainLengthMM / 100) * SensorHoldBufferPercent;
 
                                 //locos always move slower than their speed profiled speed when turning corners, going up hills, dragging coaches etc., so add a little buffer
-                                if (totalMMCoveredSinceExitingPBSO + additionalPercent > log.TrainLengthMM)
+                                //if (totalMMCoveredSinceExitingPBSO + additionalPercent > log.TrainLengthMM)
+                                if (totalMMCoveredSinceExitingPBSO > log.TrainLengthMM + additionalBuffer)
                                 {
                                     //only reliable place to get system name of occupancy sensor is API - names seem inconsistent in the config
                                     var liveBlock = _allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
@@ -2080,8 +2082,17 @@ namespace Shuttler
                                                         block.BNL = NavigateThroughBlockItems(block.userName, "", prevBNL.EdgeConnector, prevBNL.EdgeConnectorDirectionConnector, "");
 
                                                 }
+                                                if (seqIndex == log.AutomatedCurrentBlockIndex)
+                                                {
+                                                    log.CurrentBlockBNL = block.BNL;
+                                                }
                                                 prevBNL = block.BNL;
                                             }
+                                        }
+                                        var nextBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex + 1);
+                                        if (nextBlock != null)
+                                        {
+                                            log.NextBlock = nextBlock.BlockUserName;
                                         }
                                     }
                                 }

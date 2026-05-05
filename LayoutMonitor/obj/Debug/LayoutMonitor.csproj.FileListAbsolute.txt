@@ -50,3 +50,4 @@ C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Caution.pn
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Danger.png
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\off.png
 C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Proceed.png
+C:\Users\chris\Source\Repos\CabSignals\LayoutMonitor\bin\Debug\Assets\Extreme.png

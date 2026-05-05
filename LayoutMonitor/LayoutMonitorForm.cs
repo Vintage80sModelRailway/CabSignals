@@ -600,6 +600,7 @@ namespace LayoutMonitor
                                             var timeDiff = dateTimeTo - speedLogList.ElementAt(b).start;
 
                                             totalMMCoveredSinceExitingPBSO += speedLogList.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                            
                                             if (debugOutput)
                                             {
                                                 //lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName);
@@ -634,8 +635,35 @@ namespace LayoutMonitor
                                         }
                                         else
                                         {
+                                            //Sensor hold on Arduinos times out after 30 seconds, but if the train has stopped we want to keep holds active. Send reminders every 10 seconds
+                                            if ((DateTime.Now - pbso.LastSensorHoldSentAt).TotalSeconds > 10)
+                                            {
+                                                if (usingMQTT)
+                                                    MQTTMessages.Enqueue(new MQTTMessage() { Topic = SensorHoldTopic + "/" + pbso.OccupationSensorSystemName, Payload = "1", Retain = false });
+                                                pbso.LastSensorHoldSentAt = DateTime.Now;
+                                            }
                                             //lbOutput.Items.Add("totalMM " + totalMMCoveredSinceExitingPBSO.ToString()+" - length"+log.TrainLengthMM.ToString());
                                         }
+                                    }
+                                }
+
+                                //debug
+                                var currentBlock = log.AutomatedBlockList.LastOrDefault();
+                                if (currentBlock != null && currentBlock.BlockUserName == log.CurrentBlock)
+                                {
+                                    decimal distanceCoverwdInThisBlock = 0M;
+                                    for (int b = 0; b < currentBlock.SpeedLog.Count; b++)
+                                    //foreach (var sl in thisLogBlock.SpeedLog)
+                                    {
+                                        var dateTimeTo = DateTime.Now;
+                                        if (b + 1 < currentBlock.SpeedLog.Count)
+                                        {
+                                            dateTimeTo = currentBlock.SpeedLog.ElementAt(b + 1).start;
+                                        }
+
+                                        var timeDiff = dateTimeTo - currentBlock.SpeedLog.ElementAt(b).start;
+                                        distanceCoverwdInThisBlock += currentBlock.SpeedLog.ElementAt(b).SpeedMMS * (decimal)timeDiff.TotalSeconds;
+                                        currentBlock.mmCovered = distanceCoverwdInThisBlock;
                                     }
                                 }
                             }
@@ -650,6 +678,10 @@ namespace LayoutMonitor
                         else if (log.IsAutomated) continue;
 
                         //Check to see if current block value has changed since the block went active - could happen if a train that started with a random ID has just gone over an RFID reader
+                        //This doesn't work because JMRI can update a block late with the wrong ID when trains are running close to each other
+                        //Now have to do the opposite to this - if we detect that JMRI has updated the value of the block, change it back to what we think it should be
+
+
                         var liveThisBlock = newBlockStates.FirstOrDefault(f => f.data.userName == log.CurrentBlock);
                         if (liveThisBlock != null && liveThisBlock.data != null)
                         {
@@ -659,12 +691,16 @@ namespace LayoutMonitor
                                 {
                                     if (liveThisBlock.data.value.data.userName != log.DCCiD)
                                     {
-                                        var newTrainLogName = liveThisBlock.data.value.data.userName;
-                                        if (!string.IsNullOrEmpty(liveThisBlock.data.value.data.comment))
-                                        {
-                                            newTrainLogName = liveThisBlock.data.value.data.comment;
-                                        }
-                                        log = await UpdateTrainNameAndIDInLog(log,newTrainLogName, log.DCCiD, liveThisBlock.data.value.data.userName);
+                                        //var newTrainLogName = liveThisBlock.data.value.data.userName;
+                                        //if (!string.IsNullOrEmpty(liveThisBlock.data.value.data.comment))
+                                        //{
+                                        //    newTrainLogName = liveThisBlock.data.value.data.comment;
+                                        //}
+                                        //log = await UpdateTrainNameAndIDInLog(log,newTrainLogName, log.DCCiD, liveThisBlock.data.value.data.userName);
+
+                                        //Set the block value back to what it should be
+                                        await webClient.AllocateBlock(liveThisBlock.data.name, log.DCCiD, false);
+                                        lbOutput.Items.Add("Possible wrong block val set by JMRI for " + log.DCCiD + " block " + liveThisBlock.data.userName + " - set back - rogue value was " + liveThisBlock.data.value.data.userName);
                                     }
                                 }
                             }
@@ -883,7 +919,7 @@ namespace LayoutMonitor
                         if (issueFoundThisBlock)
                         {
                             var alertExists = alerts.Any(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme && a.Deactivated == false);
-                            var existingAlert = alerts.FirstOrDefault(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme && a.Deactivated == false && a.Deactivated == false);
+                            var existingAlert = alerts.FirstOrDefault(a => a.AffectedBlockUserName == currentBlockRoute.BlockChecked && a.Severity == AlertSeverity.Extreme && a.Deactivated == false);
                             log.SignalAspect = SignalAspect.Danger;
                             log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Stop;
                             if (existingAlert == null)
@@ -940,7 +976,7 @@ namespace LayoutMonitor
                             //Caution alert
                             var alertExists = alerts.Any(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked && a.Severity == AlertSeverity.Caution && a.Deactivated == false);
                             var existingAlert = alerts.FirstOrDefault(a => a.BlockSystemName == currentBlockcfg.systemName && a.BNL.BlockChecked == twoBlock.BlockChecked && a.Severity == AlertSeverity.Caution && a.Deactivated == false);
-                            var dangerAlertExistsForNextBlock = alerts.Any(a => a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.TrainName == log.Name);
+                            var dangerAlertExistsForNextBlock = alerts.Any(a => a.BNL.BlockChecked == nextBlock.BlockChecked && a.Severity == AlertSeverity.Danger && a.TrainName == log.Name && a.Deactivated == false);
                             log.SignalAspect = SignalAspect.Caution;
                             log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Caution;
                             if (existingAlert == null)
@@ -969,7 +1005,7 @@ namespace LayoutMonitor
                         }
 
                         //if the route has changed and the next block is available, allocate it to the train
-                        if (allocateNextBlock && !issueFoundNextBlock && nextBlockAvailable && AllocateBlocks && !nextBlockAlreadyAllocated && !issueFoundTwoBlocks && !string.IsNullOrEmpty(log.DCCiD))
+                        if (allocateNextBlock && !issueFoundNextBlock && nextBlockAvailable && AllocateBlocks && !nextBlockAlreadyAllocated && !string.IsNullOrEmpty(log.DCCiD))
                         {
                             nextBlockAlreadyAllocated = true;
                             lbOutput.Items.Add("Dynamic allocation of next block " + currentBlockRoute.BlockFound + " to " + log.DCCiD);
@@ -1036,7 +1072,9 @@ namespace LayoutMonitor
                             log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Full;
                         }
 
+                        UpdateActiveCabForm(log.DCCiD);
                     }
+                    
                 }
                 catch (Exception ex)
                 {
@@ -1418,16 +1456,40 @@ namespace LayoutMonitor
                 }
             }
 
+            bool suspectedAutomatedTrain = false;
+            string automatedReason = string.Empty;
             //If this block was previously allocated to a train we're not tracking, it's likely an auto train and should be ignored
             if (prevBlockState != null && prevBlockState.data.value != null && !string.IsNullOrEmpty(prevBlockState.data.value.data.userName))
             {
                 var logExistsWithThisAddress = Log.Any(a => a.DCCiD == prevBlockState.data.value.data.userName);
                 if (!logExistsWithThisAddress)
                 {
-                    lbOutput.Items.Add("New block " + prevBlockState.data.userName + " suspected auto train so not processing, auto train ID " + prevBlockState.data.value.data.userName);
-                    return (false,"Automated train so not tracking");
+                    if (block.data != null && block.data.value != null)
+                    {
+                        if (block.data.value.data.userName != prevBlockState.data.value.data.userName)
+                        {
+                            automatedReason = "Previous (allocated) block value does not match an existing manual train and does not match ID of new block";
+                            suspectedAutomatedTrain = true;
+                        }
+                    }
+                    else
+                    {
+                        automatedReason = "Previous (allocated) block value does not match an existing manual train";
+                        suspectedAutomatedTrain = true;
+                    }
                 }
 
+            }
+            if (block.data.value != null && !string.IsNullOrEmpty(block.data.value.data.userName) && automatedIDs.Contains(block.data.value.data.userName))
+            {
+                suspectedAutomatedTrain = true;
+                automatedReason = "Automated ID list contains this block value - " + block.data.value.data.userName;
+            }
+
+            if (suspectedAutomatedTrain)
+            {
+                lbOutput.Items.Add("New block " + prevBlockState.data.userName + " suspected auto train so not processing, "+automatedReason);
+                return (false, "Automated train so not tracking");
             }
 
 
@@ -2071,6 +2133,7 @@ namespace LayoutMonitor
                             var sensorName = previousLiveBlock.data.sensor.Substring(2);
                             lbOutput.Items.Add(existingLog.DCCiD + " Sensor hold for " + sensorName);
                             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                            previousBlockLog.LastSensorHoldSentAt = DateTime.Now;
                             if (usingMQTT)
                                 MQTTMessages.Enqueue(new MQTTMessage() { Topic = SensorHoldTopic + "/" + sensorName, Payload = "1", Retain = false });
                         }
@@ -3305,6 +3368,7 @@ namespace LayoutMonitor
             lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
 
             //alert is deactivated, tell the knob box to display the 'proceed' aspect for the relevant train
+            //May not actually be under proceed - there may be other alerts - but they'll kick in instantly and override this - it's important to send a prompt resume to knob box, form etc
             if (usingMQTT)
             {
                 var anyOtherAlertsForThisTrain = alerts.Any(a => a.TrainId == alert.TrainId && a.Deactivated == false);
@@ -3316,7 +3380,7 @@ namespace LayoutMonitor
             }
 
             var log = Log.FirstOrDefault(f => f.DCCiD == alert.TrainId);
-            if (log != null) 
+            if (log != null)
             {
                 log.SignalAspect = SignalAspect.Proceed;
             }
@@ -3879,6 +3943,7 @@ namespace LayoutMonitor
             cForm.CurrentBlock = thisLog.CurrentBlock;
             cForm.NextBlock = thisLog.NextBlock;
             cForm.NextNextBlock = thisLog.NextNextBlock;
+            cForm.PrevBlock = thisLog.PreviousBlock;
 
             cForm.FormClosed += OnCabFormClosed;
             OpenForms.Add(cForm);
@@ -3907,7 +3972,69 @@ namespace LayoutMonitor
 
             activeForm.CurrentBlock = log.CurrentBlock;
             activeForm.NextBlock = log.NextBlock;
-            activeForm.NextNextBlock = log.NextNextBlock;            
+            activeForm.NextNextBlock = log.NextNextBlock;
+
+            var prevBlockValue = log.PreviousBlock;
+            var prevBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedBlockList.Count - 2);
+            if (prevBlock != null)
+            {
+                if (prevBlock.SequenceState < JourneySequenceState.Traversed)
+                {
+                    prevBlockValue = prevBlock.BlockUserName + " (H)";
+                }
+            }
+            activeForm.PrevBlock = prevBlockValue;
+        }
+
+        private void UpdateActiveCabForm(string dccId)
+        {
+            var log = Log.FirstOrDefault(f => f.DCCiD == dccId);
+            if (log == null) return;
+
+            var activeForm = OpenForms.FirstOrDefault(f => f.DCCID == dccId);
+            if (activeForm == null) return;
+
+            activeForm.TrainName = log.Name;
+
+            var currentBlockLog = log.AutomatedBlockList.LastOrDefault();
+            if (currentBlockLog != null)
+            {
+                var perc = (currentBlockLog.mmCovered / currentBlockLog.BlockLengthMM) * 100;
+                var percRounded = decimal.Round(perc, 0, MidpointRounding.AwayFromZero);
+
+                activeForm.CurrentBlock = log.CurrentBlock + " (" +percRounded.ToString() + "%)";
+            }
+
+            var prevBlockValue = log.PreviousBlock;
+            var prevBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedBlockList.Count - 2);
+            if (prevBlock != null)
+            {
+                if (prevBlock.SequenceState < JourneySequenceState.Traversed)
+                {
+                    prevBlockValue = prevBlock.BlockUserName + " (H)";
+                }
+            }
+            activeForm.PrevBlock = prevBlockValue;
+        }
+
+        private void btnCopyToClipboard_Click(object sender, EventArgs e)
+        {
+            StringBuilder output = new StringBuilder();
+            foreach (var line in lbOutput.Items)
+            {
+                output.AppendLine(line.ToString());
+            }
+            if (output != null && output.Length > 0)
+            {
+                try
+                {
+                    Clipboard.SetText(output.ToString());
+                }
+                catch (Exception ex)
+                {
+                    lbOutput.Items.Add("Error copying text to clipboard");
+                }
+            }
         }
     }
 }
