@@ -4,6 +4,7 @@ using JMRIReader.Classes.DTO;
 using LayoutMonitor.Classes;
 using MQTTnet;
 using MQTTnet.Client;
+using MQTTnet.Packets;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -1045,7 +1046,6 @@ namespace LayoutMonitor
                                 });
                             }
 
-                            //await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + tbConfig.userName, tbConfig.userName, false);
                             await webClient.AllocateBlock(tbConfig.systemName, log.DCCiD,false);
 
                             if (!log.AllocatedBlocks.Contains(nextBlock.BlockFound))
@@ -1784,6 +1784,12 @@ namespace LayoutMonitor
             string previousConnector = "";
             string breadcrumbStart = "";
 
+            var firstBoundary = new BlockNavigationLog();
+            var secondBoundary = new BlockNavigationLog();
+
+            if (handlingNewTrain)
+            { 
+
             //We know what block we're in, get all track segments for that block (these come from the JMRI panel data)
             //The assumption here is that the block will contain track segmenrs. It might not - a double slip for example - that's handled later
             var trackSegments = config.GetTracksegmentsForBlock(block.data.userName).OrderBy(o => o.Ident).ToList();
@@ -1860,13 +1866,13 @@ namespace LayoutMonitor
 
             //We've now made 2 journeys through the block, starting from a random point, and found 2 boundaries.
             //Now we run through the block again from those 2 points, which we can assume are the start of the block at opposite ends (it might not  be but it usually is and if both are starting from the same end that's OK
-            var secondBoundary = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundaryFromMiddle.EdgeConnectorDirectionConnector, firstBoundaryFromMiddle.EdgeConnector, firstBoundaryFromMiddle.EdgeConnector);
+            secondBoundary = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundaryFromMiddle.EdgeConnectorDirectionConnector, firstBoundaryFromMiddle.EdgeConnector, firstBoundaryFromMiddle.EdgeConnector);
             if (secondBoundary == null)
             {
                 return (false, "Second boundary null");
             }
 
-            var firstBoundary = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, secondBoundary.EdgeConnectorDirectionConnector, secondBoundary.EdgeConnector, secondBoundary.EdgeConnector);
+            firstBoundary = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, secondBoundary.EdgeConnectorDirectionConnector, secondBoundary.EdgeConnector, secondBoundary.EdgeConnector);
             if (firstBoundary == null)
             {
                 return (false, "First boundary null");
@@ -1948,8 +1954,8 @@ namespace LayoutMonitor
 
             //update the journey log with what we've found - at this point a journey is confirmed, rather than just a random block going active
             //This is the stuff for new trains, it couldn't be done until this point because we've only just rejected any new active block that had no connecting active blocks and that had to be done first
-            if (handlingNewTrain)
-            {
+            
+            
                 if (automatedIDs.Contains(blockLog.DCCiD))
                 {
                     blockLog.IsAutomated = true;
@@ -2162,28 +2168,25 @@ namespace LayoutMonitor
             //NavigateThroughBlockItems returns lots of useful data - block found, connectors found at the boundary of the block found, making it easier to try other directions from the boundary
             if (!issueFoundNextBlock)
             {
-                var bnl = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnector, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector);
-
-                //If the block found matches our likely previous one, we went the wrong way
-                if (bnl.BlockFound == likelyPreviousBlock)
-                {
-                    //Switch over the 'next' and 'previous' connectors, and try again - we can use the edge connectors returned by the previous attempt, this way we know we're starting from the boundary between our previous and current block
-                    BNLThisBlock = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
-                    BNLThisBlock.StartOfBlockEdgeConnector = firstBoundary.EdgeConnectorDirectionConnector;
-                    BNLThisBlock.StartOfBlockDirectionConnector = firstBoundary.EdgeConnector;
-                }
-                else
-                {
-                    BNLThisBlock = bnl;
-                    BNLThisBlock.StartOfBlockEdgeConnector = secondBoundary.EdgeConnectorDirectionConnector;
-                    BNLThisBlock.StartOfBlockDirectionConnector = secondBoundary.EdgeConnector;
-                }
-
-                likelyNextBlock = BNLThisBlock.BlockFound;
-
-                //don't process if newly active block is surrounded by active blocks - most likely a detection issue
                 if (handlingNewTrain)
                 {
+                    var bnl = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, firstBoundary.EdgeConnector, firstBoundary.EdgeConnectorDirectionConnector, firstBoundary.EdgeConnector);
+                    //If the block found matches our likely previous one, we went the wrong way
+                    if (bnl.BlockFound == likelyPreviousBlock)
+                    {
+                        //Switch over the 'next' and 'previous' connectors, and try again - we can use the edge connectors returned by the previous attempt, this way we know we're starting from the boundary between our previous and current block
+                        BNLThisBlock = await NavigateThroughBlockItems(block.data.userName, likelyPreviousBlock, bnl.EdgeConnectorDirectionConnector, bnl.EdgeConnector, bnl.EdgeConnector);
+                        BNLThisBlock.StartOfBlockEdgeConnector = firstBoundary.EdgeConnectorDirectionConnector;
+                        BNLThisBlock.StartOfBlockDirectionConnector = firstBoundary.EdgeConnector;
+                    }
+                    else
+                    {
+                        BNLThisBlock = bnl;
+                        BNLThisBlock.StartOfBlockEdgeConnector = secondBoundary.EdgeConnectorDirectionConnector;
+                        BNLThisBlock.StartOfBlockDirectionConnector = secondBoundary.EdgeConnector;
+                    }
+
+                    likelyNextBlock = BNLThisBlock.BlockFound;
                     var nextBlockLive = await webClient.GetBlock(likelyNextBlock);
                     var previousBlockLive = await webClient.GetBlock(likelyPreviousBlock);
                     if (nextBlockLive != null && previousBlockLive != null)
@@ -2191,10 +2194,20 @@ namespace LayoutMonitor
                         if (nextBlockLive.data.state == (int)BlockState.Occupied && previousBlockLive.data.state == (int)BlockState.Occupied) return (false, "Surrounded by active blocks");
                     }
                 }
+                else
+                {
+                    //if it's a new block in a journey that's already being logged, can use previous block data to find the next one
+                    //var currentBlockRoute = await NavigateThroughBlockItems(blockLog.CurrentBlockBNL.BlockChecked, blockLog.CurrentBlockBNL.PreviousBlock, blockLog.CurrentBlockBNL.StartOfBlockEdgeConnector, blockLog.CurrentBlockBNL.StartOfBlockDirectionConnector, blockLog.CurrentBlockBNL.EdgeConnector);
+                    BNLThisBlock = await NavigateThroughBlockItems(block.data.userName, blockLog.CurrentBlockBNL.BlockChecked, blockLog.CurrentBlockBNL.EdgeConnector, blockLog.CurrentBlockBNL.EdgeConnectorDirectionConnector, blockLog.CurrentBlockBNL.EdgeConnector);
+                    BNLThisBlock.StartOfBlockEdgeConnector = blockLog.CurrentBlockBNL.EdgeConnector;
+                    BNLThisBlock.StartOfBlockDirectionConnector = blockLog.CurrentBlockBNL.EdgeConnectorDirectionConnector;
+                    blockLog.CurrentBlockBNL = BNLThisBlock;
+                    likelyNextBlock = BNLThisBlock.BlockFound;
+                }
 
                 //At this point, because we know we travevlled through the block from the boundary with our current block, and that we took the active route through it (using live turnout data) we know we've found the next block
                 blockLog.NextBlock = likelyNextBlock;
-                blockLog.CurrentBlockBNL = bnl;
+                
                 BNLThisBlock.BlockCheckedSystemName = block.data.userName;
 
                 //Don't need to process alerts etc for auto train, but needed to record next block for log matching when new blocks go active
@@ -3593,35 +3606,12 @@ namespace LayoutMonitor
 
         private async void btnRosterTest_Click(object sender, EventArgs e)
         {
+            return;
             var roster = new RosterReader(RosterPath);
             var r = roster.LocoList;
 
             await webClient.AllocateBlockWithComplexValue("IB:AUTO:0028", "777", true);
 
-
-
-
-
-
-            //var test = AlertSeverity.Caution.ToString();
-
-            //var seconds = 0;
-            //bool sentThisSecond = false;
-            //DateTime start = DateTime.Now;
-            //while (seconds < 20)
-            //{                
-            //    if (!sentThisSecond)
-            //    {
-            //        for (int i = 0; i < 200; i++)
-            //        {
-            //            await MQTTClient.SendMQTTMessage(MQTTServer, "debug/overload/" + i.ToString(), "Test " + i.ToString(), false);
-            //        }
-            //        sentThisSecond = true;
-            //    }
-            //    var diff = (DateTime.Now - start).TotalSeconds;
-            //    if (diff > 1.0)
-            //        sentThisSecond = false;
-            //}
         }
 
         private void btnClearOutputLog_Click(object sender, EventArgs e)
@@ -3882,7 +3872,6 @@ namespace LayoutMonitor
                 var bConfig = config.GetBlockByUserName(block);
                 if (usingMQTT)
                     MQTTMessages.Enqueue(new MQTTMessage { Topic = BlockAllocateTopic + "/" + bConfig.userName, Payload = bConfig.userName, Retain = false });
-                //await MQTTClient.SendMQTTMessage(MQTTServer, BlockAllocateTopic + "/" + bConfig.userName, bConfig.userName, false);
                 await webClient.AllocateBlock(bConfig.userName, log.DCCiD, false);
             }
 
@@ -4035,6 +4024,38 @@ namespace LayoutMonitor
                     lbOutput.Items.Add("Error copying text to clipboard");
                 }
             }
+        }
+
+        private async void btnSetJMRIStartupTurnouts_Click(object sender, EventArgs args)
+        {
+            var to = await webClient.GetTurnout("MT6003");
+
+            await webClient.SetTurnout("MT6003", 2);
+
+            //    var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.1.29").Build();
+
+            //    // Setup message handling before connecting so that queued messages
+            //    // are also handled properly. When there is no event handler attached all
+            //    // received messages get lost.
+            //    mqttClient.ApplicationMessageReceivedAsync += e =>
+            //    {
+            //        Console.WriteLine("Received application message.");
+
+
+            //        return Task.CompletedTask;
+            //    };
+
+            //    await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
+
+            //    var mqttSubscribeOptions = factory.CreateSubscribeOptionsBuilder().WithTopicFilter("track/turnout/#").Build();
+
+            //    await mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
+
+            //    Console.WriteLine("MQTT client subscribed to topic.");
+
+            //    Console.WriteLine("Press enter to exit.");
+            //    Console.ReadLine();
+            //}
         }
     }
 }

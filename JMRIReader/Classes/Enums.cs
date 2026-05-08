@@ -137,6 +137,7 @@
 
         public enum TurnoutState
         {
+            Unknown = 0,
             Closed = 2,
             Thrown = 4
         }

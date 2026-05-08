@@ -61,6 +61,7 @@
             this.lblSpeed = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.btnCopyToClipboard = new System.Windows.Forms.Button();
+            this.btnSetJMRIStartupTurnouts = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbOutput
@@ -384,12 +385,23 @@
             this.btnCopyToClipboard.UseVisualStyleBackColor = true;
             this.btnCopyToClipboard.Click += new System.EventHandler(this.btnCopyToClipboard_Click);
             // 
+            // btnSetJMRIStartupTurnouts
+            // 
+            this.btnSetJMRIStartupTurnouts.Location = new System.Drawing.Point(1620, 261);
+            this.btnSetJMRIStartupTurnouts.Name = "btnSetJMRIStartupTurnouts";
+            this.btnSetJMRIStartupTurnouts.Size = new System.Drawing.Size(75, 23);
+            this.btnSetJMRIStartupTurnouts.TabIndex = 35;
+            this.btnSetJMRIStartupTurnouts.Text = "Turnouts";
+            this.btnSetJMRIStartupTurnouts.UseVisualStyleBackColor = true;
+            this.btnSetJMRIStartupTurnouts.Click += new System.EventHandler(this.btnSetJMRIStartupTurnouts_Click);
+            // 
             // LayoutMonitorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1904, 771);
+            this.Controls.Add(this.btnSetJMRIStartupTurnouts);
             this.Controls.Add(this.btnCopyToClipboard);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.lblSpeed);
@@ -464,6 +476,7 @@
         private System.Windows.Forms.Label lblSpeed;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button btnCopyToClipboard;
+        private System.Windows.Forms.Button btnSetJMRIStartupTurnouts;
     }
 }
 
