@@ -188,6 +188,19 @@ namespace Shuttler
             }
         }
 
+        /// <summary>
+        /// Continuously manages shuttle train operations, including communication with the WiThrottle server, block
+        /// state monitoring, train speed calculation, and automation tasks.
+        /// </summary>
+        /// <remarks>This method runs an asynchronous loop that coordinates the core logic for automated
+        /// shuttle train control. It handles client initialization, message processing, block state updates, train
+        /// speed adjustments, and various automation routines such as yard and station management. The loop continues
+        /// to execute as long as the running flag is set. <para> This method is intended to be called from within the
+        /// class to start and maintain shuttle operations. It should not be called directly from user code, as it is
+        /// designed to run in the background and relies on class-level state. </para> <para> Because this method is
+        /// asynchronous and returns <see langword="void"/>, exceptions thrown within it will not be propagated to the
+        /// caller. Ensure that any exception handling or logging is implemented within the method or its callees.
+        /// </para></remarks>
         private async void RunShuttles()
         {
             c = new WiThrottle(_JMRIServerIP, _WiThrottlePort, "Shuttler");
@@ -235,6 +248,15 @@ namespace Shuttler
             }
         }
 
+        /// <summary>
+        /// Checks for newly activated blocks and updates the internal state to reflect changes in block activity.
+        /// </summary>
+        /// <remarks>This method retrieves the latest block states, identifies which blocks have become
+        /// newly active since the last check, and updates related journey logs and block navigation information
+        /// accordingly. It also handles transitions for blocks that have become inactive and ensures that the
+        /// processing order is maintained when multiple blocks become active simultaneously.</remarks>
+        /// <returns>A list of <see cref="BlockRootObject"/> instances representing the current state of all blocks, or <see
+        /// langword="null"/> if required dependencies are not initialized.</returns>
         private async Task<List<BlockRootObject>> CheckForNewActiveBlocks()
         {
             if (webClient == null || c == null || _allBlocks == null)
@@ -681,7 +703,15 @@ namespace Shuttler
 
         }
 
-
+        /// <summary>
+        /// Manages and releases block holds for trains that have exited a block segment.
+        /// </summary>
+        /// <remarks>This method analyzes active train logs to determine when a train has fully cleared a
+        /// previously occupied block, based on distance traveled and configured buffer thresholds. When a block is
+        /// determined to be clear, the method releases the associated sensor hold and updates the block's sequence
+        /// state. This process helps ensure accurate block occupancy tracking and safe train movement within the
+        /// system.</remarks>
+        /// <returns></returns>
         private async Task ManageExitedBlockHolds()
         {
             try
@@ -777,6 +807,11 @@ namespace Shuttler
                 WriteToLog("Exited block holds exception - " + ex.Message);
             }
         }
+
+        /// <summary>
+        /// Monitors yard for vacated spaces at the front of lines, determines if there is a loco in a position where it can move forward, then initiates a transit to move that train forward if necessary
+        /// </summary>
+        /// <param name="LiveBlocks"></param>
         private async void ManageYardLines(List<BlockRootObject> LiveBlocks)
         {
             if (!cbManageYard.Checked) return;
@@ -905,6 +940,13 @@ namespace Shuttler
             }
         }
 
+        /// <summary>
+        /// Processes completed or cancelled train logs and updates the associated list boxes to reflect the current
+        /// state of running transits.
+        /// </summary>
+        /// <remarks>This method identifies train logs that have completed or been cancelled, updates
+        /// their status, and manages the initiation of any subsequent transits as needed. It also refreshes the UI list
+        /// boxes to ensure they accurately represent the current set of active and completed transits.</remarks>
         private void CleanUpListBoxes()
         {
             var completeLogs = _logs.Where(w => w.TrainMotionCfg.IsActive == false && w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete 
@@ -986,6 +1028,17 @@ namespace Shuttler
 
         }
 
+        /// <summary>
+        /// Calculates and updates the speed and running status for all automated trains based on their current
+        /// configuration and operational state. Outcomes are stored against the logs, this method does not directly instruct trains to change speed.
+        /// </summary>
+        /// <remarks>This method processes each train log to determine the appropriate speed step and
+        /// running status, handling scenarios such as manual cancellation, scheduled starts, emergency stops, and speed
+        /// ramping. It ensures that trains accelerate and decelerate smoothly according to their configuration and
+        /// operational requirements. The method also manages transitions between running states, such as starting,
+        /// resuming, waiting, and completion, based on train position and signal aspects. <para> This method should be
+        /// called regularly as part of the train automation control loop to maintain accurate and safe train operation.
+        /// </para></remarks>
         private void CalculateSpeedForTrains()
         {
             foreach (var log in _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete).ToList())
@@ -1150,6 +1203,7 @@ namespace Shuttler
             }
         }
 
+
         private decimal GetRelativeSpeedMM(decimal percent, decimal highSpeed, decimal lowSpeed)
         {
             //work out percentage position between prevStep and Step
@@ -1166,6 +1220,7 @@ namespace Shuttler
             return requiredSpeedMM;
         }
 
+
         private decimal GetRelativeSpeedStepPosition(int speedStep, decimal prevStep, decimal thisStep )
         {
             decimal a = speedStep - prevStep;
@@ -1181,6 +1236,7 @@ namespace Shuttler
             return frac;
 
         }
+
 
         private void SetTrainSpeeds()
         {

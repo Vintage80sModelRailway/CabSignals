@@ -1667,9 +1667,9 @@ namespace LayoutMonitor
                     else
                     {
                         //this should never happen
-                        blockLog.Name = block.data.value.data.comment;
+                        blockLog.Name = !string.IsNullOrEmpty(block.data.value.data.comment) ? block.data.value.data.comment : block.data.value.data.userName;
                         blockLog.DCCiD = block.data.value.data.userName;
-                        blockLog.OriginalName = block.data.value.data.comment;
+                        blockLog.OriginalName = !string.IsNullOrEmpty(block.data.value.data.comment) ? block.data.value.data.comment : block.data.value.data.userName;
                         blockLog.OriginalDCCiD = block.data.value.data.userName;
                     }
                 }
@@ -3179,9 +3179,6 @@ namespace LayoutMonitor
                     if (string.IsNullOrEmpty(checkAlert.BlockChecked))
                     {
                         DeactivateAlert(alert, false, "Alert deactivated - no issue or BNL found - 1982 - " + alert.LikelyIssue);
-                        //alert.Deactivated = true;
-                        //alert.DeactivatedTime = DateTime.Now;
-                        //lbOutput.Items.Add("Alert deactivated - no issue or BNL found - 1982 - " + alert.LikelyIssue);
                     }
 
                     if (alertWasFromADifferentPath)
@@ -3239,12 +3236,12 @@ namespace LayoutMonitor
                         currentAlertReason += "; " + log.CurrentBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     }
-                    if (!string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue) && !currentAlertReason.Contains(log.NextBlockBNL.LikelyIssue))
+                    else if (!string.IsNullOrEmpty(log.NextBlockBNL.LikelyIssue) && !currentAlertReason.Contains(log.NextBlockBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.NextBlockBNL.LikelyIssue;
                         alertStillActive = true;
                     }
-                    if (!string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue) && !currentAlertReason.Contains(log.TwoBlocksBNL.LikelyIssue))
+                    else if (!string.IsNullOrEmpty(log.TwoBlocksBNL.LikelyIssue) && !currentAlertReason.Contains(log.TwoBlocksBNL.LikelyIssue))
                     {
                         currentAlertReason += "; " + log.TwoBlocksBNL.LikelyIssue;
                         alertStillActive = true;
@@ -3260,8 +3257,8 @@ namespace LayoutMonitor
 
                     if (alert.Severity == AlertSeverity.Danger)
                     {
-                        var existingCuationAlert = alerts.FirstOrDefault(a => a.Severity == AlertSeverity.Caution && a.BlockUserName == alert.PreviousBlockUserName);
-                        var existingCautionsForAffectedBlock = alerts.Where(w => w.Severity == AlertSeverity.Caution && w.BNL.BlockChecked == alert.BNL.BlockChecked && !w.Deactivated);
+                        var existingCuationAlert = alerts.FirstOrDefault(a => a.Severity == AlertSeverity.Caution && a.BlockUserName == alert.PreviousBlockUserName && alert.TrainId == log.DCCiD);
+                        var existingCautionsForAffectedBlock = alerts.Where(w => w.Severity == AlertSeverity.Caution && w.BNL.BlockChecked == alert.BNL.BlockChecked && !w.Deactivated && alert.TrainId == log.DCCiD);
                         foreach (var existingCaution in existingCautionsForAffectedBlock)
                         {
                             existingCaution.Superceded = true;
@@ -3271,7 +3268,7 @@ namespace LayoutMonitor
                     else if (alert.Severity == AlertSeverity.Caution)
                     {
                         var blockAffected = alert.BNL.BlockChecked;
-                        hasPrecedingAlert = alerts.Any(a => a.BNL.BlockFound == blockAffected && a.Severity == AlertSeverity.Danger);
+                        hasPrecedingAlert = alerts.Any(a => a.BNL.BlockFound == blockAffected && a.Severity == AlertSeverity.Danger && alert.TrainId == log.DCCiD);
                     }
 
                     TimeSpan timeDiff = DateTime.Now - alert.AlertStart;
@@ -4024,38 +4021,6 @@ namespace LayoutMonitor
                     lbOutput.Items.Add("Error copying text to clipboard");
                 }
             }
-        }
-
-        private async void btnSetJMRIStartupTurnouts_Click(object sender, EventArgs args)
-        {
-            var to = await webClient.GetTurnout("MT6003");
-
-            await webClient.SetTurnout("MT6003", 2);
-
-            //    var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.1.29").Build();
-
-            //    // Setup message handling before connecting so that queued messages
-            //    // are also handled properly. When there is no event handler attached all
-            //    // received messages get lost.
-            //    mqttClient.ApplicationMessageReceivedAsync += e =>
-            //    {
-            //        Console.WriteLine("Received application message.");
-
-
-            //        return Task.CompletedTask;
-            //    };
-
-            //    await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
-
-            //    var mqttSubscribeOptions = factory.CreateSubscribeOptionsBuilder().WithTopicFilter("track/turnout/#").Build();
-
-            //    await mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
-
-            //    Console.WriteLine("MQTT client subscribed to topic.");
-
-            //    Console.WriteLine("Press enter to exit.");
-            //    Console.ReadLine();
-            //}
         }
     }
 }
