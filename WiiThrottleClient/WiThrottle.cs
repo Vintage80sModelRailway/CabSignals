@@ -46,7 +46,8 @@ namespace WiThrottleClient
                 {
                     ID = "xx",
                     RosterIndex = -1,
-                    mtIndex = i.ToString()
+                    mtIndex = i.ToString(),
+                    Functions = new List<string>()
                 };
                 _throttles.Add(t);
             }
@@ -55,17 +56,17 @@ namespace WiThrottleClient
         private async void Connect()
         {
             _wi = new TcpClient();
-            await _wi.ConnectAsync(_ip,_port);
+            await _wi.ConnectAsync(_ip, _port);
             _stream = _wi.GetStream();
 
-            var message = "N"+_name+"\n";
+            var message = "N" + _name + "\n";
             WriteToStream(message);
 
             if (_wi.Available > 0)
             {
                 var data = new Byte[_wi.Available];
                 Int32 bytes = await _stream.ReadAsync(data, 0, data.Length);
-                var responseData = Encoding.ASCII.GetString(data, 0, bytes); 
+                var responseData = Encoding.ASCII.GetString(data, 0, bytes);
                 ProcessRoster(responseData);
                 _connected = true;
             }
@@ -76,11 +77,11 @@ namespace WiThrottleClient
             var messageBytes = Encoding.UTF8.GetBytes(message);
             if (_stream == null) _stream = _wi.GetStream();
             await _stream.WriteAsync(messageBytes, 0, messageBytes.Count());
-            
+
         }
 
         private void ProcessRoster(string rosterData)
-        {            
+        {
             var lines = rosterData.Split('\n');
             foreach (var line in lines)
             {
@@ -121,7 +122,7 @@ namespace WiThrottleClient
                     re.ID = comps[1];
                     re.Name = comps[0];
                     re.IDType = comps[2];
-                    re.FullID = comps[2] != null && comps[2].Length > 0 ? re.ID+comps[2].Substring(0, 1) : re.ID + comps[2];
+                    re.FullID = comps[2] != null && comps[2].Length > 0 ? re.ID + comps[2].Substring(0, 1) : re.ID + comps[2];
                     _roster.RosterList.Add(re);
                 }
             }
@@ -162,7 +163,7 @@ namespace WiThrottleClient
             var mtIndex = line.Substring(1, 1);
             var throttle = _throttles.FirstOrDefault(f => f.mtIndex == mtIndex);
             var suffix = value.Substring(1);
-            
+
             switch (valueHeader)
             {
                 case "s":
@@ -177,7 +178,36 @@ namespace WiThrottleClient
                     {
                         if (speed < 0) speed = 0;
                         throttle.Speed = speed;
-                    }                        
+                    }
+                    break;
+                case "F":
+                    if (suffix.Length == 2)
+                    {
+                        int index = -1;
+                        var fSuccess = int.TryParse(suffix.Substring(0), out index);
+                        int setting = -1;
+                        var sSuccess = int.TryParse(suffix.Substring(1), out setting);
+                        if (fSuccess && sSuccess)
+                        {
+                            if (index >= 0 && index < 10)
+                            {
+                                if (setting == 0 || setting == 1)
+                                {
+                                    if (throttle.Functions == null) throttle.Functions = new List<string>();
+                                    if (throttle.Functions.Count < index + 1)
+                                    {
+                                        for (int i = throttle.Functions.Count; i < index + 1; i++)
+                                        {
+                                            throttle.Functions.Add("0");
+                                        }
+                                    }
+                                    throttle.Functions[index] = setting.ToString();
+                                }
+                            }
+                        }
+                    }
+                    //var functions = suffix.Split(new string[] { "," }, StringSplitOptions.None);
+                    //throttle.Functions = functions.ToList();
                     break;
             }
         }
@@ -208,7 +238,7 @@ namespace WiThrottleClient
         public void ProcessMessage(string message)
         {
             if (message.Length <= 0) return;
-            
+
             var messages = message.Split(new string[] { "\r\n\r\n" }, StringSplitOptions.None);
             foreach (var update in messages)
             {
@@ -265,7 +295,7 @@ namespace WiThrottleClient
                 return _connected;
             }
         }
-        
+
         public string GetThrottle(int rosterIndex)
         {
             var alreadyExists = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
@@ -353,9 +383,38 @@ namespace WiThrottleClient
             string sendState = "C";
             if (state == 4) sendState = "T";
 
-            string to = "PTA" + sendState + TurnoutID+"\n";
+            string to = "PTA" + sendState + TurnoutID + "\n";
             WriteToStream(to);
             return true;
         }
+
+        public bool SetFunction(int rosterIndex, int functionIndex, int setting)
+        {
+            var throttle = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
+            if (throttle == null) return false;
+            var rosterEntry = _roster.RosterList.ElementAt(rosterIndex);
+            if (rosterEntry == null || throttle.ID != rosterEntry.ID) return false;
+
+            if (throttle.Functions == null) throttle.Functions = new List<string>();
+            if (throttle.Functions.Count < functionIndex + 1)
+            {
+                for (int i = throttle.Functions.Count; i < functionIndex + 1; i++)
+                {
+                    throttle.Functions.Add("0");
+                }
+            }
+
+            var currentSetting = throttle.Functions.ElementAtOrDefault(functionIndex);
+            if (currentSetting != null && currentSetting == setting.ToString()) return true;
+
+            string func = "M" + throttle.mtIndex + "A" + rosterEntry.IDType + rosterEntry.ID + "<;>F" + setting.ToString() + functionIndex.ToString() + "\n";
+            WriteToStream(func);
+
+            throttle.Functions[functionIndex] = setting.ToString();
+            return true;
+        }
+
+
+
     }
 }

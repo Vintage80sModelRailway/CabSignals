@@ -3786,6 +3786,15 @@ namespace LayoutMonitor
 
             var rosterCfG = new RosterReader(RosterPath);
             var roster = rosterCfG.LocoList;
+
+            if (roster == null) return log;
+
+            var thisLoco = roster.FirstOrDefault(f => f.ID == newDCCID);
+            if (thisLoco != null)
+            {
+                log.Name = thisLoco.Name;
+            }
+
             var fullInfo = rosterCfG.FullRoster.FirstOrDefault(f => f.DccAddress == newDCCID);
 
             if (fullInfo != null)
@@ -3885,16 +3894,22 @@ namespace LayoutMonitor
 
         private async void btnUpdateTrainIDAndName_Click(object sender, EventArgs e)
         {
+            if (!monitorRuning) return;
+            if (ddlTrainSelector.SelectedIndex == -1) return;
+            if (string.IsNullOrEmpty(ddlTrainSelector.Text)) return;
+
             var trainName = tbTrainName.Text;
             var newDCCID = tbTrainDCCID.Text;
             var prevDCCID = tbPrevDCCID.Text;
 
-            if (string.IsNullOrEmpty(trainName) || string.IsNullOrEmpty(prevDCCID) || string.IsNullOrEmpty(newDCCID)) return;
+            //if (string.IsNullOrEmpty(trainName) || string.IsNullOrEmpty(prevDCCID) || string.IsNullOrEmpty(newDCCID)) return;
+            if (string.IsNullOrEmpty(newDCCID) || string.IsNullOrEmpty(prevDCCID)) return;
+
             var log = Log.FirstOrDefault(f => f.DCCiD == prevDCCID);
             if (log != null)
             log = await UpdateTrainNameAndIDInLog(log,trainName, prevDCCID, newDCCID);
-            var test = Log;
- 
+
+            tbTrainName.Text = log.Name; 
         }
 
         private async void ProcessMQTTMessageQueue()
@@ -4021,6 +4036,15 @@ namespace LayoutMonitor
                     lbOutput.Items.Add("Error copying text to clipboard");
                 }
             }
+        }
+
+        private void tbTrainDCCID_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!monitorRuning) return;
+
+            var test = "stopp";
+            if (e.KeyCode == Keys.Enter)
+                btnUpdateTrainIDAndName_Click(sender, e);
         }
     }
 }

@@ -319,10 +319,12 @@
             // 
             // tbTrainDCCID
             // 
+            this.tbTrainDCCID.AcceptsReturn = true;
             this.tbTrainDCCID.Location = new System.Drawing.Point(1792, 61);
             this.tbTrainDCCID.Name = "tbTrainDCCID";
             this.tbTrainDCCID.Size = new System.Drawing.Size(100, 20);
             this.tbTrainDCCID.TabIndex = 27;
+            this.tbTrainDCCID.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbTrainDCCID_KeyDown);
             // 
             // label5
             // 

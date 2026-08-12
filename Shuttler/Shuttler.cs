@@ -1085,6 +1085,8 @@ namespace Shuttler
                         }
                         WriteToLog("Grabbed throttle for " + log.DCCiD + " - mtIndex " + mtIndex);
                         c.SetThrottleDirection(rosterIndex, ((int)log.TrainMotionCfg.TrainDirection).ToString());
+                        c.SetFunction(rosterIndex, 0, 1); //lights on
+                        
                     }
                 }
 

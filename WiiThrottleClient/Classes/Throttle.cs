@@ -13,6 +13,7 @@ namespace WiThrottleClient.Classes
         public string ID { get; set; }
         public int Speed { get; set; }
         public string Direction { get; set; }
+        public List<string> Functions { get; set; }
 
         public int RosterIndex { get; set; }
     }
