@@ -269,7 +269,8 @@ namespace LayoutMonitor
             while (monitorRuning)
             {
                 await MonitorLayout();
-                await ProcessAlerts();
+                //await ProcessAlerts();
+                ProcessDeactivatedAlerts();
                 ProcessDeoccupiedBlocks();
                 if (usingWiThrottle)
                 {
@@ -528,46 +529,8 @@ namespace LayoutMonitor
 
                             var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
 
-                            //Train might be travelling at a speed step greater than there is a profile for
-                            //Need to release all holds as they just cause alerts if they're not cleared
-                            //if (throttle != null && throttle.Speed > 0 && currentMMS == 0.0M)
-                            //{
-                            //    //lbOutput.Items.Add("Possible issue with sensor holds - " + log.DCCiD);
-                            //    //lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                            //    try
-                            //    {
-
-                            //        foreach (var pbso in previousBlocksStillOccupied)
-                            //        {
-                            //            var liveBlock = allBlocks.FirstOrDefault(f => f.data.name == pbso.BlockSystemname);
-                            //            if (liveBlock != null)
-                            //            {
-                            //                var sensorName = liveBlock.data.sensor.Substring(2);
-                            //                lbOutput.Items.Add(DateTime.Now.ToString() + " Loco " + log.DCCiD + " previous sensor holds removed due to possible speed issue - speed step "+throttle.Speed.ToString()+" mms "+currentMMS.ToString());
-                            //                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                            //                pbso.SequenceState = JourneySequenceState.Traversed;
-                            //                if (usingMQTT)
-                            //                {
-                            //                    MQTTMessages.Enqueue(new MQTTMessage()
-                            //                    {
-                            //                        Topic = SensorHoldTopic + "/" + sensorName,
-                            //                        Payload = "0",
-                            //                        Retain = false
-                            //                    });
-                            //                }
-                            //            }
-                            //        }
-                            //    }
-                            //    catch (Exception ex)
-                            //    {
-                            //        lbOutput.Items.Add("Sensor hold processing exception " + ex.Message);
-                            //        lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
-                            //    }
-                            //}
                             if (log.TrainLengthMM > 0 && log.HasSpeedProfile)
                             {
-                               // var previousBlocksStillOccupied = log.AutomatedBlockList.Where(w => w.SequenceState == JourneySequenceState.EnteredNextBlock);
-
                                 foreach (var pbso in previousBlocksStillOccupied)
                                 {
                                     var indexOfpbso = log.AutomatedBlockList.IndexOf(pbso);
@@ -1070,6 +1033,8 @@ namespace LayoutMonitor
                             }
                             log.SignalAspect = SignalAspect.Proceed;
                             log.AutomatedTrainRunningSpeed = AutomatedTrainRunningSpeed.Full;
+
+                            ClearAlertsForLog(log.DCCiD);
                         }
 
                         UpdateActiveCabForm(log.DCCiD);
@@ -1111,6 +1076,15 @@ namespace LayoutMonitor
             allBlocks = newBlockStates;
             activeBlocks = newActiveBlocks;
             return true;
+        }
+
+        private void ClearAlertsForLog(string dccId)
+        {
+            var alertsForLog = alerts.Where(a => a.TrainId == dccId && !a.Deactivated);
+            foreach (var alert in alertsForLog)
+            {
+                DeactivateAlert(alert, false, "ClearAlertsForLog");
+            }
         }
 
         /// <summary>
@@ -3336,6 +3310,38 @@ namespace LayoutMonitor
             }
 
             return true;
+        }
+
+        private void ProcessDeactivatedAlerts()
+        {
+            try
+            {
+                var alertsEmptied = false;
+                var deactivatedAlerts = alerts.Where(w => w.Deactivated).ToList();
+                foreach (var da in deactivatedAlerts)
+                {
+                    TimeSpan diff = DateTime.Now - da.DeactivatedTime;
+                    if (diff.TotalSeconds > 30)
+                    {
+                        alerts.Remove(da);
+                        alertsEmptied = true;
+                    }
+                }
+
+                int numberOfActiveAlerts = alerts.Where(w => !w.Deactivated).Count();
+                if (alertsEmptied && numberOfActiveAlerts == 0)
+                {
+                    var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
+                    lvUpdates.Items.Clear();
+                    lvUpdates.Items.Add(latestAlert);
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                lbOutput.Items.Add("Expired alert processing excpeption " + ex.Message);
+                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+            }
         }
 
         private void AddAlert(Alert alert)
