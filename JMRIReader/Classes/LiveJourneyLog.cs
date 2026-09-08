@@ -66,6 +66,8 @@ namespace JMRIReader.Classes
         public int NextTransitAdditionalDelayMS { get; set; }
         public bool HasSpeedProfile { get; set; }
         public TransitType TransitType { get; set; }
+        public bool HasOnStopTrigger { get; set; }
+        public bool PassOnDirectionToTriggeredTransit { get; set; }
         public int NumberOfSectionsAheadToAllocate { get; set; }
         public bool QueueingForIncline { get; set; }
         public DateTime TimeEnteredInclineQueue { get; set; }

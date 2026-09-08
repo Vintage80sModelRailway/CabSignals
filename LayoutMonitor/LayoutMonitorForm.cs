@@ -771,6 +771,44 @@ namespace LayoutMonitor
                             allocateTwoBlocks = true;
                         }
 
+                        var safePaths = config.GetSafePathSections();
+                        var thisSectionIsAnActiveSafeSection = false;
+                        var entireSafeSectionFreeToAllocate = true;
+                        var safeSectionAllocationDesc = "";
+
+                        if (safePaths != null)
+                        {
+                            var ccurrentBlockName = log.CurrentBlock;
+                            var nextBlockName = log.NextBlock;
+                            var twoBlocksName = log.NextNextBlock;
+
+                            section requiredSafeSection = new section();
+
+                            foreach (var sp in safePaths)
+                            {
+                                if (sp.Blocks.Count > 2)
+                                {
+                                    
+                                    if (sp.Blocks.ElementAt(0).userName == ccurrentBlockName && sp.Blocks.ElementAt(1).userName == nextBlockName && sp.Blocks.ElementAt(2).userName == twoBlocksName)
+                                    {
+                                        lbOutput.Items.Add("Train " + log.DCCiD + " is on an active safe section " + sp.userName);
+                                        for (int c = 3; c < sp.Blocks.Count; i++)
+                                        {
+                                            var blockChecking = sp.Blocks.ElementAtOrDefault(c);
+                                            if (blockChecking != null)
+                                            {
+                                                var liveBlockData = newBlockStates.FirstOrDefault(f => f.data.userName == nextBlock.BlockChecked);
+
+                                            }
+                                            
+                                        }
+                                    }
+                                }
+                                
+
+                            }
+                        }
+
                         //Generate warnings and alerts if issues found in the next two blocks, now that we know the route is up-to-date based on the live layout
                         issueFoundThisBlock = !string.IsNullOrEmpty(currentBlockRoute.LikelyIssue);
                         issueFoundNextBlock = nextBlock != null && !string.IsNullOrEmpty(nextBlock.LikelyIssue);
@@ -2323,6 +2361,43 @@ namespace LayoutMonitor
                 }
             }
 
+
+            var safePaths = config.GetSafePathSections();
+            var thisSectionIsAnActiveSafeSection = false;
+            section requiredSafeSection = new section();
+
+            if (safePaths != null)
+            {
+                var ccurrentBlockName = blockLog.CurrentBlock;
+                var nextBlockName = blockLog.NextBlock;
+                var twoBlocksName = blockLog.NextNextBlock;                
+
+                foreach (var sp in safePaths)
+                {
+                    if (sp.Blocks.Count > 2)
+                    {
+                        requiredSafeSection = sp;
+                        thisSectionIsAnActiveSafeSection = true;
+                        //if (sp.Blocks.ElementAt(0).userName == ccurrentBlockName && sp.Blocks.ElementAt(1).userName == nextBlockName && sp.Blocks.ElementAt(2).userName == twoBlocksName)
+                        //{
+                        //    lbOutput.Items.Add("Train " + blockLog.DCCiD + " is on an active safe section " + sp.userName);
+                        //    for (int i = 3; i < sp.Blocks.Count; i++)
+                        //    {
+                        //        var blockChecking = sp.Blocks.ElementAtOrDefault(i);
+                        //        if (blockChecking != null)
+                        //        {
+                        //            var liveBlockData = newBlockStates.FirstOrDefault(f => f.data.userName == nextBlock.BlockChecked);
+
+                        //        }
+
+                        //    }
+                        //}
+                    }
+
+
+                }
+            }
+
             //Now create alerts if issues are found - an alert is created for each issue, but the severity is determined by how many blocks ahead the issue is found - 1 block ahead is danger, 2 blocks ahead is caution
             //Helpful to record lots of info as part of the alert - the train, the block etc so that they can be related back to existing journeys, trains and blocks
             //Also prevents creation of duplicate alerts for the same or for different issues, also if next block has a danger alert, no point in creating a caution alert for the same or subsequent block if other issues exist
@@ -2415,6 +2490,39 @@ namespace LayoutMonitor
                 TerminateTrain(blockLog.Name);
                 return (false, "No more blocks");
             }
+
+            var fullSafeSectionAvailableForAllocation = true;
+            var safeSectionAllocationLog = "";
+            if (!issueFoundThisBlock && !issueFoundNextBlock && !issueFoundTwoBlocks && thisSectionIsAnActiveSafeSection)
+            {
+                //first 3 blocks in any safe section are used for matching and would be occupied / allocated anyway by existing processes
+                //So now need to check the remainder of the blocks in the safe section of occupancy / allocation
+                for (int i = 3; i < requiredSafeSection.Blocks.Count; i++)
+                {
+                    var blockChecking = requiredSafeSection.Blocks.ElementAtOrDefault(i);
+                    if (blockChecking != null)
+                    {
+                        var liveBlockData = await (webClient.GetBlock(blockChecking.systemName));
+                        if (liveBlockData != null && liveBlockData.data != null)
+                        {
+                            if (liveBlockData.data.state == (int)BlockState.Occupied)
+                            {
+                                fullSafeSectionAvailableForAllocation = false;
+                                safeSectionAllocationLog += "Safe section block " + liveBlockData.data.userName + " occupied; ";
+                            }
+                            else if (liveBlockData.data.value.data.userName != blockLog.DCCiD && liveBlockData.data.value.data.userName != blockLog.OriginalDCCiD)
+                            {
+                                fullSafeSectionAvailableForAllocation = false;
+                                safeSectionAllocationLog += "Safe section block " + liveBlockData.data.userName + " allocated to "+liveBlockData.data.value.data.userName+"; ";
+                            }
+                        }
+                    }
+
+                }
+            }
+
+
+
 
             //If no issues are found, signals are proceed
             if (!issueFoundThisBlock && !issueFoundNextBlock && !issueFoundTwoBlocks)

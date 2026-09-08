@@ -88,6 +88,7 @@
             this.label13 = new System.Windows.Forms.Label();
             this.lblNextSectionInfo = new System.Windows.Forms.Label();
             this.cbRepeatTransitWhenComplete = new System.Windows.Forms.CheckBox();
+            this.cbPassOnDirectionToTriggers = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // lbRoster
@@ -649,18 +650,29 @@
             // cbRepeatTransitWhenComplete
             // 
             this.cbRepeatTransitWhenComplete.AutoSize = true;
-            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(613, 184);
+            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(613, 168);
             this.cbRepeatTransitWhenComplete.Name = "cbRepeatTransitWhenComplete";
             this.cbRepeatTransitWhenComplete.Size = new System.Drawing.Size(61, 17);
             this.cbRepeatTransitWhenComplete.TabIndex = 62;
             this.cbRepeatTransitWhenComplete.Text = "Repeat";
             this.cbRepeatTransitWhenComplete.UseVisualStyleBackColor = true;
             // 
+            // cbPassOnDirectionToTriggers
+            // 
+            this.cbPassOnDirectionToTriggers.AutoSize = true;
+            this.cbPassOnDirectionToTriggers.Location = new System.Drawing.Point(613, 150);
+            this.cbPassOnDirectionToTriggers.Name = "cbPassOnDirectionToTriggers";
+            this.cbPassOnDirectionToTriggers.Size = new System.Drawing.Size(64, 17);
+            this.cbPassOnDirectionToTriggers.TabIndex = 63;
+            this.cbPassOnDirectionToTriggers.Text = "Pass on";
+            this.cbPassOnDirectionToTriggers.UseVisualStyleBackColor = true;
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 462);
+            this.Controls.Add(this.cbPassOnDirectionToTriggers);
             this.Controls.Add(this.cbRepeatTransitWhenComplete);
             this.Controls.Add(this.lblNextSectionInfo);
             this.Controls.Add(this.label13);
@@ -789,5 +801,6 @@
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.Label lblNextSectionInfo;
         private System.Windows.Forms.CheckBox cbRepeatTransitWhenComplete;
+        private System.Windows.Forms.CheckBox cbPassOnDirectionToTriggers;
     }
 }

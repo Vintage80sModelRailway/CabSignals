@@ -273,6 +273,7 @@ namespace JMRIReader
                             tr.NextTransit = bt.TransitName;
                             tr.NextTransitDirection = bt.TrainsitTrainDirection;
                             tr.NextTransitDelayMS = bt.DelayMilliseconds;
+                            tr.HasOnStopTrigger = true;
                         }
                     }
                 }
@@ -507,6 +508,22 @@ namespace JMRIReader
 
             //var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(f => f.Attribute("userName").Value.Contains("Yard Line"));
             var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(w => w.Element("comment") != null && w.Element("comment").Value.Contains("Storage"));
+            var sectionSerializer = new XmlSerializer(typeof(section));
+            foreach (var s in configSections)
+            {
+                section cs = (section)sectionSerializer.Deserialize(s.CreateReader());
+                ys.Add(cs);
+            }
+
+            return ys;
+        }
+
+        public List<section> GetSafePathSections()
+        {
+            var ys = new List<section>();
+
+            //var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(f => f.Attribute("userName").Value.Contains("Yard Line"));
+            var configSections = config.Elements("layout-config").Elements("sections").Elements("section").Where(w => w.Element("comment") != null && w.Element("comment").Value.Contains("SafePath"));
             var sectionSerializer = new XmlSerializer(typeof(section));
             foreach (var s in configSections)
             {

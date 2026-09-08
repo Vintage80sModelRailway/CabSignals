@@ -22,6 +22,8 @@ public partial class transit
     public string StartBlock { get; set; }
     public string EndBlock { get; set; }
     public TransitType Type { get; set; }
+    public bool HasOnStopTrigger { get; set; }
+    public bool PassDirectionToOnStopTrigger { get; set; }
 
     private transitTransitsection[] transitsectionField;
 

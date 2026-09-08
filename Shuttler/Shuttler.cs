@@ -974,12 +974,19 @@ namespace Shuttler
                         else
                         {
                             var newTransit = config.GetTransit(done.NextTransit, DispatcherPath);
+                            newTransit.HasOnStopTrigger = done.HasOnStopTrigger;
+                            newTransit.PassDirectionToOnStopTrigger = done.PassOnDirectionToTriggeredTransit;
+
                             newTransit.NextTransitAdditionalDelayMS = done.NextTransitAdditionalDelayMS;
                             if (done.TransitType == TransitType.ManualRepeating)
                             {
                                 newTransit.Type = TransitType.ManualRepeating;
                             }
-                            else
+                            else if (done.TransitType == TransitType.TriggeredFromUserTransit || done.TransitType == TransitType.UserSelected)
+                            {
+                                newTransit.Type = TransitType.TriggeredFromUserTransit;
+                            }
+                            else 
                                 newTransit.Type = TransitType.TriggeredFromShuttleTrausit;
 
                             if (done.RestartWhenDone)
@@ -990,9 +997,16 @@ namespace Shuttler
                                 newTransit.NextTransitDelayMS = done.NextTransitDelayMS;
                             }
 
+                            var nextDir = done.NextTransitDirection;
+
+                            if (done.HasOnStopTrigger && done.PassOnDirectionToTriggeredTransit)
+                                nextDir = done.TrainMotionCfg.TrainDirection;
+                                
+
                             var fullDelay = done.NextTransitDelayMS + done.NextTransitAdditionalDelayMS;
-                            WriteToLog("Triggering new transit - " + done.NextTransit + " - " + done.NextTransitDirection.ToString() + " - delay " + fullDelay.ToString());
-                            StartAutoTrain(newTransit, done.NextTransitDirection, DateTime.Now.AddMilliseconds(fullDelay));
+                            WriteToLog("Triggering new transit - " + done.NextTransit + " - " + nextDir.ToString() + " - delay " + fullDelay.ToString());
+                            WriteToLog("Prev type "+done.TransitType.ToString()+" - new type - "+newTransit.Type.ToString());
+                            StartAutoTrain(newTransit, nextDir, DateTime.Now.AddMilliseconds(fullDelay));
                         }
                     }
 
@@ -1085,8 +1099,8 @@ namespace Shuttler
                         }
                         WriteToLog("Grabbed throttle for " + log.DCCiD + " - mtIndex " + mtIndex);
                         c.SetThrottleDirection(rosterIndex, ((int)log.TrainMotionCfg.TrainDirection).ToString());
+                        //ensure lights are on
                         c.SetFunction(rosterIndex, 0, 1); //lights on
-                        
                     }
                 }
 
@@ -1245,11 +1259,13 @@ namespace Shuttler
             //if current speed < target speed and not ramping up, set ramp up
             foreach (var log in _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete).ToList())
             {
+                var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
+                var rosterIndex = c.Roster.IndexOf(re);
 
+                //ensure lights are on
+                c.SetFunction(rosterIndex, 0, 1); //lights on
                 if (log.TrainMotionCfg.RequiredSpeedStep != log.TrainMotionCfg.CurrentSpeedStep)
                 {
-                    var re = c.Roster.FirstOrDefault(f => f.ID == log.DCCiD);
-                    var rosterIndex = c.Roster.IndexOf(re);
                     c.SetThrottleSpeedStep(rosterIndex, log.TrainMotionCfg.RequiredSpeedStep);
                     log.TrainMotionCfg.CurrentSpeedStep = log.TrainMotionCfg.RequiredSpeedStep;
 
@@ -2705,7 +2721,7 @@ namespace Shuttler
                         else
                             currentBlockLog.derivedStoppingSensor = currentBlockLog.reverseStoppingSensor;
 
-                        //WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
+                        WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
                     }
 
                     var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
@@ -3004,6 +3020,8 @@ namespace Shuttler
             trainLog.NextTransitDelayMS = transit.NextTransitDelayMS;
             trainLog.NextTransitAdditionalDelayMS = transit.NextTransitAdditionalDelayMS;
             trainLog.TransitType = transit.Type;
+            trainLog.HasOnStopTrigger = transit.HasOnStopTrigger;
+            trainLog.PassOnDirectionToTriggeredTransit = transit.PassDirectionToOnStopTrigger;
             WriteToLog("Next transit delay " + trainLog.NextTransitDelayMS.ToString()+" - additional "+trainLog.NextTransitAdditionalDelayMS.ToString());
 
             var startBlock = transit.StartBlock;
@@ -3147,8 +3165,9 @@ namespace Shuttler
 
             trainLog.NumberOfSectionsAheadToAllocate = numberOfSectionsAhead;
 
-            if ((transit.Type == TransitType.TriggeredFromShuttleTrausit || transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
-            {
+            //if ((transit.Type == TransitType.TriggeredFromShuttleTrausit || transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
+            if ((transit.Type == TransitType.YardShuffle || transit.Type == TransitType.StationAutomation) && defaultDirection != null)
+                {
                 var textDir = defaultDirection.Value;
                 if (textDir == "Forward")
                     trainLog.TrainMotionCfg.TrainDirection = TrainDirection.Forward;
@@ -3401,11 +3420,18 @@ namespace Shuttler
                 newTransit.NextTransitDelayMS = additionalDelayMS * 1000;
                 newTransit.Type = TransitType.ManualRepeating;
             }
+
             newTransit.NextTransitAdditionalDelayMS = additionalDelayMS * 1000;
 
             TrainDirection dir = TrainDirection.Forward;
             if (cbTransitTrainDirection.Text == "Reverse")
                 dir = TrainDirection.Reverse;
+
+            if (cbPassOnDirectionToTriggers.Checked && newTransit.HasOnStopTrigger)
+            {
+                newTransit.NextTransitDirection = dir;
+                newTransit.PassDirectionToOnStopTrigger = true;
+            }
 
             StartAutoTrain(newTransit, dir, DateTime.Now);
             tbAdditionalTriggerDelay.Text = "";
