@@ -327,18 +327,18 @@ namespace WiThrottleClient
 
         }
 
-        public bool ReleaseThrottle(int rosterIndex)
+        public (bool success, string reason) ReleaseThrottle(int rosterIndex)
         {
             var throttle = _throttles.FirstOrDefault(f => f.RosterIndex == rosterIndex);
             if (throttle == null)
             {
-                return false;
+                return (false,"Could not find throttle by roster index");
             }
 
             var rosterEntry = _roster.RosterList.ElementAtOrDefault(rosterIndex);
             if (rosterEntry == null || throttle.ID != rosterEntry.ID)
             {
-                return false;
+                return (false, "Could not find roster entry by roster index");
             }
 
             string rel = "M" + throttle.mtIndex + "-" + rosterEntry.IDType + rosterEntry.ID + "<;>r\n";
@@ -347,7 +347,7 @@ namespace WiThrottleClient
             throttle.ID = "xx";
             throttle.RosterIndex = -1;
 
-            return true;
+            return (true, rel);
         }
 
         public bool SetThrottleSpeedStep(int rosterIndex, int speed)

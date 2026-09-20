@@ -282,6 +282,7 @@ namespace JMRIReader
         public async Task<BlockRootObject> GetBlock(string UserName)
         {
             BlockRootObject block = new BlockRootObject();
+            block.RetrievalError = false;
 
             var response = await client.GetAsync("/json/block/"+UserName);
             var jsonResponse = await response.Content.ReadAsStringAsync();
@@ -293,7 +294,12 @@ namespace JMRIReader
             catch (Exception ex)
             {
                 var test = ex.Message;
+                block.RetrievalError = true;
             }
+
+            if (block.data == null)
+                block.RetrievalError = true;
+
             return block;
         }
 

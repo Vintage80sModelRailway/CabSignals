@@ -89,6 +89,8 @@
             this.lblNextSectionInfo = new System.Windows.Forms.Label();
             this.cbRepeatTransitWhenComplete = new System.Windows.Forms.CheckBox();
             this.cbPassOnDirectionToTriggers = new System.Windows.Forms.CheckBox();
+            this.cbEndToEndRepeating = new System.Windows.Forms.CheckBox();
+            this.lblBlockAllocationIssue = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lbRoster
@@ -436,7 +438,7 @@
             // 
             this.label10.AutoSize = true;
             this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label10.Location = new System.Drawing.Point(27, 128);
+            this.label10.Location = new System.Drawing.Point(24, 171);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(68, 13);
             this.label10.TabIndex = 38;
@@ -445,7 +447,7 @@
             // lblBlockLength
             // 
             this.lblBlockLength.AutoSize = true;
-            this.lblBlockLength.Location = new System.Drawing.Point(101, 128);
+            this.lblBlockLength.Location = new System.Drawing.Point(98, 171);
             this.lblBlockLength.Name = "lblBlockLength";
             this.lblBlockLength.Size = new System.Drawing.Size(41, 13);
             this.lblBlockLength.TabIndex = 39;
@@ -455,7 +457,7 @@
             // 
             this.label11.AutoSize = true;
             this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label11.Location = new System.Drawing.Point(154, 129);
+            this.label11.Location = new System.Drawing.Point(151, 172);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(76, 13);
             this.label11.TabIndex = 40;
@@ -464,7 +466,7 @@
             // lblMmCoveredThisBlock
             // 
             this.lblMmCoveredThisBlock.AutoSize = true;
-            this.lblMmCoveredThisBlock.Location = new System.Drawing.Point(236, 129);
+            this.lblMmCoveredThisBlock.Location = new System.Drawing.Point(233, 172);
             this.lblMmCoveredThisBlock.Name = "lblMmCoveredThisBlock";
             this.lblMmCoveredThisBlock.Size = new System.Drawing.Size(41, 13);
             this.lblMmCoveredThisBlock.TabIndex = 41;
@@ -483,7 +485,7 @@
             // 
             this.lblmmCoveredPercentLabel.AutoSize = true;
             this.lblmmCoveredPercentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblmmCoveredPercentLabel.Location = new System.Drawing.Point(322, 129);
+            this.lblmmCoveredPercentLabel.Location = new System.Drawing.Point(319, 172);
             this.lblmmCoveredPercentLabel.Name = "lblmmCoveredPercentLabel";
             this.lblmmCoveredPercentLabel.Size = new System.Drawing.Size(51, 13);
             this.lblmmCoveredPercentLabel.TabIndex = 43;
@@ -492,7 +494,7 @@
             // lblmmCoveredPercent
             // 
             this.lblmmCoveredPercent.AutoSize = true;
-            this.lblmmCoveredPercent.Location = new System.Drawing.Point(392, 129);
+            this.lblmmCoveredPercent.Location = new System.Drawing.Point(389, 172);
             this.lblmmCoveredPercent.Name = "lblmmCoveredPercent";
             this.lblmmCoveredPercent.Size = new System.Drawing.Size(41, 13);
             this.lblmmCoveredPercent.TabIndex = 44;
@@ -632,7 +634,7 @@
             // 
             this.label13.AutoSize = true;
             this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(30, 154);
+            this.label13.Location = new System.Drawing.Point(24, 129);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(78, 13);
             this.label13.TabIndex = 60;
@@ -641,7 +643,7 @@
             // lblNextSectionInfo
             // 
             this.lblNextSectionInfo.AutoSize = true;
-            this.lblNextSectionInfo.Location = new System.Drawing.Point(118, 154);
+            this.lblNextSectionInfo.Location = new System.Drawing.Point(112, 129);
             this.lblNextSectionInfo.Name = "lblNextSectionInfo";
             this.lblNextSectionInfo.Size = new System.Drawing.Size(41, 13);
             this.lblNextSectionInfo.TabIndex = 61;
@@ -650,7 +652,7 @@
             // cbRepeatTransitWhenComplete
             // 
             this.cbRepeatTransitWhenComplete.AutoSize = true;
-            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(613, 168);
+            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(475, 148);
             this.cbRepeatTransitWhenComplete.Name = "cbRepeatTransitWhenComplete";
             this.cbRepeatTransitWhenComplete.Size = new System.Drawing.Size(61, 17);
             this.cbRepeatTransitWhenComplete.TabIndex = 62;
@@ -660,18 +662,40 @@
             // cbPassOnDirectionToTriggers
             // 
             this.cbPassOnDirectionToTriggers.AutoSize = true;
-            this.cbPassOnDirectionToTriggers.Location = new System.Drawing.Point(613, 150);
+            this.cbPassOnDirectionToTriggers.Location = new System.Drawing.Point(613, 148);
             this.cbPassOnDirectionToTriggers.Name = "cbPassOnDirectionToTriggers";
             this.cbPassOnDirectionToTriggers.Size = new System.Drawing.Size(64, 17);
             this.cbPassOnDirectionToTriggers.TabIndex = 63;
             this.cbPassOnDirectionToTriggers.Text = "Pass on";
             this.cbPassOnDirectionToTriggers.UseVisualStyleBackColor = true;
             // 
+            // cbEndToEndRepeating
+            // 
+            this.cbEndToEndRepeating.AutoSize = true;
+            this.cbEndToEndRepeating.Location = new System.Drawing.Point(613, 171);
+            this.cbEndToEndRepeating.Name = "cbEndToEndRepeating";
+            this.cbEndToEndRepeating.Size = new System.Drawing.Size(78, 17);
+            this.cbEndToEndRepeating.TabIndex = 64;
+            this.cbEndToEndRepeating.Text = "End to end";
+            this.cbEndToEndRepeating.UseVisualStyleBackColor = true;
+            // 
+            // lblBlockAllocationIssue
+            // 
+            this.lblBlockAllocationIssue.AutoSize = true;
+            this.lblBlockAllocationIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockAllocationIssue.ForeColor = System.Drawing.Color.Red;
+            this.lblBlockAllocationIssue.Location = new System.Drawing.Point(26, 148);
+            this.lblBlockAllocationIssue.Name = "lblBlockAllocationIssue";
+            this.lblBlockAllocationIssue.Size = new System.Drawing.Size(0, 13);
+            this.lblBlockAllocationIssue.TabIndex = 65;
+            // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1602, 462);
+            this.Controls.Add(this.lblBlockAllocationIssue);
+            this.Controls.Add(this.cbEndToEndRepeating);
             this.Controls.Add(this.cbPassOnDirectionToTriggers);
             this.Controls.Add(this.cbRepeatTransitWhenComplete);
             this.Controls.Add(this.lblNextSectionInfo);
@@ -802,5 +826,7 @@
         private System.Windows.Forms.Label lblNextSectionInfo;
         private System.Windows.Forms.CheckBox cbRepeatTransitWhenComplete;
         private System.Windows.Forms.CheckBox cbPassOnDirectionToTriggers;
+        private System.Windows.Forms.CheckBox cbEndToEndRepeating;
+        private System.Windows.Forms.Label lblBlockAllocationIssue;
     }
 }

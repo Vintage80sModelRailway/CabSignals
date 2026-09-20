@@ -48,7 +48,8 @@
             //Triggered,
             UserSelected,
             YardShuffle,
-            StationAutomation
+            StationAutomation,
+            EndToEndRepeating
         }
 
         public enum AutomatedTrainRunningStatus

@@ -986,7 +986,14 @@ namespace Shuttler
                             {
                                 newTransit.Type = TransitType.TriggeredFromUserTransit;
                             }
-                            else 
+                            else if (done.TransitType == TransitType.EndToEndRepeating)
+                            {
+                                newTransit.Type = TransitType.EndToEndRepeating;
+                                newTransit.NextTransitDirection = TrainDirection.Forward;
+                                if (done.NextTransitDirection == TrainDirection.Forward)
+                                    newTransit.NextTransitDirection = TrainDirection.Reverse;
+                            }
+                            else
                                 newTransit.Type = TransitType.TriggeredFromShuttleTrausit;
 
                             if (done.RestartWhenDone)
@@ -1012,7 +1019,8 @@ namespace Shuttler
 
                     var re = c.Roster.FirstOrDefault(f => f.ID == done.DCCiD);
                     var rosterIndex = c.Roster.IndexOf(re);
-                    c.ReleaseThrottle(rosterIndex);
+                    var result =  c.ReleaseThrottle(rosterIndex);
+                    WriteToLog("Throttle release for " + done.DCCiD + " " + result.success.ToString() + " " + result.reason);
 
                     if (lbRunningTransits.SelectedIndex >= 0)
                     {
@@ -1425,7 +1433,6 @@ namespace Shuttler
 
                     //check sections for allocation and turnout setting                    
                     int sectionBlockCounter = 0;
-                    var nextSectionAllocationFailureReason = "";
                     for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + log.NumberOfSectionsAheadToAllocate; i++)
                     {
                         sectionCounter++;
@@ -1529,7 +1536,15 @@ namespace Shuttler
                                 {
                                     //var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
                                     var liveStateBlock = await webClient.GetBlock(block.userName);
-                                    if (liveStateBlock != null)
+
+                                    if (liveStateBlock.RetrievalError || liveStateBlock.data.userName != block.userName)
+                                    {
+                                        WriteToLog("Retrieval exception for block " + block.userName + " Log ID " + log.DCCiD);
+                                        errorDuringBlockChecking = true;
+                                        allocationIssueFound = true;
+                                    }
+
+                                    else
                                     {
                                         var state = liveStateBlock.data.state;
                                         var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
@@ -1621,9 +1636,8 @@ namespace Shuttler
                                             }
                                         }
                                     }
-                                    else
-                                        errorDuringBlockChecking = true;
                                 }
+
                                 if (!allocationIssueFound)
                                 {
                                     block.ClearToAllocate = true;
@@ -3424,13 +3438,23 @@ namespace Shuttler
             newTransit.NextTransitAdditionalDelayMS = additionalDelayMS * 1000;
 
             TrainDirection dir = TrainDirection.Forward;
+            TrainDirection oppositeDir = TrainDirection.Reverse;
+
             if (cbTransitTrainDirection.Text == "Reverse")
                 dir = TrainDirection.Reverse;
+
+            if (dir == TrainDirection.Reverse)
+                oppositeDir = TrainDirection.Forward;            
 
             if (cbPassOnDirectionToTriggers.Checked && newTransit.HasOnStopTrigger)
             {
                 newTransit.NextTransitDirection = dir;
                 newTransit.PassDirectionToOnStopTrigger = true;
+            }
+            else if (cbEndToEndRepeating.Checked && newTransit.HasOnStopTrigger)
+            {
+                newTransit.NextTransitDirection = oppositeDir;
+                newTransit.Type = TransitType.EndToEndRepeating;
             }
 
             StartAutoTrain(newTransit, dir, DateTime.Now);
@@ -4244,6 +4268,40 @@ namespace Shuttler
                     {
                         lblmmCoveredPercent.Text = "0";
                     }
+                }
+
+                var sectionIndex = log.AutomatedCurrentSectionIndex;
+                var allocationIssueText = string.Empty;
+
+                for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + log.NumberOfSectionsAheadToAllocate; i++)
+                {
+                    var sectionToCheck = log.AutomatedSectionList.ElementAtOrDefault(i);
+                    if (sectionToCheck == null) continue;
+
+                    string sectionName = sectionToCheck.SectionkUserName;
+                    foreach (var blockToCheck in sectionToCheck.Blocks)
+                    {
+                        if (!string.IsNullOrEmpty(blockToCheck.AllocationIssue))
+                        {
+                            allocationIssueText = allocationIssueText + " - " + blockToCheck.AllocationIssue;
+
+                            //if (!allocationIssueText.Contains(blockToCheck.userName))
+                            //{
+                            //    allocationIssueText = allocationIssueText + blockToCheck.userName + " - " + blockToCheck.AllocationIssue;
+                            //}
+                            //else
+                            //{
+                            //    
+                            //}
+                        }
+                    }
+                }
+
+                lblBlockAllocationIssue.Text = allocationIssueText;
+
+                if (!string.IsNullOrEmpty(allocationIssueText))
+                {
+                    
                 }
             }
 
