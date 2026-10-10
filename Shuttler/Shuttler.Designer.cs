@@ -91,19 +91,30 @@
             this.cbPassOnDirectionToTriggers = new System.Windows.Forms.CheckBox();
             this.cbEndToEndRepeating = new System.Windows.Forms.CheckBox();
             this.lblBlockAllocationIssue = new System.Windows.Forms.Label();
+            this.pnlControl = new System.Windows.Forms.Panel();
+            this.pnlTrigger = new System.Windows.Forms.Panel();
+            this.panel3 = new System.Windows.Forms.Panel();
+            this.panel2 = new System.Windows.Forms.Panel();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.panel4 = new System.Windows.Forms.Panel();
+            this.panel5 = new System.Windows.Forms.Panel();
+            this.pnlControl.SuspendLayout();
+            this.pnlTrigger.SuspendLayout();
+            this.panel4.SuspendLayout();
+            this.panel5.SuspendLayout();
             this.SuspendLayout();
             // 
             // lbRoster
             // 
             this.lbRoster.FormattingEnabled = true;
-            this.lbRoster.Location = new System.Drawing.Point(1393, 39);
+            this.lbRoster.Location = new System.Drawing.Point(1376, 44);
             this.lbRoster.Name = "lbRoster";
             this.lbRoster.Size = new System.Drawing.Size(202, 342);
             this.lbRoster.TabIndex = 1;
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(27, 15);
+            this.btnStart.Location = new System.Drawing.Point(9, 13);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(75, 23);
             this.btnStart.TabIndex = 2;
@@ -113,7 +124,7 @@
             // 
             // btnStop
             // 
-            this.btnStop.Location = new System.Drawing.Point(27, 46);
+            this.btnStop.Location = new System.Drawing.Point(9, 44);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(75, 23);
             this.btnStop.TabIndex = 3;
@@ -124,7 +135,7 @@
             // lbStartBlocks
             // 
             this.lbStartBlocks.FormattingEnabled = true;
-            this.lbStartBlocks.Location = new System.Drawing.Point(1015, 39);
+            this.lbStartBlocks.Location = new System.Drawing.Point(998, 44);
             this.lbStartBlocks.Name = "lbStartBlocks";
             this.lbStartBlocks.Size = new System.Drawing.Size(192, 342);
             this.lbStartBlocks.TabIndex = 4;
@@ -133,7 +144,7 @@
             // lbDestinationBlocks
             // 
             this.lbDestinationBlocks.FormattingEnabled = true;
-            this.lbDestinationBlocks.Location = new System.Drawing.Point(1213, 39);
+            this.lbDestinationBlocks.Location = new System.Drawing.Point(1196, 44);
             this.lbDestinationBlocks.Name = "lbDestinationBlocks";
             this.lbDestinationBlocks.Size = new System.Drawing.Size(174, 342);
             this.lbDestinationBlocks.TabIndex = 5;
@@ -141,7 +152,7 @@
             // cbAvailableTransits
             // 
             this.cbAvailableTransits.FormattingEnabled = true;
-            this.cbAvailableTransits.Location = new System.Drawing.Point(471, 67);
+            this.cbAvailableTransits.Location = new System.Drawing.Point(403, 68);
             this.cbAvailableTransits.Name = "cbAvailableTransits";
             this.cbAvailableTransits.Size = new System.Drawing.Size(206, 21);
             this.cbAvailableTransits.TabIndex = 6;
@@ -150,7 +161,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(1015, 20);
+            this.label1.Location = new System.Drawing.Point(995, 19);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(63, 13);
             this.label1.TabIndex = 7;
@@ -159,7 +170,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(1213, 20);
+            this.label2.Location = new System.Drawing.Point(1193, 19);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(94, 13);
             this.label2.TabIndex = 8;
@@ -168,7 +179,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(1393, 20);
+            this.label3.Location = new System.Drawing.Point(1373, 19);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(38, 13);
             this.label3.TabIndex = 9;
@@ -176,7 +187,7 @@
             // 
             // btnReloadStartBlocks
             // 
-            this.btnReloadStartBlocks.Location = new System.Drawing.Point(1132, 13);
+            this.btnReloadStartBlocks.Location = new System.Drawing.Point(1112, 12);
             this.btnReloadStartBlocks.Name = "btnReloadStartBlocks";
             this.btnReloadStartBlocks.Size = new System.Drawing.Size(75, 23);
             this.btnReloadStartBlocks.TabIndex = 10;
@@ -186,7 +197,7 @@
             // 
             // btnReloadDestBlocks
             // 
-            this.btnReloadDestBlocks.Location = new System.Drawing.Point(1313, 13);
+            this.btnReloadDestBlocks.Location = new System.Drawing.Point(1293, 12);
             this.btnReloadDestBlocks.Name = "btnReloadDestBlocks";
             this.btnReloadDestBlocks.Size = new System.Drawing.Size(75, 23);
             this.btnReloadDestBlocks.TabIndex = 11;
@@ -197,7 +208,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(468, 46);
+            this.label4.Location = new System.Drawing.Point(401, 52);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(86, 13);
             this.label4.TabIndex = 12;
@@ -205,7 +216,7 @@
             // 
             // btnTransitsReload
             // 
-            this.btnTransitsReload.Location = new System.Drawing.Point(602, 41);
+            this.btnTransitsReload.Location = new System.Drawing.Point(534, 38);
             this.btnTransitsReload.Name = "btnTransitsReload";
             this.btnTransitsReload.Size = new System.Drawing.Size(75, 23);
             this.btnTransitsReload.TabIndex = 13;
@@ -215,7 +226,7 @@
             // 
             // btnStartTransit
             // 
-            this.btnStartTransit.Location = new System.Drawing.Point(585, 207);
+            this.btnStartTransit.Location = new System.Drawing.Point(16, 13);
             this.btnStartTransit.Name = "btnStartTransit";
             this.btnStartTransit.Size = new System.Drawing.Size(92, 23);
             this.btnStartTransit.TabIndex = 14;
@@ -229,7 +240,7 @@
             this.cbTransitTrainDirection.Items.AddRange(new object[] {
             "Forward",
             "Reverse"});
-            this.cbTransitTrainDirection.Location = new System.Drawing.Point(472, 121);
+            this.cbTransitTrainDirection.Location = new System.Drawing.Point(404, 122);
             this.cbTransitTrainDirection.Name = "cbTransitTrainDirection";
             this.cbTransitTrainDirection.Size = new System.Drawing.Size(205, 21);
             this.cbTransitTrainDirection.TabIndex = 15;
@@ -237,7 +248,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(472, 99);
+            this.label5.Location = new System.Drawing.Point(401, 106);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(76, 13);
             this.label5.TabIndex = 16;
@@ -246,15 +257,15 @@
             // lbOutput
             // 
             this.lbOutput.FormattingEnabled = true;
-            this.lbOutput.Location = new System.Drawing.Point(12, 283);
+            this.lbOutput.Location = new System.Drawing.Point(13, 793);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(665, 147);
+            this.lbOutput.Size = new System.Drawing.Size(1564, 147);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
             // 
             this.lbRunningTransits.FormattingEnabled = true;
-            this.lbRunningTransits.Location = new System.Drawing.Point(857, 39);
+            this.lbRunningTransits.Location = new System.Drawing.Point(840, 44);
             this.lbRunningTransits.Name = "lbRunningTransits";
             this.lbRunningTransits.Size = new System.Drawing.Size(152, 199);
             this.lbRunningTransits.TabIndex = 18;
@@ -263,7 +274,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(857, 20);
+            this.label6.Location = new System.Drawing.Point(837, 19);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(73, 13);
             this.label6.TabIndex = 19;
@@ -272,80 +283,86 @@
             // lblActiveTransitID
             // 
             this.lblActiveTransitID.AutoSize = true;
-            this.lblActiveTransitID.Location = new System.Drawing.Point(24, 85);
+            this.lblActiveTransitID.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblActiveTransitID.Location = new System.Drawing.Point(16, 14);
             this.lblActiveTransitID.Name = "lblActiveTransitID";
-            this.lblActiveTransitID.Size = new System.Drawing.Size(18, 13);
+            this.lblActiveTransitID.Size = new System.Drawing.Size(28, 20);
             this.lblActiveTransitID.TabIndex = 20;
             this.lblActiveTransitID.Text = "ID";
             // 
             // lblActiveTransitName
             // 
             this.lblActiveTransitName.AutoSize = true;
-            this.lblActiveTransitName.Location = new System.Drawing.Point(48, 85);
+            this.lblActiveTransitName.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblActiveTransitName.Location = new System.Drawing.Point(59, 14);
             this.lblActiveTransitName.Name = "lblActiveTransitName";
-            this.lblActiveTransitName.Size = new System.Drawing.Size(44, 13);
+            this.lblActiveTransitName.Size = new System.Drawing.Size(65, 20);
             this.lblActiveTransitName.TabIndex = 21;
             this.lblActiveTransitName.Text = "Journey";
             // 
             // lblSignalAspect
             // 
             this.lblSignalAspect.AutoSize = true;
-            this.lblSignalAspect.Location = new System.Drawing.Point(24, 217);
+            this.lblSignalAspect.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSignalAspect.Location = new System.Drawing.Point(31, 136);
             this.lblSignalAspect.Name = "lblSignalAspect";
-            this.lblSignalAspect.Size = new System.Drawing.Size(36, 13);
+            this.lblSignalAspect.Size = new System.Drawing.Size(53, 20);
             this.lblSignalAspect.TabIndex = 22;
             this.lblSignalAspect.Text = "Signal";
             // 
             // lblSignalReason
             // 
             this.lblSignalReason.AutoSize = true;
-            this.lblSignalReason.Location = new System.Drawing.Point(115, 217);
+            this.lblSignalReason.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSignalReason.Location = new System.Drawing.Point(151, 136);
             this.lblSignalReason.Name = "lblSignalReason";
-            this.lblSignalReason.Size = new System.Drawing.Size(71, 13);
+            this.lblSignalReason.Size = new System.Drawing.Size(106, 20);
             this.lblSignalReason.TabIndex = 23;
             this.lblSignalReason.Text = "Signal reason";
             // 
             // lblSpeed
             // 
             this.lblSpeed.AutoSize = true;
-            this.lblSpeed.Location = new System.Drawing.Point(24, 257);
+            this.lblSpeed.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSpeed.Location = new System.Drawing.Point(22, 218);
             this.lblSpeed.Name = "lblSpeed";
-            this.lblSpeed.Size = new System.Drawing.Size(38, 13);
+            this.lblSpeed.Size = new System.Drawing.Size(56, 20);
             this.lblSpeed.TabIndex = 24;
             this.lblSpeed.Text = "Speed";
             // 
             // lblSpeedReason
             // 
             this.lblSpeedReason.AutoSize = true;
-            this.lblSpeedReason.Location = new System.Drawing.Point(284, 257);
+            this.lblSpeedReason.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSpeedReason.Location = new System.Drawing.Point(282, 218);
             this.lblSpeedReason.Name = "lblSpeedReason";
-            this.lblSpeedReason.Size = new System.Drawing.Size(73, 13);
+            this.lblSpeedReason.Size = new System.Drawing.Size(109, 20);
             this.lblSpeedReason.TabIndex = 25;
             this.lblSpeedReason.Text = "Speed reason";
             // 
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label7.Location = new System.Drawing.Point(24, 241);
+            this.label7.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label7.Location = new System.Drawing.Point(16, 198);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(43, 13);
+            this.label7.Size = new System.Drawing.Size(61, 20);
             this.label7.TabIndex = 26;
             this.label7.Text = "Speed";
             // 
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label8.Location = new System.Drawing.Point(24, 198);
+            this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label8.Location = new System.Drawing.Point(19, 116);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(42, 13);
+            this.label8.Size = new System.Drawing.Size(59, 20);
             this.label8.TabIndex = 27;
             this.label8.Text = "Signal";
             // 
             // btnMoveTrain
             // 
-            this.btnMoveTrain.Location = new System.Drawing.Point(1159, 436);
+            this.btnMoveTrain.Location = new System.Drawing.Point(467, 3);
             this.btnMoveTrain.Name = "btnMoveTrain";
             this.btnMoveTrain.Size = new System.Drawing.Size(96, 23);
             this.btnMoveTrain.TabIndex = 28;
@@ -356,7 +373,7 @@
             // lbRoute
             // 
             this.lbRoute.FormattingEnabled = true;
-            this.lbRoute.Location = new System.Drawing.Point(701, 39);
+            this.lbRoute.Location = new System.Drawing.Point(684, 44);
             this.lbRoute.Name = "lbRoute";
             this.lbRoute.Size = new System.Drawing.Size(150, 342);
             this.lbRoute.TabIndex = 29;
@@ -364,7 +381,7 @@
             // lblRoute
             // 
             this.lblRoute.AutoSize = true;
-            this.lblRoute.Location = new System.Drawing.Point(701, 20);
+            this.lblRoute.Location = new System.Drawing.Point(681, 19);
             this.lblRoute.Name = "lblRoute";
             this.lblRoute.Padding = new System.Windows.Forms.Padding(0, 0, 50, 0);
             this.lblRoute.Size = new System.Drawing.Size(86, 13);
@@ -374,7 +391,7 @@
             // btnRoutePrev
             // 
             this.btnRoutePrev.Enabled = false;
-            this.btnRoutePrev.Location = new System.Drawing.Point(703, 436);
+            this.btnRoutePrev.Location = new System.Drawing.Point(20, 3);
             this.btnRoutePrev.Name = "btnRoutePrev";
             this.btnRoutePrev.Size = new System.Drawing.Size(33, 23);
             this.btnRoutePrev.TabIndex = 31;
@@ -385,7 +402,7 @@
             // btnRouteNext
             // 
             this.btnRouteNext.Enabled = false;
-            this.btnRouteNext.Location = new System.Drawing.Point(823, 436);
+            this.btnRouteNext.Location = new System.Drawing.Point(140, 3);
             this.btnRouteNext.Name = "btnRouteNext";
             this.btnRouteNext.Size = new System.Drawing.Size(30, 23);
             this.btnRouteNext.TabIndex = 32;
@@ -396,7 +413,7 @@
             // btnRouteAccept
             // 
             this.btnRouteAccept.Enabled = false;
-            this.btnRouteAccept.Location = new System.Drawing.Point(742, 436);
+            this.btnRouteAccept.Location = new System.Drawing.Point(59, 3);
             this.btnRouteAccept.Name = "btnRouteAccept";
             this.btnRouteAccept.Size = new System.Drawing.Size(75, 23);
             this.btnRouteAccept.TabIndex = 33;
@@ -407,16 +424,17 @@
             // lblSpeedStep
             // 
             this.lblSpeedStep.AutoSize = true;
-            this.lblSpeedStep.Location = new System.Drawing.Point(91, 257);
+            this.lblSpeedStep.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSpeedStep.Location = new System.Drawing.Point(89, 218);
             this.lblSpeedStep.Name = "lblSpeedStep";
-            this.lblSpeedStep.Size = new System.Drawing.Size(51, 13);
+            this.lblSpeedStep.Size = new System.Drawing.Size(76, 20);
             this.lblSpeedStep.TabIndex = 34;
             this.lblSpeedStep.Text = "Spd Step";
             this.lblSpeedStep.UseWaitCursor = true;
             // 
             // btnStopTransit
             // 
-            this.btnStopTransit.Location = new System.Drawing.Point(585, 241);
+            this.btnStopTransit.Location = new System.Drawing.Point(9, 274);
             this.btnStopTransit.Name = "btnStopTransit";
             this.btnStopTransit.Size = new System.Drawing.Size(89, 23);
             this.btnStopTransit.TabIndex = 35;
@@ -427,108 +445,114 @@
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label9.Location = new System.Drawing.Point(24, 108);
+            this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label9.Location = new System.Drawing.Point(16, 37);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(39, 13);
+            this.label9.Size = new System.Drawing.Size(53, 20);
             this.label9.TabIndex = 36;
             this.label9.Text = "Block";
             // 
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label10.Location = new System.Drawing.Point(24, 171);
+            this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label10.Location = new System.Drawing.Point(19, 262);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(68, 13);
+            this.label10.Size = new System.Drawing.Size(98, 20);
             this.label10.TabIndex = 38;
             this.label10.Text = "Length mm";
             // 
             // lblBlockLength
             // 
             this.lblBlockLength.AutoSize = true;
-            this.lblBlockLength.Location = new System.Drawing.Point(98, 171);
+            this.lblBlockLength.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockLength.Location = new System.Drawing.Point(123, 262);
             this.lblBlockLength.Name = "lblBlockLength";
-            this.lblBlockLength.Size = new System.Drawing.Size(41, 13);
+            this.lblBlockLength.Size = new System.Drawing.Size(59, 20);
             this.lblBlockLength.TabIndex = 39;
-            this.lblBlockLength.Text = "label11";
+            this.lblBlockLength.Text = "Length";
             // 
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label11.Location = new System.Drawing.Point(151, 172);
+            this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label11.Location = new System.Drawing.Point(217, 262);
             this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(76, 13);
+            this.label11.Size = new System.Drawing.Size(108, 20);
             this.label11.TabIndex = 40;
             this.label11.Text = "Covered mm";
             // 
             // lblMmCoveredThisBlock
             // 
             this.lblMmCoveredThisBlock.AutoSize = true;
-            this.lblMmCoveredThisBlock.Location = new System.Drawing.Point(233, 172);
+            this.lblMmCoveredThisBlock.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblMmCoveredThisBlock.Location = new System.Drawing.Point(331, 262);
             this.lblMmCoveredThisBlock.Name = "lblMmCoveredThisBlock";
-            this.lblMmCoveredThisBlock.Size = new System.Drawing.Size(41, 13);
+            this.lblMmCoveredThisBlock.Size = new System.Drawing.Size(35, 20);
             this.lblMmCoveredThisBlock.TabIndex = 41;
-            this.lblMmCoveredThisBlock.Text = "label12";
+            this.lblMmCoveredThisBlock.Text = "mm";
             // 
             // lblSpeedMMS
             // 
             this.lblSpeedMMS.AutoSize = true;
-            this.lblSpeedMMS.Location = new System.Drawing.Point(183, 257);
+            this.lblSpeedMMS.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSpeedMMS.Location = new System.Drawing.Point(181, 218);
             this.lblSpeedMMS.Name = "lblSpeedMMS";
-            this.lblSpeedMMS.Size = new System.Drawing.Size(66, 13);
+            this.lblSpeedMMS.Size = new System.Drawing.Size(97, 20);
             this.lblSpeedMMS.TabIndex = 42;
             this.lblSpeedMMS.Text = "Speed MMS";
             // 
             // lblmmCoveredPercentLabel
             // 
             this.lblmmCoveredPercentLabel.AutoSize = true;
-            this.lblmmCoveredPercentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblmmCoveredPercentLabel.Location = new System.Drawing.Point(319, 172);
+            this.lblmmCoveredPercentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblmmCoveredPercentLabel.Location = new System.Drawing.Point(442, 262);
             this.lblmmCoveredPercentLabel.Name = "lblmmCoveredPercentLabel";
-            this.lblmmCoveredPercentLabel.Size = new System.Drawing.Size(51, 13);
+            this.lblmmCoveredPercentLabel.Size = new System.Drawing.Size(71, 20);
             this.lblmmCoveredPercentLabel.TabIndex = 43;
             this.lblmmCoveredPercentLabel.Text = "Percent";
             // 
             // lblmmCoveredPercent
             // 
             this.lblmmCoveredPercent.AutoSize = true;
-            this.lblmmCoveredPercent.Location = new System.Drawing.Point(389, 172);
+            this.lblmmCoveredPercent.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblmmCoveredPercent.Location = new System.Drawing.Point(545, 262);
             this.lblmmCoveredPercent.Name = "lblmmCoveredPercent";
-            this.lblmmCoveredPercent.Size = new System.Drawing.Size(41, 13);
+            this.lblmmCoveredPercent.Size = new System.Drawing.Size(64, 20);
             this.lblmmCoveredPercent.TabIndex = 44;
-            this.lblmmCoveredPercent.Text = "label12";
+            this.lblmmCoveredPercent.Text = "Percent";
             // 
             // lblCurrentBlock
             // 
             this.lblCurrentBlock.AutoSize = true;
-            this.lblCurrentBlock.Location = new System.Drawing.Point(79, 108);
+            this.lblCurrentBlock.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblCurrentBlock.Location = new System.Drawing.Point(71, 37);
             this.lblCurrentBlock.Name = "lblCurrentBlock";
-            this.lblCurrentBlock.Size = new System.Drawing.Size(34, 13);
+            this.lblCurrentBlock.Size = new System.Drawing.Size(48, 20);
             this.lblCurrentBlock.TabIndex = 46;
             this.lblCurrentBlock.Text = "Block";
             // 
             // lblTrainStatus
             // 
             this.lblTrainStatus.AutoSize = true;
-            this.lblTrainStatus.Location = new System.Drawing.Point(145, 85);
+            this.lblTrainStatus.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblTrainStatus.Location = new System.Drawing.Point(175, 14);
             this.lblTrainStatus.Name = "lblTrainStatus";
-            this.lblTrainStatus.Size = new System.Drawing.Size(37, 13);
+            this.lblTrainStatus.Size = new System.Drawing.Size(56, 20);
             this.lblTrainStatus.TabIndex = 47;
             this.lblTrainStatus.Text = "Status";
             // 
             // pbBlockProgress
             // 
-            this.pbBlockProgress.Location = new System.Drawing.Point(12, 436);
+            this.pbBlockProgress.Location = new System.Drawing.Point(14, 735);
             this.pbBlockProgress.Name = "pbBlockProgress";
-            this.pbBlockProgress.Size = new System.Drawing.Size(665, 23);
+            this.pbBlockProgress.Size = new System.Drawing.Size(1564, 23);
             this.pbBlockProgress.TabIndex = 48;
             // 
             // cbManageYard
             // 
             this.cbManageYard.AutoSize = true;
-            this.cbManageYard.Location = new System.Drawing.Point(587, 15);
+            this.cbManageYard.Location = new System.Drawing.Point(553, 13);
             this.cbManageYard.Name = "cbManageYard";
             this.cbManageYard.Size = new System.Drawing.Size(90, 17);
             this.cbManageYard.TabIndex = 49;
@@ -537,7 +561,7 @@
             // 
             // tbAdditionalTriggerDelay
             // 
-            this.tbAdditionalTriggerDelay.Location = new System.Drawing.Point(509, 13);
+            this.tbAdditionalTriggerDelay.Location = new System.Drawing.Point(546, 195);
             this.tbAdditionalTriggerDelay.Name = "tbAdditionalTriggerDelay";
             this.tbAdditionalTriggerDelay.Size = new System.Drawing.Size(63, 20);
             this.tbAdditionalTriggerDelay.TabIndex = 50;
@@ -545,7 +569,7 @@
             // lblAdditionalTriggerDelay
             // 
             this.lblAdditionalTriggerDelay.AutoSize = true;
-            this.lblAdditionalTriggerDelay.Location = new System.Drawing.Point(435, 15);
+            this.lblAdditionalTriggerDelay.Location = new System.Drawing.Point(472, 197);
             this.lblAdditionalTriggerDelay.Name = "lblAdditionalTriggerDelay";
             this.lblAdditionalTriggerDelay.Size = new System.Drawing.Size(68, 13);
             this.lblAdditionalTriggerDelay.TabIndex = 51;
@@ -553,7 +577,7 @@
             // 
             // btnStartStationAutomation
             // 
-            this.btnStartStationAutomation.Location = new System.Drawing.Point(136, 15);
+            this.btnStartStationAutomation.Location = new System.Drawing.Point(127, 13);
             this.btnStartStationAutomation.Name = "btnStartStationAutomation";
             this.btnStartStationAutomation.Size = new System.Drawing.Size(75, 23);
             this.btnStartStationAutomation.TabIndex = 52;
@@ -564,7 +588,7 @@
             // btnStopStationAutomation
             // 
             this.btnStopStationAutomation.Enabled = false;
-            this.btnStopStationAutomation.Location = new System.Drawing.Point(136, 45);
+            this.btnStopStationAutomation.Location = new System.Drawing.Point(127, 274);
             this.btnStopStationAutomation.Name = "btnStopStationAutomation";
             this.btnStopStationAutomation.Size = new System.Drawing.Size(75, 23);
             this.btnStopStationAutomation.TabIndex = 53;
@@ -574,7 +598,7 @@
             // 
             // btnTest
             // 
-            this.btnTest.Location = new System.Drawing.Point(450, 207);
+            this.btnTest.Location = new System.Drawing.Point(1440, 764);
             this.btnTest.Name = "btnTest";
             this.btnTest.Size = new System.Drawing.Size(75, 23);
             this.btnTest.TabIndex = 54;
@@ -584,7 +608,7 @@
             // 
             // btnCopyLogToClipboard
             // 
-            this.btnCopyLogToClipboard.Location = new System.Drawing.Point(528, 254);
+            this.btnCopyLogToClipboard.Location = new System.Drawing.Point(1533, 764);
             this.btnCopyLogToClipboard.Name = "btnCopyLogToClipboard";
             this.btnCopyLogToClipboard.Size = new System.Drawing.Size(44, 23);
             this.btnCopyLogToClipboard.TabIndex = 55;
@@ -594,7 +618,7 @@
             // 
             // btnStartClockwiseSA
             // 
-            this.btnStartClockwiseSA.Location = new System.Drawing.Point(239, 15);
+            this.btnStartClockwiseSA.Location = new System.Drawing.Point(230, 13);
             this.btnStartClockwiseSA.Name = "btnStartClockwiseSA";
             this.btnStartClockwiseSA.Size = new System.Drawing.Size(75, 23);
             this.btnStartClockwiseSA.TabIndex = 56;
@@ -605,7 +629,7 @@
             // btnStopClockwiseSA
             // 
             this.btnStopClockwiseSA.Enabled = false;
-            this.btnStopClockwiseSA.Location = new System.Drawing.Point(239, 44);
+            this.btnStopClockwiseSA.Location = new System.Drawing.Point(230, 273);
             this.btnStopClockwiseSA.Name = "btnStopClockwiseSA";
             this.btnStopClockwiseSA.Size = new System.Drawing.Size(75, 23);
             this.btnStopClockwiseSA.TabIndex = 57;
@@ -616,7 +640,7 @@
             // lbInclineQueue
             // 
             this.lbInclineQueue.FormattingEnabled = true;
-            this.lbInclineQueue.Location = new System.Drawing.Point(857, 273);
+            this.lbInclineQueue.Location = new System.Drawing.Point(840, 278);
             this.lbInclineQueue.Name = "lbInclineQueue";
             this.lbInclineQueue.Size = new System.Drawing.Size(152, 108);
             this.lbInclineQueue.TabIndex = 58;
@@ -624,7 +648,7 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(854, 257);
+            this.label12.Location = new System.Drawing.Point(837, 262);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(71, 13);
             this.label12.TabIndex = 59;
@@ -633,26 +657,27 @@
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(24, 129);
+            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label13.Location = new System.Drawing.Point(16, 58);
             this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(78, 13);
+            this.label13.Size = new System.Drawing.Size(108, 20);
             this.label13.TabIndex = 60;
             this.label13.Text = "Next section";
             // 
             // lblNextSectionInfo
             // 
             this.lblNextSectionInfo.AutoSize = true;
-            this.lblNextSectionInfo.Location = new System.Drawing.Point(112, 129);
+            this.lblNextSectionInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblNextSectionInfo.Location = new System.Drawing.Point(151, 58);
             this.lblNextSectionInfo.Name = "lblNextSectionInfo";
-            this.lblNextSectionInfo.Size = new System.Drawing.Size(41, 13);
+            this.lblNextSectionInfo.Size = new System.Drawing.Size(96, 20);
             this.lblNextSectionInfo.TabIndex = 61;
-            this.lblNextSectionInfo.Text = "label14";
+            this.lblNextSectionInfo.Text = "Next section";
             // 
             // cbRepeatTransitWhenComplete
             // 
             this.cbRepeatTransitWhenComplete.AutoSize = true;
-            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(475, 148);
+            this.cbRepeatTransitWhenComplete.Location = new System.Drawing.Point(407, 149);
             this.cbRepeatTransitWhenComplete.Name = "cbRepeatTransitWhenComplete";
             this.cbRepeatTransitWhenComplete.Size = new System.Drawing.Size(61, 17);
             this.cbRepeatTransitWhenComplete.TabIndex = 62;
@@ -662,7 +687,7 @@
             // cbPassOnDirectionToTriggers
             // 
             this.cbPassOnDirectionToTriggers.AutoSize = true;
-            this.cbPassOnDirectionToTriggers.Location = new System.Drawing.Point(613, 148);
+            this.cbPassOnDirectionToTriggers.Location = new System.Drawing.Point(531, 149);
             this.cbPassOnDirectionToTriggers.Name = "cbPassOnDirectionToTriggers";
             this.cbPassOnDirectionToTriggers.Size = new System.Drawing.Size(64, 17);
             this.cbPassOnDirectionToTriggers.TabIndex = 63;
@@ -672,7 +697,7 @@
             // cbEndToEndRepeating
             // 
             this.cbEndToEndRepeating.AutoSize = true;
-            this.cbEndToEndRepeating.Location = new System.Drawing.Point(613, 171);
+            this.cbEndToEndRepeating.Location = new System.Drawing.Point(531, 172);
             this.cbEndToEndRepeating.Name = "cbEndToEndRepeating";
             this.cbEndToEndRepeating.Size = new System.Drawing.Size(78, 17);
             this.cbEndToEndRepeating.TabIndex = 64;
@@ -682,83 +707,151 @@
             // lblBlockAllocationIssue
             // 
             this.lblBlockAllocationIssue.AutoSize = true;
-            this.lblBlockAllocationIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblBlockAllocationIssue.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblBlockAllocationIssue.ForeColor = System.Drawing.Color.Red;
-            this.lblBlockAllocationIssue.Location = new System.Drawing.Point(26, 148);
+            this.lblBlockAllocationIssue.Location = new System.Drawing.Point(34, 84);
             this.lblBlockAllocationIssue.Name = "lblBlockAllocationIssue";
-            this.lblBlockAllocationIssue.Size = new System.Drawing.Size(0, 13);
+            this.lblBlockAllocationIssue.Size = new System.Drawing.Size(0, 20);
             this.lblBlockAllocationIssue.TabIndex = 65;
+            // 
+            // pnlControl
+            // 
+            this.pnlControl.BackColor = System.Drawing.Color.LightCoral;
+            this.pnlControl.Controls.Add(this.btnStart);
+            this.pnlControl.Controls.Add(this.btnStop);
+            this.pnlControl.Controls.Add(this.cbManageYard);
+            this.pnlControl.Location = new System.Drawing.Point(13, 13);
+            this.pnlControl.Name = "pnlControl";
+            this.pnlControl.Size = new System.Drawing.Size(654, 101);
+            this.pnlControl.TabIndex = 66;
+            // 
+            // pnlTrigger
+            // 
+            this.pnlTrigger.BackColor = System.Drawing.Color.LightGreen;
+            this.pnlTrigger.Controls.Add(this.btnStartStationAutomation);
+            this.pnlTrigger.Controls.Add(this.panel3);
+            this.pnlTrigger.Controls.Add(this.btnStopStationAutomation);
+            this.pnlTrigger.Controls.Add(this.btnStopClockwiseSA);
+            this.pnlTrigger.Controls.Add(this.panel2);
+            this.pnlTrigger.Controls.Add(this.panel1);
+            this.pnlTrigger.Controls.Add(this.btnStartClockwiseSA);
+            this.pnlTrigger.Controls.Add(this.cbAvailableTransits);
+            this.pnlTrigger.Controls.Add(this.label4);
+            this.pnlTrigger.Controls.Add(this.btnTransitsReload);
+            this.pnlTrigger.Controls.Add(this.cbEndToEndRepeating);
+            this.pnlTrigger.Controls.Add(this.btnStartTransit);
+            this.pnlTrigger.Controls.Add(this.cbPassOnDirectionToTriggers);
+            this.pnlTrigger.Controls.Add(this.cbTransitTrainDirection);
+            this.pnlTrigger.Controls.Add(this.cbRepeatTransitWhenComplete);
+            this.pnlTrigger.Controls.Add(this.label5);
+            this.pnlTrigger.Controls.Add(this.btnStopTransit);
+            this.pnlTrigger.Controls.Add(this.tbAdditionalTriggerDelay);
+            this.pnlTrigger.Controls.Add(this.lblAdditionalTriggerDelay);
+            this.pnlTrigger.Location = new System.Drawing.Point(13, 121);
+            this.pnlTrigger.Name = "pnlTrigger";
+            this.pnlTrigger.Size = new System.Drawing.Size(654, 307);
+            this.pnlTrigger.TabIndex = 67;
+            // 
+            // panel3
+            // 
+            this.panel3.BackColor = System.Drawing.Color.LightGreen;
+            this.panel3.Location = new System.Drawing.Point(652, 271);
+            this.panel3.Name = "panel3";
+            this.panel3.Size = new System.Drawing.Size(913, 35);
+            this.panel3.TabIndex = 68;
+            // 
+            // panel2
+            // 
+            this.panel2.Location = new System.Drawing.Point(652, 268);
+            this.panel2.Name = "panel2";
+            this.panel2.Size = new System.Drawing.Size(913, 39);
+            this.panel2.TabIndex = 68;
+            // 
+            // panel1
+            // 
+            this.panel1.Location = new System.Drawing.Point(652, 268);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(912, 38);
+            this.panel1.TabIndex = 65;
+            // 
+            // panel4
+            // 
+            this.panel4.BackColor = System.Drawing.Color.LightGreen;
+            this.panel4.Controls.Add(this.btnRouteAccept);
+            this.panel4.Controls.Add(this.btnMoveTrain);
+            this.panel4.Controls.Add(this.btnRoutePrev);
+            this.panel4.Controls.Add(this.btnRouteNext);
+            this.panel4.Location = new System.Drawing.Point(668, 392);
+            this.panel4.Name = "panel4";
+            this.panel4.Size = new System.Drawing.Size(910, 36);
+            this.panel4.TabIndex = 68;
+            // 
+            // panel5
+            // 
+            this.panel5.BackColor = System.Drawing.Color.LightSkyBlue;
+            this.panel5.Controls.Add(this.label10);
+            this.panel5.Controls.Add(this.lblActiveTransitID);
+            this.panel5.Controls.Add(this.lblActiveTransitName);
+            this.panel5.Controls.Add(this.lblSignalAspect);
+            this.panel5.Controls.Add(this.lblBlockAllocationIssue);
+            this.panel5.Controls.Add(this.lblSignalReason);
+            this.panel5.Controls.Add(this.lblNextSectionInfo);
+            this.panel5.Controls.Add(this.lblSpeed);
+            this.panel5.Controls.Add(this.label13);
+            this.panel5.Controls.Add(this.lblSpeedReason);
+            this.panel5.Controls.Add(this.label7);
+            this.panel5.Controls.Add(this.label8);
+            this.panel5.Controls.Add(this.lblSpeedStep);
+            this.panel5.Controls.Add(this.lblTrainStatus);
+            this.panel5.Controls.Add(this.label9);
+            this.panel5.Controls.Add(this.lblCurrentBlock);
+            this.panel5.Controls.Add(this.lblBlockLength);
+            this.panel5.Controls.Add(this.lblmmCoveredPercent);
+            this.panel5.Controls.Add(this.label11);
+            this.panel5.Controls.Add(this.lblmmCoveredPercentLabel);
+            this.panel5.Controls.Add(this.lblMmCoveredThisBlock);
+            this.panel5.Controls.Add(this.lblSpeedMMS);
+            this.panel5.Location = new System.Drawing.Point(13, 435);
+            this.panel5.Name = "panel5";
+            this.panel5.Size = new System.Drawing.Size(1565, 294);
+            this.panel5.TabIndex = 69;
             // 
             // Shuttler
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1602, 462);
-            this.Controls.Add(this.lblBlockAllocationIssue);
-            this.Controls.Add(this.cbEndToEndRepeating);
-            this.Controls.Add(this.cbPassOnDirectionToTriggers);
-            this.Controls.Add(this.cbRepeatTransitWhenComplete);
-            this.Controls.Add(this.lblNextSectionInfo);
-            this.Controls.Add(this.label13);
+            this.ClientSize = new System.Drawing.Size(1602, 982);
+            this.Controls.Add(this.panel5);
+            this.Controls.Add(this.panel4);
+            this.Controls.Add(this.pnlTrigger);
+            this.Controls.Add(this.pnlControl);
             this.Controls.Add(this.label12);
             this.Controls.Add(this.lbInclineQueue);
-            this.Controls.Add(this.btnStopClockwiseSA);
-            this.Controls.Add(this.btnStartClockwiseSA);
+            this.Controls.Add(this.pbBlockProgress);
             this.Controls.Add(this.btnCopyLogToClipboard);
             this.Controls.Add(this.btnTest);
-            this.Controls.Add(this.btnStopStationAutomation);
-            this.Controls.Add(this.btnStartStationAutomation);
-            this.Controls.Add(this.lblAdditionalTriggerDelay);
-            this.Controls.Add(this.tbAdditionalTriggerDelay);
-            this.Controls.Add(this.cbManageYard);
-            this.Controls.Add(this.pbBlockProgress);
-            this.Controls.Add(this.lblTrainStatus);
-            this.Controls.Add(this.lblCurrentBlock);
-            this.Controls.Add(this.lblmmCoveredPercent);
-            this.Controls.Add(this.lblmmCoveredPercentLabel);
-            this.Controls.Add(this.lblSpeedMMS);
-            this.Controls.Add(this.lblMmCoveredThisBlock);
-            this.Controls.Add(this.label11);
-            this.Controls.Add(this.lblBlockLength);
-            this.Controls.Add(this.label10);
-            this.Controls.Add(this.label9);
-            this.Controls.Add(this.btnStopTransit);
-            this.Controls.Add(this.lblSpeedStep);
-            this.Controls.Add(this.btnRouteAccept);
-            this.Controls.Add(this.btnRouteNext);
-            this.Controls.Add(this.btnRoutePrev);
             this.Controls.Add(this.lblRoute);
             this.Controls.Add(this.lbRoute);
-            this.Controls.Add(this.btnMoveTrain);
-            this.Controls.Add(this.label8);
-            this.Controls.Add(this.label7);
-            this.Controls.Add(this.lblSpeedReason);
-            this.Controls.Add(this.lblSpeed);
-            this.Controls.Add(this.lblSignalReason);
-            this.Controls.Add(this.lblSignalAspect);
-            this.Controls.Add(this.lblActiveTransitName);
-            this.Controls.Add(this.lblActiveTransitID);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.lbRunningTransits);
             this.Controls.Add(this.lbOutput);
-            this.Controls.Add(this.label5);
-            this.Controls.Add(this.cbTransitTrainDirection);
-            this.Controls.Add(this.btnStartTransit);
-            this.Controls.Add(this.btnTransitsReload);
-            this.Controls.Add(this.label4);
             this.Controls.Add(this.btnReloadDestBlocks);
             this.Controls.Add(this.btnReloadStartBlocks);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.cbAvailableTransits);
             this.Controls.Add(this.lbDestinationBlocks);
             this.Controls.Add(this.lbStartBlocks);
-            this.Controls.Add(this.btnStop);
-            this.Controls.Add(this.btnStart);
             this.Controls.Add(this.lbRoster);
             this.Name = "Shuttler";
             this.Text = "Shuttler";
+            this.pnlControl.ResumeLayout(false);
+            this.pnlControl.PerformLayout();
+            this.pnlTrigger.ResumeLayout(false);
+            this.pnlTrigger.PerformLayout();
+            this.panel4.ResumeLayout(false);
+            this.panel5.ResumeLayout(false);
+            this.panel5.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -828,5 +921,12 @@
         private System.Windows.Forms.CheckBox cbPassOnDirectionToTriggers;
         private System.Windows.Forms.CheckBox cbEndToEndRepeating;
         private System.Windows.Forms.Label lblBlockAllocationIssue;
+        private System.Windows.Forms.Panel pnlControl;
+        private System.Windows.Forms.Panel pnlTrigger;
+        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel panel3;
+        private System.Windows.Forms.Panel panel2;
+        private System.Windows.Forms.Panel panel4;
+        private System.Windows.Forms.Panel panel5;
     }
 }
