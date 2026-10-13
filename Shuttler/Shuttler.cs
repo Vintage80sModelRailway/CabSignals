@@ -326,152 +326,36 @@ namespace Shuttler
                         newBlockValue = previousBlockState.data.value.data.userName;
                     }
 
-                    WriteToLog("NAB " + nab.data.userName+" processing order "+nab.ProcessingOrder.ToString());
-                    var logsByNextBlock = _logs.Where(w =>w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.NextBlock == nab.data.userName).ToList();
+                    if (nab.data.value != null && nab.data.value.data != null)
+                    {
+                        newBlockValue = nab.data.value.data.userName;
+                    }
+
+                    WriteToLog("NAB " + nab.data.userName+" processing order "+nab.ProcessingOrder.ToString()+" derived value "+newBlockValue);
+                   // var logsByNextBlock = _logs.Where(w =>w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.NextBlock == nab.data.userName).ToList();
                     var existingLog = new LiveJourneyLog();
                     existingLog.DCCiD = "XX";
 
-                    if (logsByNextBlock.Count == 1)
+                    var definitelyTheRightLog = _logs.FirstOrDefault(f => f.DCCiD == newBlockValue && f.DCCiD == allocatedTo);
+                    if (definitelyTheRightLog != null)
                     {
-                        var logByNextBlock = logsByNextBlock.First();
-                        if (logByNextBlock.DCCiD == newBlockValue)
-                        {
-                            WriteToLog("Matched NAB to log via log next block, matching ID " + newBlockValue);
-                            matchingLogFound = true;
-                            existingLog = logByNextBlock;
-                        }
-                        else
-                        {
-                            if (string.IsNullOrWhiteSpace(newBlockValue))
-                            {
-                                WriteToLog("New value empty - could be a late entry, expecting "+logByNextBlock.DCCiD);
-                            }
-                            else if (newBlockValue != logByNextBlock.DCCiD)
-                            {
-                                WriteToLog("Possibly incorrect block value - expecting " + logByNextBlock.DCCiD + " but got " + newBlockValue);
-                            }
-
-                            var includedInAllocation = logByNextBlock.AllocatedBlocks.Any(a => a == newBlockValue);
-                            WriteToLog("NAB Value mismatch when only one log matched via next block - log ID " + logByNextBlock.DCCiD + " but block value " + newBlockValue+" - included in allocation = "+includedInAllocation.ToString());
-                            if (includedInAllocation)
-                            {
-                                //probably need to correct a block value here
-
-                                var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
-
-                            }
-                        }                        
+                        WriteToLog("Matched NAB to log via log next block and allocation, matching ID " + newBlockValue);
+                        matchingLogFound = true;
+                        existingLog = definitelyTheRightLog;
                     }
 
-                    if (!matchingLogFound && logsByNextBlock.Count > 1)
+                    if (existingLog.DCCiD == "XX")
                     {
-                        var IDs = "";
-                        var idOfMovingTrain = "";
-                        LiveJourneyLog logToProcess = new LiveJourneyLog();
-                        var foundASingleMatchingLog = false;
-
-                        foreach (var lbnb in logsByNextBlock)
+                        //still not found - maybe JMRI gave it the wrong ID, so go by allocation
+                        var probablyTheRightLog = _logs.FirstOrDefault(f => f.DCCiD == allocatedTo);
+                        if (probablyTheRightLog != null)
                         {
-                            IDs += lbnb.DCCiD + "; ";
-                        }
-
-                        WriteToLog("More than one matching log by next block found for " + nab.data.userName + " - " + IDs);
-
-                        var logsWithMovingTrains = logsByNextBlock.Where(w => w.TrainMotionCfg.CurrentSpeedStep > 0).ToList();
-                        WriteToLog("Number of found logs with moving train: " + logsWithMovingTrains.Count.ToString());
-                        if (logsWithMovingTrains.Count == 1)
-                        {
-                            var logWithMovingTrain = logsWithMovingTrains.First();
-                            logToProcess = logWithMovingTrain;
-                            WriteToLog("Only " + logWithMovingTrain.DCCiD + " had a moving train though");
-
-                            foundASingleMatchingLog = true;
-                        }
-
-                        //try to recover from a short?
-                        if (!foundASingleMatchingLog)
-                        {
-                            var logsWithThisBlockAsCurrerntBlock = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.CurrentBlock == nab.data.userName);
-                            if (logsWithThisBlockAsCurrerntBlock.Count() == 1)
-                            {
-                                var log = logsWithThisBlockAsCurrerntBlock.First();
-                                WriteToLog("Recoved from a short here? Found " + log.DCCiD + " with this block as current block - " + nab.data.userName);
-                                existingLog = log;
-                                if (string.IsNullOrWhiteSpace(newBlockValue))
-                                {
-                                    WriteToLog("New value empty - could be a late entry, expecting " + log.DCCiD);
-                                }
-                                else if (newBlockValue != log.DCCiD)
-                                {
-                                    WriteToLog("Possibly incorrect block value - expecting " + log.DCCiD + " but got " + newBlockValue);
-                                }
-
-                                var includedInAllocation = log.AllocatedBlocks.Any(a => a == newBlockValue);
-                                WriteToLog("NAB Value mismatch when only one log matched via current block - log ID " + log.DCCiD + " but block value " + newBlockValue + " - included in allocation = " + includedInAllocation.ToString());
-                                if (includedInAllocation)
-                                {
-                                    //probably need to correct a block value here
-
-                                    var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
-
-                                }
-                            }
-                        }
-
-                        if (!foundASingleMatchingLog)
-                        {
-                            var logsWithThisBlockAllocated = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.AllocatedBlocks.Contains(nab.data.userName)).ToList();
-                            if (logsWithThisBlockAllocated.Any())
-                            {
-                                WriteToLog("Number of found logs with this block allocated: " + logsWithThisBlockAllocated.Count.ToString());
-                                if (logsWithThisBlockAllocated.Count == 1)
-                                {
-                                    logToProcess = logsWithThisBlockAllocated.First();
-                                    foundASingleMatchingLog = true;
-                                }
-                                else
-                                {
-                                    var logsWithThisBlockAllocatedAndAMovingTrain = logsWithThisBlockAllocated.Where(w => w.TrainMotionCfg.CurrentSpeedStep > 0).ToList();
-                                    WriteToLog("Number of found logs with this block allocated and are moving: " + logsWithThisBlockAllocatedAndAMovingTrain.Count.ToString());
-                                    if (logsWithThisBlockAllocatedAndAMovingTrain.Count == 1)
-                                    {
-                                        var logWithAllocationAndMovingTrain = logsWithThisBlockAllocatedAndAMovingTrain.First();
-                                        logToProcess = logWithAllocationAndMovingTrain;
-                                        WriteToLog("Only " + logToProcess.DCCiD + " had a moving train though");
-
-                                        foundASingleMatchingLog = true;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (foundASingleMatchingLog)
-                        {
-                            existingLog = logToProcess;
+                            WriteToLog("Matched NAB to log via allocation only - block value was "+newBlockValue+" so changed to allocation value of  " + allocatedTo);
                             matchingLogFound = true;
-                            if (logToProcess.DCCiD == newBlockValue)
-                            {
-                                WriteToLog("Matched NAB to log via allocation or speed, matching ID " + newBlockValue);
-                            }
-                            else
-                            {
-                                if (string.IsNullOrWhiteSpace(newBlockValue))
-                                {
-                                    WriteToLog("New block value empty - could be a late entry, expecting " + logToProcess.DCCiD);
-                                }
-                                else if (newBlockValue != logToProcess.DCCiD)
-                                {
-                                    WriteToLog("Possibly incorrect block value - expecting " + logToProcess.DCCiD + " but got " + newBlockValue);
-                                }
+                            existingLog = probablyTheRightLog;
 
-                                var includedInAllocation = logToProcess.AllocatedBlocks.Any(a => a == newBlockValue);
-                                WriteToLog("NAB Value mismatch when only one log matched via next block - log ID " + logToProcess.DCCiD + " but block value " + newBlockValue + " - included in allocation = " + includedInAllocation.ToString());
-                                if (includedInAllocation)
-                                {
-                                    //probably need to correct a block value here
-                                    var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
-                                }
-                            }
+                            //probably need to correct a block value here
+                            var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
                         }
                     }
 
@@ -508,15 +392,20 @@ namespace Shuttler
                     {
                         //should be 0 but hey ho
                         var abIndex = activeSection.Blocks.IndexOf(activeBlock);
+                        int currentSectionCurrentBlockIndex = -1;
+                        int blocksRemainingInSection = -1;
                         if (abIndex > -1)
                         {
-                            if (abIndex + 1 < activeSection.Blocks.Count)
+                            if (abIndex < activeSection.Blocks.Count)
                             {
+                                currentSectionCurrentBlockIndex = abIndex;
+                                blocksRemainingInSection = activeSection.Blocks.Count - (currentSectionCurrentBlockIndex + 1);
+                                existingLog.BlocksRemainingInCurrentSection = blocksRemainingInSection;
                                 var nextBlock = activeSection.Blocks.ElementAtOrDefault(abIndex + 1);
                                 if (nextBlock != null)
                                 {
                                     //nextBlockName = nextBlock.userName;
-                                    WriteToLog("New block " + nab.data.userName + " comes from existing section " + activeSection.SectionkUserName);
+                                    WriteToLog("New block " + nab.data.userName + " comes from existing section " + activeSection.SectionkUserName+" section index "+currentSectionCurrentBlockIndex.ToString() + " brics " + blocksRemainingInSection.ToString());
                                 }
                                 else
                                 {
@@ -526,14 +415,17 @@ namespace Shuttler
                             else
                             {
                                 //get from next section
-                                var nextSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex + 1);
+                                var nextSection = existingLog.AutomatedSectionList.ElementAtOrDefault(existingLog.AutomatedCurrentSectionIndex); //this has already been incremented so don't add another
+                                currentSectionCurrentBlockIndex = 0;
+                                blocksRemainingInSection = activeSection.Blocks.Count - (currentSectionCurrentBlockIndex + 1);
+                                existingLog.BlocksRemainingInCurrentSection = blocksRemainingInSection;
                                 if (nextSection != null)
                                 {
                                     var nextBlock = nextSection.Blocks.FirstOrDefault();
                                     if (nextBlock != null)
                                     {
                                         //nextBlockName = nextBlock.userName;
-                                        WriteToLog("New block " + nab.data.userName + " comes from new section " + nextSection.SectionkUserName);
+                                        WriteToLog("New block " + nab.data.userName + " comes from new section " + nextSection.SectionkUserName + " section index " + currentSectionCurrentBlockIndex.ToString() + " brics "+blocksRemainingInSection.ToString());
                                     }
                                     else
                                     {
@@ -678,7 +570,7 @@ namespace Shuttler
                     existingLog.PreviousBlockBNL = existingLog.CurrentBlockBNL;
                     existingLog.CurrentBlockBNL = newBlockBNL;
 
-                    if (lbRunningTransits.SelectedIndex >= 0 && logsByNextBlock.Count == 1)
+                    if (lbRunningTransits.SelectedIndex >= 0 && matchingLogFound)
                     {
                         dynamic rt = lbRunningTransits.SelectedItem;
                         if (rt != null)
@@ -1436,9 +1328,45 @@ namespace Shuttler
                     for (int i = log.AutomatedCurrentSectionIndex; i <= log.AutomatedCurrentSectionIndex + log.NumberOfSectionsAheadToAllocate; i++)
                     {
                         sectionCounter++;
+                        //trying to only process the next section when just starting
+                        if (log.AutomatedCurrentBlockIndex == 0 && i > log.AutomatedCurrentSectionIndex + 1)
+                            continue;
+                        
                         var thisSectionFailureAllocationReason = ""; 
                         var section = log.AutomatedSectionList.ElementAtOrDefault(i);
                         if (section == null) continue;
+
+                        //Quick check here for double allocation - can happen if there's been a short
+                        //if (section.IsAllocated)
+                        //{
+                        //    var blockFoundThatsAssignedToAnotherLog = false;
+                        //    var otherLogWithClaim = string.Empty;
+                        //    foreach (var block in section.Blocks)
+                        //    {
+                        //        var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                        //        if (liveStateBlock != null && liveStateBlock.data != null && liveStateBlock.data.value != null && liveStateBlock.data.value.data != null)
+                        //        {
+                        //            if (liveStateBlock.data.value.data.userName != log.DCCiD)
+                        //            {
+                        //                blockFoundThatsAssignedToAnotherLog = true;
+                        //                otherLogWithClaim = liveStateBlock.data.value.data.userName;
+                        //            }
+                                        
+                        //        }
+                        //    }
+                        //    if (blockFoundThatsAssignedToAnotherLog)
+                        //    {
+                        //        WriteToLog("Log " + log.DCCiD + " double allocation risk for section " + section.SectionkUserName + " - conflict with train " + otherLogWithClaim + " so setting this and next section to unallocated");
+                        //    }
+                        //}    
+                        
+
+
+                        //Don't process for allocation if loco is currently in a multi block section with more than 1 block remaining
+                        //if (log.BlocksRemainingInCurrentSection >1 && i > 0)
+                        //{
+                        //    continue;
+                        //}
 
                         bool previousSectionAllocated = false;
                         var previousSection = log.AutomatedSectionList.ElementAtOrDefault(i - 1);
@@ -1493,7 +1421,68 @@ namespace Shuttler
                                 string issue = "";
                                 bool allocationIssueFound = false;
 
-                                if (!section.IsAllocated)
+                                if (section.IsAllocated && sequenceBlock.SequenceState <= JourneySequenceState.Active)
+                                {
+                                    //Check all turnouts even if allocated - one may have been set by human error
+                                    if (block.BNL != null && block.BNL.BNLTurnouts != null)
+                                    {
+                                        var tos = block.BNL.BNLTurnouts.ToList();
+                                        var blockName = block.userName;
+                                        foreach (var to in block.BNL.BNLTurnouts)
+                                        {
+                                            try
+                                            {
+                                                var liveTO = await webClient.GetTurnout(to.ID);
+                                                if (liveTO != null)
+                                                {
+                                                    to.CurrentState = liveTO.data.state.ToString();
+                                                    var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
+                                                    if (storedTO != null)
+                                                    {
+                                                        storedTO.State = liveTO.data.state.ToString();
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    WriteToLog("No response to request for live turnout state " + to.Name);
+                                                }
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
+                                            }
+
+                                            if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
+                                            {
+                                                to.NumberOfRetries++;
+                                                //c.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                                await webClient.SetTurnout(to.ID, int.Parse(to.RequiredState));
+                                                WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState + " for " + log.DCCiD);
+
+                                            }
+                                        }
+                                    }
+
+                                    //block values seem to be getting lost after the train has activated the block
+                                    var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+
+                                    if (liveStateBlock != null && liveStateBlock.data.state == (int)BlockState.Occupied && indexOfSequenceBlock == log.AutomatedCurrentBlockIndex
+                                        && sequenceBlock.SequenceState == JourneySequenceState.Active)
+                                    {
+                                        if (liveStateBlock.data.value == null || string.IsNullOrEmpty(liveStateBlock.data.value.data.userName))
+                                        {
+                                            WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
+                                            await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                        }
+                                        else if (liveStateBlock.data.value.data.userName != log.DCCiD)
+                                        {
+                                            WriteToLog("Incorrect block value in occupied block - " + block.userName + " ID " + log.DCCiD);
+                                            await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                        }
+                                    }
+                                }
+
+                                else if (log.BlocksRemainingInCurrentSection < 2 || i == 0)
                                 {
                                     if (log.AllocatedBlocks.Contains(block.userName))
                                     {
@@ -1514,140 +1503,147 @@ namespace Shuttler
                                         }
                                     }
 
+                                    //if (!allocationIssueFound)
+                                    //{
+                                    //    var allocatedBlocksByLog = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.DCCiD != log.DCCiD);
+                                    //    foreach (var alog in allocatedBlocksByLog)
+                                    //    {
+                                    //        foreach (var alloc in alog.AllocatedBlocks)
+                                    //        {
+                                    //            if (alloc == block.userName)
+                                    //            {
+                                    //                //WriteToLog("Log check can't allocate " + block.userName + " to " + log.DCCiD + " as it's allocated to " + alog.DCCiD);
+                                    //                issue = block.userName + " allocated to another log - " + alog.DCCiD;
+                                    //                allocationIssueFound = true;
+                                    //            }
+                                    //        }
+                                    //    }
+                                    //}
+
+
                                     if (!allocationIssueFound)
                                     {
-                                        var allocatedBlocksByLog = _logs.Where(w => w.AutomatedTrainRunningStatus != AutomatedTrainRunningStatus.ReadyToDelete && w.DCCiD != log.DCCiD);
-                                        foreach (var alog in allocatedBlocksByLog)
+                                        //var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                                        var liveStateBlock = await webClient.GetBlock(block.userName);
+
+                                        if (liveStateBlock.RetrievalError || liveStateBlock.data.userName != block.userName)
                                         {
-                                            foreach (var alloc in alog.AllocatedBlocks)
-                                            {
-                                                if (alloc == block.userName)
-                                                {
-                                                    //WriteToLog("Log check can't allocate " + block.userName + " to " + log.DCCiD + " as it's allocated to " + alog.DCCiD);
-                                                    issue = block.userName + " allocated to another log - " + alog.DCCiD;
-                                                    allocationIssueFound = true;
-                                                }
-                                            }
+                                            WriteToLog("Retrieval exception for block " + block.userName + " Log ID " + log.DCCiD);
+                                            errorDuringBlockChecking = true;
+                                            allocationIssueFound = true;
                                         }
-                                    }
-                                }
 
-                                if (!allocationIssueFound)
-                                {
-                                    //var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
-                                    var liveStateBlock = await webClient.GetBlock(block.userName);
-
-                                    if (liveStateBlock.RetrievalError || liveStateBlock.data.userName != block.userName)
-                                    {
-                                        WriteToLog("Retrieval exception for block " + block.userName + " Log ID " + log.DCCiD);
-                                        errorDuringBlockChecking = true;
-                                        allocationIssueFound = true;
-                                    }
-
-                                    else
-                                    {
-                                        var state = liveStateBlock.data.state;
-                                        var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
-
-                                        if (!section.IsAllocated)
+                                        else
                                         {
-                                            //need to handle if a block in this section is already allocated to this train, from an earlier section in the transit
-                                            //under these circumstances this section should not be allowed to be allocated, as a block within it is already allocated to this train on an earlier part of its journey
-                                            //this section should not be allocated until the previous section has been exited
+                                            var state = liveStateBlock.data.state;
+                                            var value = liveStateBlock.data.value != null ? liveStateBlock.data.value.data.userName : "";
 
-                                            if (state == (int)BlockState.Occupied && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
+                                            if (!section.IsAllocated)
                                             {
-                                                //this block could be active and occupied by this train in an earlier section in this transit
-                                                //in this case the block should not be available to allocate in the later section
+                                                //need to handle if a block in this section is already allocated to this train, from an earlier section in the transit
+                                                //under these circumstances this section should not be allowed to be allocated, as a block within it is already allocated to this train on an earlier part of its journey
+                                                //this section should not be allocated until the previous section has been exited
 
-                                                if (value != log.DCCiD)
+                                                if (state == (int)BlockState.Occupied && (int)sequenceBlock.SequenceState < (int)JourneySequenceState.Active && indexOfSequenceBlock > 0) //occupied
                                                 {
-                                                    issue = block.userName + " occupied";
-                                                    if (value.Length > 0) issue += " by " + value;
-                                                    allocationIssueFound = true;
-                                                }
-                                                else
-                                                {
-                                                    var occupiedInPreviousBlock = false;
-                                                    var instancesOfThisBlockInThisTransit = log.AutomatedBlockList.Where(w => w.BlockSystemname == block.systemName).ToList();
-                                                    foreach (var instance in instancesOfThisBlockInThisTransit)
-                                                    {
-                                                        if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState >= (int)JourneySequenceState.Active)
-                                                        {
-                                                            occupiedInPreviousBlock = true;
-                                                        }
-                                                    }
-                                                    if (occupiedInPreviousBlock)
-                                                    {
-                                                        issue = block.userName + " occupied by this train earlier in the transit";
-                                                        allocationIssueFound = true;
-                                                    }
-                                                }
-                                            }
+                                                    //this block could be active and occupied by this train in an earlier section in this transit
+                                                    //in this case the block should not be available to allocate in the later section
 
-                                            if (!allocationIssueFound)
-                                            {
-                                                //check for allocation 
-                                                if (value.Length > 0)
-                                                {
                                                     if (value != log.DCCiD)
                                                     {
-                                                        //block is allocated to another train                         
-                                                        issue = block.userName + " allocated to " + value;
-                                                        //WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to " + value);
+                                                        issue = block.userName + " occupied";
+                                                        if (value.Length > 0) issue += " by " + value;
                                                         allocationIssueFound = true;
                                                     }
                                                     else
                                                     {
-                                                        //block is booked to this train, but possibly from an earlier section which may not yet be traversed
-                                                        var allocatedInPreviousBlock = false;
+                                                        var occupiedInPreviousBlock = false;
                                                         var instancesOfThisBlockInThisTransit = log.AutomatedBlockList.Where(w => w.BlockSystemname == block.systemName).ToList();
                                                         foreach (var instance in instancesOfThisBlockInThisTransit)
                                                         {
-                                                            if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState < (int)JourneySequenceState.Active)
+                                                            if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState >= (int)JourneySequenceState.Active)
                                                             {
-                                                                allocatedInPreviousBlock = true;
+                                                                occupiedInPreviousBlock = true;
                                                             }
                                                         }
-                                                        if (allocatedInPreviousBlock)
+                                                        if (occupiedInPreviousBlock)
                                                         {
-                                                            issue = block.userName + " allocated to this train earlier in the transit";
-                                                            //WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to this train earlier in the transit");
+                                                            issue = block.userName + " occupied by this train earlier in the transit";
                                                             allocationIssueFound = true;
                                                         }
                                                     }
                                                 }
 
+                                                if (!allocationIssueFound)
+                                                {
+                                                    //check for allocation 
+                                                    if (value.Length > 0)
+                                                    {
+                                                        if (value != log.DCCiD)
+                                                        {
+                                                            //block is allocated to another train                         
+                                                            issue = block.userName + " allocated to " + value;
+                                                            //WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to " + value);
+                                                            allocationIssueFound = true;
+                                                        }
+                                                        else
+                                                        {
+                                                            //block is booked to this train, but possibly from an earlier section which may not yet be traversed
+                                                            var allocatedInPreviousBlock = false;
+                                                            var instancesOfThisBlockInThisTransit = log.AutomatedBlockList.Where(w => w.BlockSystemname == block.systemName).ToList();
+                                                            foreach (var instance in instancesOfThisBlockInThisTransit)
+                                                            {
+                                                                if (instance.Sequence < sequenceBlock.Sequence && (int)instance.SequenceState < (int)JourneySequenceState.Active)
+                                                                {
+                                                                    allocatedInPreviousBlock = true;
+                                                                }
+                                                            }
+                                                            if (allocatedInPreviousBlock)
+                                                            {
+                                                                issue = block.userName + " allocated to this train earlier in the transit";
+                                                                //WriteToLog("Live block can't allocate " + block.userName + " to " + log.DCCiD + " because it's allocated to this train earlier in the transit");
+                                                                allocationIssueFound = true;
+                                                            }
+                                                        }
+                                                    }
+
+                                                }
+
+
                                             }
+                                            //else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
+                                            //else if (state == (int)BlockState.Unoccupied && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued)
+                                            //{
+                                            //    var currentJourneyBlockSequenceNo = log.AutomatedCurrentBlockIndex;
+                                            //    var sequenceNumberOfCheckedBlock = indexOfSequenceBlock;
 
-
-                                        }
-                                        //else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
-                                        else if (state == (int)BlockState.Unoccupied && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued)
-                                        {
-                                            var currentJourneyBlockSequenceNo = log.AutomatedCurrentBlockIndex;
-                                            var sequenceNumberOfCheckedBlock = indexOfSequenceBlock;
-
-                                            if (sequenceNumberOfCheckedBlock > currentJourneyBlockSequenceNo)
-                                            {
-                                                WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
-                                                section.IsAllocated = false;
-                                                section.AllocationStatus = AllocationStatus.LostAllocation;
-                                            }
+                                            //    if (sequenceNumberOfCheckedBlock > currentJourneyBlockSequenceNo)
+                                            //    {
+                                            //        WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
+                                            //        section.IsAllocated = false;
+                                            //        section.AllocationStatus = AllocationStatus.LostAllocation;
+                                            //    }
+                                            //}
                                         }
                                     }
+
+                                    if (!allocationIssueFound)
+                                    {
+                                        block.ClearToAllocate = true;
+                                        block.AllocationIssue = "";
+                                    }
+                                    else
+                                    {
+                                        block.ClearToAllocate = false;
+                                        block.AllocationIssue = issue;
+                                    }
+
+
+
+
                                 }
 
-                                if (!allocationIssueFound)
-                                {
-                                    block.ClearToAllocate = true;
-                                    block.AllocationIssue = "";
-                                }
-                                else
-                                {
-                                    block.ClearToAllocate = false;
-                                    block.AllocationIssue = issue;
-                                }
+                                
                                 sectionBlockCounter++;
                             }
 
@@ -1678,7 +1674,7 @@ namespace Shuttler
                                 }
                             }
 
-                            if (!sectionContainsUnallocatableBlock && !errorDuringBlockChecking && previousSectionAllocated && logNextInInclineQueue)
+                            if (!sectionContainsUnallocatableBlock && !errorDuringBlockChecking && previousSectionAllocated && (log.BlocksRemainingInCurrentSection < 2 || i == 0))
                             {
                                 //this is where all blocks for the section get allocated
                                 //WriteToLog("Starting allocation for section " + section.SectionkUserName + " ID " + log.DCCiD);
@@ -1739,68 +1735,7 @@ namespace Shuttler
 
                                     }
 
-                                    if (section.IsAllocated)
-                                    {
-                                        //not occupied and not allocated - set turnouts
-                                        //Check all turnouts even if allocated - one may have been set by human error
 
-                                        if (block.BNL != null && block.BNL.BNLTurnouts != null)
-                                        {
-                                            var tos = block.BNL.BNLTurnouts.ToList();
-                                            var blockName = block.userName;
-                                            foreach (var to in block.BNL.BNLTurnouts)
-                                            {
-                                                try
-                                                {
-                                                    var liveTO = await webClient.GetTurnout(to.ID);
-                                                    if (liveTO != null)
-                                                    {
-                                                        to.CurrentState = liveTO.data.state.ToString();
-                                                        var storedTO = c.Turnouts.FirstOrDefault(f => f.ID == to.ID);
-                                                        if (storedTO != null)
-                                                        {
-                                                            storedTO.State = liveTO.data.state.ToString();
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        WriteToLog("No response to request for live turnout state " + to.Name);
-                                                    }
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    WriteToLog("Error encountered checking live turnout " + to.Name + " - ex - " + ex.Message);
-                                                }
-
-                                                if (to.RequiredState != null && (to.CurrentState == null || to.CurrentState != to.RequiredState))
-                                                {
-                                                    to.NumberOfRetries++;
-                                                    //c.SetTurnout(to.ID, int.Parse(to.RequiredState));
-                                                    await webClient.SetTurnout(to.ID, int.Parse(to.RequiredState));
-                                                    WriteToLog("Set turnout " + to.Name + " to required state " + to.RequiredState + " for " + log.DCCiD);
-
-                                                }
-                                            }
-                                        }
-
-                                        //block values seem to be getting lost after the train has activated the block
-                                        var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
-
-                                        if (liveStateBlock != null && liveStateBlock.data.state == (int)BlockState.Occupied && indexOfSequenceBlock == log.AutomatedCurrentBlockIndex
-                                            && sequenceBlock.SequenceState == JourneySequenceState.Active)
-                                        {
-                                            if (liveStateBlock.data.value == null || string.IsNullOrEmpty(liveStateBlock.data.value.data.userName))
-                                            {
-                                                WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
-                                                await webClient.AllocateBlock(block.systemName, log.DCCiD,true);
-                                            }
-                                            else if (liveStateBlock.data.value.data.userName != log.DCCiD)
-                                            {
-                                                WriteToLog("Incorrect block value in occupied block - " + block.userName + " ID " + log.DCCiD);
-                                                await webClient.AllocateBlock(block.systemName, log.DCCiD,true);
-                                            }
-                                        }
-                                    }
                                     sectionBlockCounter++;
                                 }
                                 if (!allocateFailedAnywhere)
@@ -2735,7 +2670,7 @@ namespace Shuttler
                         else
                             currentBlockLog.derivedStoppingSensor = currentBlockLog.reverseStoppingSensor;
 
-                        WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
+                        //WriteToLog("Derived stopping sensor " + currentBlockLog.derivedStoppingSensor);
                     }
 
                     var previousBlock = log.AutomatedBlockList.ElementAtOrDefault(log.AutomatedCurrentBlockIndex - 1);
@@ -3361,6 +3296,12 @@ namespace Shuttler
                 trainLog.NextTransitAdditionalDelayMS = 0;  
                 trainLog.RestartWhenDone = true;
                 cbRepeatTransitWhenComplete.Checked = false;
+            }
+
+            var firstSection = trainLog.AutomatedSectionList.FirstOrDefault();
+            if (firstSection != null)
+            {
+                trainLog.BlocksRemainingInCurrentSection = firstSection.Blocks.Count - 1;
             }
 
             _logs.Add(trainLog);

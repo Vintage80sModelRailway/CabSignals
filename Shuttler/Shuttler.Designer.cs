@@ -256,10 +256,12 @@
             // 
             // lbOutput
             // 
+            this.lbOutput.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lbOutput.FormattingEnabled = true;
+            this.lbOutput.ItemHeight = 16;
             this.lbOutput.Location = new System.Drawing.Point(13, 793);
             this.lbOutput.Name = "lbOutput";
-            this.lbOutput.Size = new System.Drawing.Size(1564, 147);
+            this.lbOutput.Size = new System.Drawing.Size(1564, 196);
             this.lbOutput.TabIndex = 17;
             // 
             // lbRunningTransits
@@ -820,7 +822,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1602, 982);
+            this.ClientSize = new System.Drawing.Size(1602, 1001);
             this.Controls.Add(this.panel5);
             this.Controls.Add(this.panel4);
             this.Controls.Add(this.pnlTrigger);

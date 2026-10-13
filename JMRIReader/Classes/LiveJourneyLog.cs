@@ -20,6 +20,7 @@ namespace JMRIReader.Classes
         public int PreviousBlockIndex { get; set; }
         public string CurrentBlock { get; set; }
         public string CurrentSection { get; set; }
+        public int BlocksRemainingInCurrentSection { get; set; }
         public int CurrentBlockIndex { get; set; }
         public int AutomatedCurrentBlockIndex { get; set; }
         public int CurrentSpeedStep { get; set; }
