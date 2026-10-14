@@ -35,7 +35,8 @@
             NotAvailable = 1,
             Allocated = 2,
             LostAllocation = 3,
-            Occupied = 4
+            Occupied = 4,
+            Traversed = 5
         }
 
         public enum TransitType

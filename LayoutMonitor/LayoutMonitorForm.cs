@@ -280,6 +280,8 @@ namespace LayoutMonitor
                 await Task.Delay(100);
                 if (usingMQTT)
                     ProcessMQTTMessageQueue();
+
+                await ProcessAlerts();
             }
         }
 
@@ -3215,7 +3217,7 @@ namespace LayoutMonitor
         /// alerts and updates related UI components accordingly. Alerts may be displayed, acknowledged, or deactivated
         /// depending on their severity and the current system state.</remarks>
         /// <returns><see langword="true"/> if the alert processing completes successfully; otherwise, <see langword="false"/>.</returns>
-        private async Task<bool> ProcessAlerts()
+        private async Task<bool> ProcessAlertsOld()
         {
             if (alerts.Count == 0)
             {
@@ -3427,6 +3429,94 @@ namespace LayoutMonitor
                     var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
                     lvUpdates.Items.Clear();
                     lvUpdates.Items.Add(latestAlert);
+                    lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                lbOutput.Items.Add(DateTime.Now.ToString() + " - " + "Expired alert processing excpeption " + ex.Message);
+                lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+            }
+
+            return true;
+        }
+
+        private async Task<bool> ProcessAlerts()
+        {
+            if (alerts.Count == 0)
+            {
+                lblBlockWarning.Text = "";
+                lblLikelyIssue.Text = "";
+                lblBlockContainingDanger.Text = "";
+                lblTrainName.Text = "";
+            }
+
+            var currentVisibleAlert = alerts.FirstOrDefault(f => f.Visible == true);
+            List<Alert> alertsToRemove = new List<Alert>();
+
+            foreach (var alert in alerts.OrderBy(o => o.Severity).ToList())
+            {
+                try
+                {
+                    if (alert.Deactivated) continue;
+                    if (alert.Acknowledged) continue;
+
+                    bool hasPrecedingAlert = false;
+                    if (!string.IsNullOrEmpty(alert.BNL.BlockFound) && !alert.BNL.NoMoreBlocksFound && !alert.Deactivated)
+                    {
+                        if (!alert.Visible)
+                        {
+                            DisplayAlert(alert);
+                            alert.Visible = true;
+                            alert.AlertStart = DateTime.Now;
+                            var colour = alert.Severity.ToString();
+                            SoundPlayer signalBeep = new SoundPlayer("./Assets/" + colour + ".wav");
+                            signalBeep.Play();
+                            continue;
+                        }
+                        continue;
+                    }
+
+                    var log = Log.FirstOrDefault(f => f.Name == alert.TrainName);
+                    bool alertWasFromADifferentPath = false;
+                    if (log != null)
+                    {
+                        if (log.Terminated)
+                        {
+                            DeactivateAlert(alert, false, "2345 deactivate alert, log terminated");
+                        }
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lbOutput.Items.Add(DateTime.Now.ToString() + " - " + "Alert processing exception " + ex.Message);
+                    lbOutput.SelectedIndex = lbOutput.Items.Count - 1;
+                    alert.Deactivated = true;
+                }
+            }
+
+
+            try
+            {
+                var alertsEmptied = false;
+                var deactivatedAlerts = alerts.Where(w => w.Deactivated).ToList();
+                foreach (var da in deactivatedAlerts)
+                {
+                    TimeSpan diff = DateTime.Now - da.DeactivatedTime;
+                    if (diff.TotalSeconds > 30)
+                    {
+                        alerts.Remove(da);
+                        alertsEmptied = true;
+                    }
+                }
+
+                int numberOfActiveAlerts = alerts.Where(w => !w.Deactivated).Count();
+                if (alertsEmptied && numberOfActiveAlerts == 0)
+                {
+                    var latestAlert = lvUpdates.Items[lvUpdates.Items.Count - 1];
+                    lvUpdates.Items.Clear();
+                    //lvUpdates.Items.Add(latestAlert);
                     lvUpdates.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                 }
             }
