@@ -365,7 +365,7 @@ namespace Shuttler
                                 existingLog = probablyTheRightLog;
 
                                 //probably need to correct a block value here
-                                var responseBlock = await webClient.AllocateBlock(nab.data.name, existingLog.DCCiD, true);
+                                var responseBlock = await webClient.AllocateBlock(allocatedTo, existingLog.DCCiD, true);
                             }
                             else
                             {
@@ -1405,6 +1405,9 @@ namespace Shuttler
                         {
                             foreach (var block in section.Blocks)
                             {
+                                block.ClearToAllocate = true;
+                                block.AllocationIssue = "";
+
                                 var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
                                 var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
                                 var nextBlockInSequence = log.AutomatedBlockList.ElementAtOrDefault(indexOfSequenceBlock + 1);
@@ -1416,7 +1419,7 @@ namespace Shuttler
                                     nextBlockName = nextBlockInSequence.BlockUserName;
                                 }
 
-                                if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued && indexOfSequenceBlock >= log.AutomatedCurrentBlockIndex)
+                                if ((int)sequenceBlock.SequenceState > (int)JourneySequenceState.Queued && indexOfSequenceBlock >= log.AutomatedCurrentBlockIndex && indexOfSequenceBlock > 0)
                                 {
                                     //this block is already active or traversed - just set the flags to not cause any trouble as it won't need to be allocated
                                     //WriteToLog("Block " + block.userName + " deemed active or traversed for " + log.DCCiD + " seq state " + sequenceBlock.SequenceState.ToString());
@@ -1441,7 +1444,11 @@ namespace Shuttler
 
                                 bool clearedToSetPoints = false;
                                 var liveStateBlock = LiveBlocks.First(f => f.data != null && f.data.name == block.systemName);
-                                if (liveStateBlock != null && liveStateBlock.data != null)// && liveStateBlock.data.value != null && liveStateBlock.data.value.data != null)
+                                //var liveStateBlock = await webClient.GetBlock(block.systemName);
+
+                                //check that all (not yet traversed) blocks in section are allocated in order to allow points to be set
+                                //If any are found not active, reset the whole section so that occupancy can be rechecked
+                                if (sequenceBlock.SequenceState <= JourneySequenceState.Active && liveStateBlock != null && liveStateBlock.data != null)// && liveStateBlock.data.value != null && liveStateBlock.data.value.data != null)
                                 {
                                     if (liveStateBlock.data.value != null && liveStateBlock.data.value.data != null)
                                     {
@@ -1505,6 +1512,7 @@ namespace Shuttler
                                             if (liveStateBlock.data.value == null && liveStateBlock.data.value.data == null || string.IsNullOrWhiteSpace(liveStateBlock.data.value.data.userName))
                                             {
                                                 await webClient.AllocateBlock(liveStateBlock.data.name, log.DCCiD, true);
+                                                liveStateBlock.data.value.data.userName = log.DCCiD;
                                                 WriteToLog("DCC ID " + log.DCCiD + " block " + block.userName + " section " + section.SectionkUserName + " seemed to have lost allocation, reallocated as it's an active section");
                                                 //blocksToDecorate.Add()
                                             }
@@ -1524,11 +1532,13 @@ namespace Shuttler
                                         {
                                             WriteToLog("Lost block value - " + block.userName + " ID " + log.DCCiD);
                                             await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                            liveStateBlock.data.value.data.userName = log.DCCiD;                                            
                                         }
                                         else if (liveStateBlock.data.value.data.userName != log.DCCiD)
                                         {
                                             WriteToLog("Incorrect block value in occupied block - " + block.userName + " ID " + log.DCCiD);
                                             await webClient.AllocateBlock(block.systemName, log.DCCiD, true);
+                                            liveStateBlock.data.value.data.userName = log.DCCiD;                                            
                                         }
                                     }
                                 }
@@ -1661,19 +1671,6 @@ namespace Shuttler
 
 
                                         }
-                                        //else if (state == 4 && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0 )
-                                        //else if (state == (int)BlockState.Unoccupied && string.IsNullOrEmpty(value) && sequenceBlock.SequenceState == JourneySequenceState.Queued)
-                                        //{
-                                        //    var currentJourneyBlockSequenceNo = log.AutomatedCurrentBlockIndex;
-                                        //    var sequenceNumberOfCheckedBlock = indexOfSequenceBlock;
-
-                                        //    if (sequenceNumberOfCheckedBlock > currentJourneyBlockSequenceNo)
-                                        //    {
-                                        //        WriteToLog(block.userName + " not allocated but probably should be - setting section back to unallocated");
-                                        //        section.IsAllocated = false;
-                                        //        section.AllocationStatus = AllocationStatus.LostAllocation;
-                                        //    }
-                                        //}
                                     }
 
                                     if (!allocationIssueFound)
@@ -1692,27 +1689,30 @@ namespace Shuttler
 
                             if (!allBlocksInSectionAreAllocatedToThisTrain && section.IsAllocated)
                             {
-                                if (i > log.AutomatedCurrentSectionIndex)
+                                //problem here - one block has lost allocation so need to deallocate the others too and set the section back to unallocated
+                                
+                                foreach (var block in section.Blocks)
                                 {
-                                    //problem here - one block has lost allocation so need to deallocate the others too and set the section back to unallocated
-                                    WriteToLog("ID " + log.DCCiD + " section " + section.SectionkUserName + " seems to have lost allocation, deallocating all blocks and resetting to unallocated status");
-                                    foreach (var block in section.Blocks)
+                                    var sequenceBlock = log.AutomatedBlockList.FirstOrDefault(f => f.BlockSystemname == block.systemName && f.SectionSequenceId == section.Sequence);
+                                    var indexOfSequenceBlock = log.AutomatedBlockList.IndexOf(sequenceBlock);
+                                    var liveStateBlock = LiveBlocks.FirstOrDefault(f => f.data.name == block.systemName);
+                                    if (liveStateBlock.data.state != (int)BlockState.Occupied && sequenceBlock.SequenceState == JourneySequenceState.Queued && indexOfSequenceBlock > 0)
                                     {
                                         await webClient.AllocateBlock(block.systemName, "", true);
-                                        WriteToLog("Deallocated " + block.userName + " for section " + section.SectionkUserName + " ID " + log.DCCiD);
+                                        block.ClearToAllocate = false;
+                                        block.AllocationIssue = "Lost allocation ";
+                                        //WriteToLog("ID " + log.DCCiD + " section " + section.SectionkUserName + " seems to have lost allocation, deallocating all blocks and resetting to unallocated status");
+                                        WriteToLog("ID "+log.DCCiD+ " deallocated " + block.userName + " seq block " +sequenceBlock.BlockUserName+ " for section " + section.SectionkUserName + " ID " + log.DCCiD+" state "+liveStateBlock.data.state.ToString()+" deq state "+sequenceBlock.SequenceState.ToString());
+                                        section.IsAllocated = false;
                                     }
-                                    section.IsAllocated = false;
+                                    //else
+                                    //{
+                                    //    WriteToLog("Would have deallocated " + block.userName + " for section " + section.SectionkUserName + " ID " + log.DCCiD+" but appears to be the active block seq state "+sequenceBlock.SequenceState.ToString());
+                                    //}
                                 }
-                                //else if (i == log.AutomatedCurrentSectionIndex)
-                                //{
-                                //    WriteToLog("ID " + log.DCCiD + " current section " + section.SectionkUserName + " seems to have lost some allocation");
-                                //    foreach (var block in section.Blocks)
-                                //    {
-                                //        if (block.)
-                                //    }
-                                //}
-                            }
                                 
+
+                            }                                
 
                             sectionContainsUnallocatableBlock = section.Blocks.Any(a => !a.ClearToAllocate);
                             if (sectionContainsUnallocatableBlock)
@@ -3410,6 +3410,13 @@ namespace Shuttler
 
             var lastSection = trainLog.AutomatedSectionList.LastOrDefault();
             string finishesInStorageLine = "";
+
+            var firstBlock = trainLog.AutomatedBlockList.ElementAtOrDefault(0);
+            if (firstBlock != null)
+            {
+                firstBlock.SequenceState = JourneySequenceState.Active;
+            }
+
             if (lastSection != null)
             {
                 finishesInStorageLine = " last section is storage " + lastSection.SectionkUserName+" ";

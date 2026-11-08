@@ -569,7 +569,7 @@ namespace LayoutMonitor
                                             
                                             if (debugOutput)
                                             {
-                                                //lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName);
+                                                lbOutput.Items.Add("b = " + b.ToString() + " MM " + totalMMCoveredSinceExitingPBSO.ToString()+" pbso "+pbso.BlockUserName+" TLmm "+log.TrainLengthMM.ToString()+" ID "+log.DCCiD);
                                             }
                                         }
 
